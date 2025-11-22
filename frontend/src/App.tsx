@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useMemo, useState } from 'react';
+import { type ApiResponse, getBooks } from './api';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 
@@ -25,10 +26,6 @@ interface BookItem {
   noteState: 'not_started';
 }
 
-interface ApiResponse {
-  items: BookItem[];
-}
-
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
   overdue: '연체',
   due_soon: '반납 임박',
@@ -44,15 +41,7 @@ const STATUS_BG: Record<DueStatus, string> = {
 function useBooks() {
   return useQuery<ApiResponse>({
     queryKey: ['books'],
-    queryFn: async () => {
-      const res = await fetch('/api/books', {
-        headers: { Accept: 'application/json' },
-      });
-      if (!res.ok) {
-        throw new Error('Failed to load books');
-      }
-      return res.json();
-    },
+    queryFn: getBooks,
   });
 }
 

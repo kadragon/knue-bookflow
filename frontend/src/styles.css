@@ -102,6 +102,7 @@ body {
   display: flex;
   gap: 6px;
   flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 .filter-group-wide {
