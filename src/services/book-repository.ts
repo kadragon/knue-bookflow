@@ -1,0 +1,165 @@
+/**
+ * Book Repository
+ * Data access layer for D1 database operations
+ *
+ * Trace: spec_id: SPEC-storage-001, task_id: TASK-006
+ */
+
+import { BookRecord, RenewalLog, Charge, BookInfo } from '../types';
+
+export class BookRepository {
+  constructor(private db: D1Database) {}
+
+  /**
+   * Save or update a book record
+   * @param record - Book record to save
+   */
+  async saveBook(record: BookRecord): Promise<void> {
+    const now = new Date().toISOString();
+
+    // Check if record exists
+    const existing = await this.findByChargeId(record.charge_id);
+
+    if (existing) {
+      // Update existing record
+      await this.db
+        .prepare(
+          `UPDATE books SET
+            due_date = ?,
+            renew_count = ?,
+            updated_at = ?
+          WHERE charge_id = ?`
+        )
+        .bind(record.due_date, record.renew_count, now, record.charge_id)
+        .run();
+
+      console.log(`[BookRepository] Updated book: ${record.title}`);
+    } else {
+      // Insert new record
+      await this.db
+        .prepare(
+          `INSERT INTO books (
+            charge_id, isbn, title, author, publisher,
+            cover_url, description, charge_date, due_date,
+            renew_count, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          record.charge_id,
+          record.isbn,
+          record.title,
+          record.author,
+          record.publisher,
+          record.cover_url,
+          record.description,
+          record.charge_date,
+          record.due_date,
+          record.renew_count,
+          now,
+          now
+        )
+        .run();
+
+      console.log(`[BookRepository] Saved new book: ${record.title}`);
+    }
+  }
+
+  /**
+   * Find a book record by charge ID
+   * @param chargeId - Charge ID to search for
+   */
+  async findByChargeId(chargeId: string): Promise<BookRecord | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM books WHERE charge_id = ?')
+      .bind(chargeId)
+      .first<BookRecord>();
+
+    return result || null;
+  }
+
+  /**
+   * Find a book record by ISBN
+   * @param isbn - ISBN to search for
+   */
+  async findByIsbn(isbn: string): Promise<BookRecord[]> {
+    const result = await this.db
+      .prepare('SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC')
+      .bind(isbn)
+      .all<BookRecord>();
+
+    return result.results;
+  }
+
+  /**
+   * Get all book records
+   */
+  async findAll(): Promise<BookRecord[]> {
+    const result = await this.db
+      .prepare('SELECT * FROM books ORDER BY charge_date DESC')
+      .all<BookRecord>();
+
+    return result.results;
+  }
+
+  /**
+   * Log a renewal action
+   * @param log - Renewal log entry
+   */
+  async logRenewal(log: RenewalLog): Promise<void> {
+    const now = new Date().toISOString();
+
+    await this.db
+      .prepare(
+        `INSERT INTO renewal_logs (
+          charge_id, action, status, message, created_at
+        ) VALUES (?, ?, ?, ?, ?)`
+      )
+      .bind(log.charge_id, log.action, log.status, log.message, now)
+      .run();
+
+    console.log(`[BookRepository] Logged renewal: ${log.action} - ${log.status}`);
+  }
+
+  /**
+   * Get renewal logs for a charge
+   * @param chargeId - Charge ID to get logs for
+   */
+  async getRenewalLogs(chargeId: string): Promise<RenewalLog[]> {
+    const result = await this.db
+      .prepare(
+        'SELECT * FROM renewal_logs WHERE charge_id = ? ORDER BY created_at DESC'
+      )
+      .bind(chargeId)
+      .all<RenewalLog>();
+
+    return result.results;
+  }
+}
+
+/**
+ * Convert charge and book info to a book record
+ * @param charge - Library charge data
+ * @param bookInfo - Optional Aladin book info
+ */
+export function createBookRecord(charge: Charge, bookInfo?: BookInfo | null): BookRecord {
+  return {
+    charge_id: String(charge.id),
+    isbn: charge.volume.bib.isbn || bookInfo?.isbn || '',
+    title: bookInfo?.title || charge.volume.bib.title,
+    author: bookInfo?.author || charge.volume.bib.author || '',
+    publisher: bookInfo?.publisher || null,
+    cover_url: bookInfo?.coverUrl || null,
+    description: bookInfo?.description || null,
+    charge_date: charge.chargeDate,
+    due_date: charge.dueDate,
+    renew_count: charge.renewCnt,
+  };
+}
+
+/**
+ * Create a book repository instance
+ * @param db - D1 database binding
+ */
+export function createBookRepository(db: D1Database): BookRepository {
+  return new BookRepository(db);
+}

@@ -1,0 +1,54 @@
+spec_id: SPEC-renewal-001
+title: "Automatic Book Renewal"
+description: |
+  Automatically renew eligible books based on due date proximity
+  and renewal count criteria.
+
+given_when_then:
+  - given: "Book has renewCnt == 0 and dueDate is within 2 days"
+    when: "Renewal check is performed"
+    then: "Book is marked for renewal and API is called"
+
+  - given: "Book has already been renewed (renewCnt > 0)"
+    when: "Renewal check is performed"
+    then: "Book is skipped for renewal"
+
+  - given: "Book dueDate is more than 2 days away"
+    when: "Renewal check is performed"
+    then: "Book is skipped for renewal"
+
+  - given: "Renewal API call succeeds"
+    when: "Renewal is attempted"
+    then: "Success is logged and book status updated"
+
+  - given: "Renewal API call fails (e.g., reserved by another user)"
+    when: "Renewal is attempted"
+    then: "Failure is logged with reason"
+
+acceptance_tests:
+  - id: TEST-renewal-001
+    desc: "Identify books eligible for renewal based on criteria"
+  - id: TEST-renewal-002
+    desc: "Skip books already renewed"
+  - id: TEST-renewal-003
+    desc: "Skip books with due date more than 2 days away"
+  - id: TEST-renewal-004
+    desc: "Successfully call renewal API with correct parameters"
+  - id: TEST-renewal-005
+    desc: "Handle renewal failure gracefully"
+  - id: TEST-renewal-006
+    desc: "Log renewal results (success/failure)"
+
+technical_notes:
+  endpoint: "POST https://lib.knue.ac.kr/pyxis-api/8/api/renew-charges/{chargeId}"
+  request_body:
+    circulationMethodCode: "PYXIS"
+  renewal_criteria:
+    renewCnt: 0
+    days_before_due: 2
+
+dependencies:
+  - spec: "SPEC-charges-001"
+
+linked_tasks:
+  - TASK-004

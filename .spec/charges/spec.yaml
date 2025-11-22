@@ -1,0 +1,49 @@
+spec_id: SPEC-charges-001
+title: "Retrieve Book Charges"
+description: |
+  Fetch the list of currently borrowed books from the library API
+  with their due dates and renewal status.
+
+given_when_then:
+  - given: "User is authenticated with valid session"
+    when: "Charges API is called"
+    then: "List of borrowed books with details is returned"
+
+  - given: "User has no borrowed books"
+    when: "Charges API is called"
+    then: "Empty list is returned"
+
+  - given: "Session has expired"
+    when: "Charges API is called"
+    then: "Re-authentication is triggered"
+
+acceptance_tests:
+  - id: TEST-charges-001
+    desc: "Successfully retrieve list of borrowed books"
+  - id: TEST-charges-002
+    desc: "Parse book details including title, dueDate, renewCnt"
+  - id: TEST-charges-003
+    desc: "Handle empty charges list"
+  - id: TEST-charges-004
+    desc: "Include session cookie and auth token in request"
+  - id: TEST-charges-005
+    desc: "Handle pagination if more than 20 books"
+
+technical_notes:
+  endpoint: "GET https://lib.knue.ac.kr/pyxis-api/8/api/charges"
+  query_params:
+    max: 20
+    offset: 0
+  response_fields:
+    - chargeId
+    - title (서명)
+    - chargeDate (대출일)
+    - dueDate (반납예정일)
+    - renewCnt (연장횟수)
+    - isbn
+
+dependencies:
+  - spec: "SPEC-auth-001"
+
+linked_tasks:
+  - TASK-003

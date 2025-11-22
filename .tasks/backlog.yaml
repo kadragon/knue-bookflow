@@ -1,0 +1,216 @@
+# Task Backlog - KNUE BookFlow
+# Priority: 1 (highest) to 5 (lowest)
+
+tasks:
+  - task_id: TASK-001
+    title: "Initialize Cloudflare Workers project"
+    description: |
+      Set up the project with Wrangler, TypeScript configuration,
+      and necessary dependencies.
+    priority: 1
+    spec_id: null
+    status: pending
+    acceptance_criteria:
+      - wrangler.toml configured with D1 binding and cron trigger
+      - TypeScript configured with strict mode
+      - Package.json with required dependencies
+      - Basic project structure created
+    estimated_complexity: low
+
+  - task_id: TASK-002
+    title: "Implement library authentication module"
+    description: |
+      Create a service to authenticate with KNUE library Pyxis API
+      and manage session tokens.
+    priority: 1
+    spec_id: SPEC-auth-001
+    status: pending
+    test_refs:
+      - TEST-auth-001
+      - TEST-auth-002
+      - TEST-auth-003
+      - TEST-auth-004
+      - TEST-auth-005
+    acceptance_criteria:
+      - Login function with credential handling
+      - Session cookie extraction from response
+      - Access token management
+      - Error handling for auth failures
+    estimated_complexity: medium
+
+  - task_id: TASK-003
+    title: "Implement charges retrieval service"
+    description: |
+      Create service to fetch current borrowed books list
+      from library API.
+    priority: 1
+    spec_id: SPEC-charges-001
+    status: pending
+    dependencies:
+      - TASK-002
+    test_refs:
+      - TEST-charges-001
+      - TEST-charges-002
+      - TEST-charges-003
+      - TEST-charges-004
+      - TEST-charges-005
+    acceptance_criteria:
+      - Fetch charges with authenticated session
+      - Parse response into typed data structure
+      - Handle empty results
+    estimated_complexity: medium
+
+  - task_id: TASK-004
+    title: "Implement book renewal logic"
+    description: |
+      Create service to identify eligible books and process
+      automatic renewals.
+    priority: 1
+    spec_id: SPEC-renewal-001
+    status: pending
+    dependencies:
+      - TASK-003
+    test_refs:
+      - TEST-renewal-001
+      - TEST-renewal-002
+      - TEST-renewal-003
+      - TEST-renewal-004
+      - TEST-renewal-005
+      - TEST-renewal-006
+    acceptance_criteria:
+      - Filter books by renewal criteria
+      - Call renewal API for eligible books
+      - Handle success and failure responses
+      - Log all renewal attempts
+    estimated_complexity: medium
+
+  - task_id: TASK-005
+    title: "Implement Aladin API integration"
+    description: |
+      Create service to fetch book metadata from Aladin Open API
+      for newly borrowed books.
+    priority: 2
+    spec_id: SPEC-bookinfo-001
+    status: pending
+    dependencies:
+      - TASK-003
+    test_refs:
+      - TEST-bookinfo-001
+      - TEST-bookinfo-002
+      - TEST-bookinfo-003
+      - TEST-bookinfo-004
+      - TEST-bookinfo-005
+    acceptance_criteria:
+      - Detect new books by charge date
+      - Call Aladin API with ISBN
+      - Parse book metadata
+      - Handle missing books gracefully
+    estimated_complexity: medium
+
+  - task_id: TASK-006
+    title: "Set up D1 database and repository"
+    description: |
+      Create D1 database schema and implement data access layer
+      for book records.
+    priority: 2
+    spec_id: SPEC-storage-001
+    status: pending
+    dependencies:
+      - TASK-001
+    test_refs:
+      - TEST-storage-001
+      - TEST-storage-002
+      - TEST-storage-003
+      - TEST-storage-004
+      - TEST-storage-005
+    acceptance_criteria:
+      - D1 database created and configured
+      - Schema migrations defined
+      - Repository class with CRUD operations
+      - Duplicate prevention logic
+    estimated_complexity: medium
+
+  - task_id: TASK-007
+    title: "Implement scheduled workflow handler"
+    description: |
+      Create the main cron handler that orchestrates the entire
+      renewal workflow.
+    priority: 1
+    spec_id: SPEC-scheduler-001
+    status: pending
+    dependencies:
+      - TASK-002
+      - TASK-003
+      - TASK-004
+      - TASK-005
+      - TASK-006
+    test_refs:
+      - TEST-scheduler-001
+      - TEST-scheduler-002
+      - TEST-scheduler-003
+      - TEST-scheduler-004
+      - TEST-scheduler-005
+    acceptance_criteria:
+      - Cron handler entry point
+      - Sequential workflow execution
+      - Error handling at each step
+      - Execution summary logging
+    estimated_complexity: high
+
+  - task_id: TASK-008
+    title: "Add TypeScript type definitions"
+    description: |
+      Create comprehensive type definitions for all data structures
+      used in the application.
+    priority: 2
+    spec_id: null
+    status: pending
+    dependencies:
+      - TASK-001
+    acceptance_criteria:
+      - Types for library API responses
+      - Types for Aladin API responses
+      - Types for D1 database models
+      - Types for Worker environment bindings
+    estimated_complexity: low
+
+  - task_id: TASK-009
+    title: "Write unit tests for all modules"
+    description: |
+      Implement comprehensive unit tests with mocked external APIs.
+    priority: 2
+    spec_id: null
+    status: pending
+    dependencies:
+      - TASK-002
+      - TASK-003
+      - TASK-004
+      - TASK-005
+      - TASK-006
+    acceptance_criteria:
+      - Tests for auth module
+      - Tests for charges module
+      - Tests for renewal module
+      - Tests for Aladin module
+      - Tests for storage module
+      - Mocked API responses
+    estimated_complexity: high
+
+  - task_id: TASK-010
+    title: "Deploy and configure production environment"
+    description: |
+      Deploy Worker to Cloudflare, configure secrets, and verify
+      cron trigger execution.
+    priority: 3
+    spec_id: null
+    status: pending
+    dependencies:
+      - TASK-007
+      - TASK-009
+    acceptance_criteria:
+      - Worker deployed to Cloudflare
+      - Secrets configured (API keys, credentials)
+      - D1 database provisioned
+      - Cron trigger verified in dashboard
+      - First successful execution confirmed
+    estimated_complexity: medium

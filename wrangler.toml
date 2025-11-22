@@ -1,0 +1,23 @@
+name = "knue-bookflow"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Cron Trigger - Daily at 7 PM KST (10:00 UTC)
+[triggers]
+crons = ["0 10 * * *"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "knue-bookflow-db"
+database_id = ""  # Will be filled after creating D1 database
+migrations_dir = "migrations"
+
+# Environment variables (non-secret)
+[vars]
+ENVIRONMENT = "production"
+
+# Secrets (set via `wrangler secret put`)
+# - LIBRARY_USER_ID
+# - LIBRARY_PASSWORD
+# - ALADIN_API_KEY
