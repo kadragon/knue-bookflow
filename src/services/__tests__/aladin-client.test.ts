@@ -3,9 +3,9 @@
  * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-009
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Charge } from '../../types';
 import { AladinClient, identifyNewBooks } from '../aladin-client';
-import { Charge } from '../../types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -69,7 +69,7 @@ describe('AladinClient', () => {
       expect(bookInfo?.author).toBe('Robert C. Martin');
       expect(bookInfo?.isbn13).toBe('9780132350884');
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('ttbkey=test-api-key')
+        expect.stringContaining('ttbkey=test-api-key'),
       );
     });
 
@@ -108,14 +108,26 @@ describe('AladinClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          item: [{ title: 'Test', author: '', publisher: '', pubDate: '', description: '', isbn: '', isbn13: '', cover: '', categoryName: '' }],
+          item: [
+            {
+              title: 'Test',
+              author: '',
+              publisher: '',
+              pubDate: '',
+              description: '',
+              isbn: '',
+              isbn13: '',
+              cover: '',
+              categoryName: '',
+            },
+          ],
         }),
       });
 
       await client.lookupByIsbn('978-0-13-235088-4');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('ItemId=9780132350884')
+        expect.stringContaining('ItemId=9780132350884'),
       );
     });
   });
@@ -141,7 +153,7 @@ describe('identifyNewBooks', () => {
     const newBooks = identifyNewBooks(charges);
 
     expect(newBooks).toHaveLength(2);
-    expect(newBooks.map(b => b.id)).toEqual([1, 3]);
+    expect(newBooks.map((b) => b.id)).toEqual([1, 3]);
   });
 
   it('should return empty array when no new books', () => {

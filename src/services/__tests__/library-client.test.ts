@@ -3,7 +3,7 @@
  * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, task_id: TASK-009
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LibraryApiError, LibraryClient } from '../library-client';
 
 // Mock fetch globally
