@@ -195,7 +195,10 @@ describe('renewal service', () => {
         }),
       } as unknown as Parameters<typeof processRenewals>[0];
 
-      await checkAndRenewBooks(mockClient as any, charges);
+      await checkAndRenewBooks(
+        mockClient as Parameters<typeof checkAndRenewBooks>[0],
+        charges,
+      );
 
       expect(mockClient.getCharges).not.toHaveBeenCalled();
       expect(charges[0].dueDate).toBe('2025-01-22');

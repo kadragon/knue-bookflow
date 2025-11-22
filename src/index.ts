@@ -68,7 +68,7 @@ export default {
  */
 async function handleScheduledTask(
   env: Env,
-  event?: ScheduledEvent,
+  _event?: ScheduledEvent,
 ): Promise<void> {
   const startTime = Date.now();
   console.log(

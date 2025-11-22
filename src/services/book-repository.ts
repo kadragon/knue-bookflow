@@ -5,7 +5,7 @@
  * Trace: spec_id: SPEC-storage-001, task_id: TASK-006
  */
 
-import { BookRecord, RenewalLog, Charge, BookInfo } from '../types';
+import type { BookInfo, BookRecord, Charge, RenewalLog } from '../types';
 
 export class BookRepository {
   constructor(private db: D1Database) {}
@@ -28,7 +28,7 @@ export class BookRepository {
             due_date = ?,
             renew_count = ?,
             updated_at = ?
-          WHERE charge_id = ?`
+          WHERE charge_id = ?`,
         )
         .bind(record.due_date, record.renew_count, now, record.charge_id)
         .run();
@@ -42,7 +42,7 @@ export class BookRepository {
             charge_id, isbn, title, author, publisher,
             cover_url, description, charge_date, due_date,
             renew_count, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           record.charge_id,
@@ -56,7 +56,7 @@ export class BookRepository {
           record.due_date,
           record.renew_count,
           now,
-          now
+          now,
         )
         .run();
 
@@ -112,12 +112,14 @@ export class BookRepository {
       .prepare(
         `INSERT INTO renewal_logs (
           charge_id, action, status, message, created_at
-        ) VALUES (?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?)`,
       )
       .bind(log.charge_id, log.action, log.status, log.message, now)
       .run();
 
-    console.log(`[BookRepository] Logged renewal: ${log.action} - ${log.status}`);
+    console.log(
+      `[BookRepository] Logged renewal: ${log.action} - ${log.status}`,
+    );
   }
 
   /**
@@ -127,7 +129,7 @@ export class BookRepository {
   async getRenewalLogs(chargeId: string): Promise<RenewalLog[]> {
     const result = await this.db
       .prepare(
-        'SELECT * FROM renewal_logs WHERE charge_id = ? ORDER BY created_at DESC'
+        'SELECT * FROM renewal_logs WHERE charge_id = ? ORDER BY created_at DESC',
       )
       .bind(chargeId)
       .all<RenewalLog>();
@@ -141,7 +143,10 @@ export class BookRepository {
  * @param charge - Library charge data
  * @param bookInfo - Optional Aladin book info
  */
-export function createBookRecord(charge: Charge, bookInfo?: BookInfo | null): BookRecord {
+export function createBookRecord(
+  charge: Charge,
+  bookInfo?: BookInfo | null,
+): BookRecord {
   return {
     charge_id: String(charge.id),
     isbn: charge.volume.bib.isbn || bookInfo?.isbn || '',
