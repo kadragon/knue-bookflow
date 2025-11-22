@@ -41,7 +41,7 @@
     "lint-staged": "^16.2.7",
     "typescript": "^5.7.2",
     "vite": "^5.4.10",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.13",
     "wrangler": "^4.50.0"
   },
   "dependencies": {
