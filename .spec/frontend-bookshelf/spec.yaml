@@ -1,0 +1,42 @@
+spec_id: SPEC-frontend-001
+title: "Bookshelf Frontend served by Worker"
+description: |
+  Deliver a bookshelf-style frontend that is bundled as static assets and served by the
+  existing Cloudflare Worker. The UI must display the reading list stored in D1 with rich
+  cover visuals, filtering/search controls, and future hooks for per-book notes.
+
+given_when_then:
+  - given: "A visitor opens book.kadragon.work"
+    when: "The Worker serves the SPA from its assets directory"
+    then: "The bookshelf UI loads with data fetched from /api/books"
+
+  - given: "Books exist in D1 with charge, due date, and renewal info"
+    when: "The frontend requests /api/books"
+    then: "The API responds with normalized book items including derived status (overdue, due_soon, ok), days_left, and loan metadata"
+
+  - given: "A user enters a search term or selects filters (author, due status, renew count range, loan state)"
+    when: "The UI filter bar is used"
+    then: "The list updates client-side without reloading, showing only matching books"
+
+  - given: "Static assets are requested (HTML/JS/CSS)"
+    when: "The Worker receives non-API requests"
+    then: "Assets are served directly; unmatched routes fall back to index for SPA navigation"
+
+acceptance_tests:
+  - id: TEST-frontend-001
+    desc: "/api/books returns derived status fields and sorts by charge_date desc"
+  - id: TEST-frontend-002
+    desc: "Book view model flags overdue (past due), due_soon (<=3 days), and ok states correctly"
+  - id: TEST-frontend-003
+    desc: "Frontend renders grid of cards with cover, title, author, due badge, renewal count"
+  - id: TEST-frontend-004
+    desc: "Search and filter controls (author, due status, renew count, loan state) update the visible list client-side"
+  - id: TEST-frontend-005
+    desc: "Worker serves SPA assets from configured assets directory with index fallback for non-API routes"
+
+dependencies:
+  - governance: "memory.md"
+  - governance: "coding-style.md"
+
+linked_tasks:
+  - TASK-019

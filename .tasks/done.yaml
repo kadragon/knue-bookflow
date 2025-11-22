@@ -116,3 +116,29 @@ completed_tasks: []
   learnings:
     - "wrangler observability supports separate head_sampling_rate for logs and traces."
     - "Placement block with mode=smart lowers latency without code changes."
+
+- task_id: TASK-019
+  title: "Build bookshelf frontend and expose books API"
+  completed_at: "2025-11-22T17:10:00Z"
+  outcome: success
+  spec_id: SPEC-frontend-001
+  summary: |
+    Added a bookshelf SPA served directly from the Worker assets binding, exposed /api/books with
+    derived due status/daysLeft, implemented SPA fallback, and built a React-based grid UI with search
+    and filters for author, due status, renew count, and loan state.
+  learnings:
+    - "Returning derived fields (dueStatus, daysLeft) keeps the frontend simple and predictable."
+    - "Assets fallback via env.ASSETS.fetch plus index.html avoids html_handling quirks in wrangler."
+    - "Using a single package.json still supports Vite builds when config is ESM (.mts)."
+
+- task_id: TASK-020
+  title: "Expose note metadata and UI CTA (stub)"
+  completed_at: "2025-11-22T17:13:30Z"
+  outcome: success
+  spec_id: SPEC-notes-001
+  summary: |
+    Exposed noteCount/noteState fields from /api/books and surfaced a note CTA on cards to pave the way
+    for future note storage. Kept values stubbed (0/not_started) pending persistence design.
+  learnings:
+    - "Including note metadata in the API now avoids a future contract change when persistence arrives."
+    - "CTA can be present without functionality as long as semantics are explicit (not_started)."
