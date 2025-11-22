@@ -2,6 +2,16 @@ name = "knue-bookflow"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
+# Custom domain route
+routes = [
+  { pattern = "book.kadragon.work/*", zone_name = "kadragon.work" }
+]
+# Trace: SPEC-deploy-001 / TASK-017
+
+[placement]
+mode = "smart"
+# Trace: SPEC-observability-001 / TASK-018
+
 # Cron Trigger - Daily at 7 PM KST (10:00 UTC)
 [triggers]
 crons = ["0 10 * * *"]
@@ -16,6 +26,11 @@ migrations_dir = "migrations"
 # Environment variables (non-secret)
 [vars]
 ENVIRONMENT = "production"
+
+[observability]
+logs = { enabled = true, head_sampling_rate = 1.0 }
+traces = { enabled = true, head_sampling_rate = 0.1 }
+# Trace: SPEC-observability-001 / TASK-018
 
 # Secrets (set via `wrangler secret put`)
 # - LIBRARY_USER_ID
