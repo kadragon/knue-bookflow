@@ -8,7 +8,8 @@
 import type { AladinItemLookupResponse, BookInfo, Charge } from '../types';
 import { isToday } from '../utils';
 
-const BASE_URL = 'http://www.aladin.co.kr/ttb/api';
+// Use HTTPS to protect API key in transit
+const BASE_URL = 'https://www.aladin.co.kr/ttb/api';
 
 export class AladinClient {
   constructor(private apiKey: string) {}
