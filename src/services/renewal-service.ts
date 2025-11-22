@@ -2,12 +2,12 @@
  * Book Renewal Service
  * Determines which books are eligible for renewal and processes them
  *
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004, TASK-012
  */
 
-import { Charge, RenewalResponse } from '../types';
-import { LibraryClient, LibraryApiError } from './library-client';
+import type { Charge } from '../types';
 import { isWithinDays } from '../utils';
+import { LibraryApiError, type LibraryClient } from './library-client';
 
 export interface RenewalCandidate {
   charge: Charge;
@@ -19,6 +19,7 @@ export interface RenewalResult {
   title: string;
   success: boolean;
   newDueDate?: string;
+  newRenewCount?: number;
   errorMessage?: string;
 }
 
@@ -43,7 +44,8 @@ const DEFAULT_CONFIG: RenewalConfig = {
  */
 export function identifyRenewalCandidates(
   charges: Charge[],
-  config: RenewalConfig = DEFAULT_CONFIG
+  config: RenewalConfig = DEFAULT_CONFIG,
+  offsetMinutes?: number,
 ): RenewalCandidate[] {
   const candidates: RenewalCandidate[] = [];
 
@@ -54,7 +56,7 @@ export function identifyRenewalCandidates(
     }
 
     // Check if due date is within threshold
-    if (!isWithinDays(charge.dueDate, config.daysBeforeDue)) {
+    if (!isWithinDays(charge.dueDate, config.daysBeforeDue, offsetMinutes)) {
       continue;
     }
 
@@ -64,7 +66,9 @@ export function identifyRenewalCandidates(
     });
   }
 
-  console.log(`[RenewalService] Identified ${candidates.length} renewal candidates`);
+  console.log(
+    `[RenewalService] Identified ${candidates.length} renewal candidates`,
+  );
   return candidates;
 }
 
@@ -76,7 +80,7 @@ export function identifyRenewalCandidates(
  */
 export async function processRenewals(
   client: LibraryClient,
-  candidates: RenewalCandidate[]
+  candidates: RenewalCandidate[],
 ): Promise<RenewalResult[]> {
   const results: RenewalResult[] = [];
 
@@ -87,18 +91,22 @@ export async function processRenewals(
     try {
       const response = await client.renewCharge(charge.id);
 
+      // Mutate the original charge so downstream persistence uses fresh data
+      charge.dueDate = response.data.dueDate;
+      charge.renewCnt = response.data.renewCnt;
+
       results.push({
         chargeId: charge.id,
         title,
         success: true,
         newDueDate: response.data.dueDate,
+        newRenewCount: response.data.renewCnt,
       });
 
       console.log(`[RenewalService] Successfully renewed: ${title}`);
     } catch (error) {
-      const errorMessage = error instanceof LibraryApiError
-        ? error.message
-        : 'Unknown error';
+      const errorMessage =
+        error instanceof LibraryApiError ? error.message : 'Unknown error';
 
       results.push({
         chargeId: charge.id,
@@ -107,13 +115,17 @@ export async function processRenewals(
         errorMessage,
       });
 
-      console.error(`[RenewalService] Failed to renew "${title}": ${errorMessage}`);
+      console.error(
+        `[RenewalService] Failed to renew "${title}": ${errorMessage}`,
+      );
     }
   }
 
-  const successCount = results.filter(r => r.success).length;
-  const failCount = results.filter(r => !r.success).length;
-  console.log(`[RenewalService] Completed: ${successCount} success, ${failCount} failed`);
+  const successCount = results.filter((r) => r.success).length;
+  const failCount = results.filter((r) => !r.success).length;
+  console.log(
+    `[RenewalService] Completed: ${successCount} success, ${failCount} failed`,
+  );
 
   return results;
 }
@@ -126,18 +138,24 @@ export async function processRenewals(
  */
 export async function checkAndRenewBooks(
   client: LibraryClient,
-  config?: RenewalConfig
+  charges?: Charge[],
+  config?: RenewalConfig,
+  offsetMinutes?: number,
 ): Promise<RenewalResult[]> {
-  // Get current charges
-  const charges = await client.getCharges();
+  // Use provided charges to avoid duplicate fetches
+  const currentCharges = charges ?? (await client.getCharges());
 
-  if (charges.length === 0) {
+  if (currentCharges.length === 0) {
     console.log('[RenewalService] No borrowed books found');
     return [];
   }
 
   // Identify candidates
-  const candidates = identifyRenewalCandidates(charges, config);
+  const candidates = identifyRenewalCandidates(
+    currentCharges,
+    config,
+    offsetMinutes,
+  );
 
   if (candidates.length === 0) {
     console.log('[RenewalService] No books eligible for renewal');

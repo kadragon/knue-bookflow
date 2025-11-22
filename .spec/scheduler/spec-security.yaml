@@ -1,0 +1,29 @@
+spec_id: SPEC-scheduler-001-sec
+title: "Manual Trigger Security"
+description: |
+  Secure the `/trigger` HTTP endpoint so only authorized callers can
+  start the renewal workflow, preventing abuse and accidental runs.
+
+given_when_then:
+  - given: "An unauthenticated request hits /trigger"
+    when: "No valid secret/auth is provided"
+    then: "Request is rejected with 401/403 and workflow is not started"
+
+  - given: "A request includes the correct shared secret"
+    when: "It POSTs to /trigger"
+    then: "Workflow is enqueued via waitUntil and returns 200 with message"
+
+acceptance_tests:
+  - id: TEST-scheduler-sec-001
+    desc: "Reject trigger without secret"
+  - id: TEST-scheduler-sec-002
+    desc: "Accept trigger with correct secret and start workflow"
+  - id: TEST-scheduler-sec-003
+    desc: "Mismatched secret returns 403 and does not start workflow"
+
+dependencies:
+  - governance: "env.yaml"
+  - spec: "SPEC-scheduler-001"
+
+linked_tasks:
+  - TASK-013

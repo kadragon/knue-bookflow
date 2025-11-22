@@ -6,14 +6,25 @@
  *        task_id: TASK-002, TASK-003, TASK-004
  */
 
-import {
+import type {
+  Charge,
+  ChargesResponse,
   LoginRequest,
   LoginResponse,
-  SessionData,
-  ChargesResponse,
-  Charge,
   RenewalResponse,
+  SessionData,
 } from '../types';
+
+type HttpMethod = 'GET' | 'POST';
+
+interface FetchOptions {
+  method: HttpMethod;
+  headers?: Record<string, string>;
+  body?: string;
+  timeoutMs?: number;
+  retries?: number;
+  retryBackoffMs?: number;
+}
 
 const BASE_URL = 'https://lib.knue.ac.kr/pyxis-api';
 
@@ -26,18 +37,19 @@ export class LibraryClient {
    * @returns Session data with token and cookies
    */
   async login(credentials: LoginRequest): Promise<SessionData> {
-    const response = await fetch(`${BASE_URL}/api/login`, {
+    const response = await this.fetchWithResilience(`${BASE_URL}/api/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
+      retries: 1,
     });
 
     if (!response.ok) {
       throw new LibraryApiError(
         `Login failed with status ${response.status}`,
-        response.status
+        response.status,
       );
     }
 
@@ -47,7 +59,7 @@ export class LibraryClient {
       throw new LibraryApiError(
         `Login failed: ${data.message}`,
         401,
-        data.code
+        data.code,
       );
     }
 
@@ -70,30 +82,50 @@ export class LibraryClient {
   async getCharges(): Promise<Charge[]> {
     this.ensureAuthenticated();
 
-    const response = await fetch(`${BASE_URL}/8/api/charges?max=20&offset=0`, {
-      method: 'GET',
-      headers: this.getAuthHeaders(),
-    });
+    const pageSize = 20;
+    let offset = 0;
+    let allCharges: Charge[] = [];
 
-    if (!response.ok) {
-      throw new LibraryApiError(
-        `Failed to fetch charges with status ${response.status}`,
-        response.status
+    while (true) {
+      const response = await this.fetchWithResilience(
+        `${BASE_URL}/8/api/charges?max=${pageSize}&offset=${offset}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
       );
+
+      if (!response.ok) {
+        throw new LibraryApiError(
+          `Failed to fetch charges with status ${response.status}`,
+          response.status,
+        );
+      }
+
+      const data: ChargesResponse = await response.json();
+
+      if (!data.success) {
+        throw new LibraryApiError(
+          `Failed to fetch charges: ${data.message}`,
+          400,
+          data.code,
+        );
+      }
+
+      allCharges = allCharges.concat(data.data.list);
+
+      const total = data.data.totalCount;
+      offset += pageSize;
+
+      if (allCharges.length >= total || data.data.list.length === 0) {
+        break;
+      }
     }
 
-    const data: ChargesResponse = await response.json();
-
-    if (!data.success) {
-      throw new LibraryApiError(
-        `Failed to fetch charges: ${data.message}`,
-        400,
-        data.code
-      );
-    }
-
-    console.log(`[LibraryClient] Retrieved ${data.data.list.length} charges`);
-    return data.data.list;
+    console.log(
+      `[LibraryClient] Retrieved ${allCharges.length} charges (paginated)`,
+    );
+    return allCharges;
   }
 
   /**
@@ -104,21 +136,24 @@ export class LibraryClient {
   async renewCharge(chargeId: number): Promise<RenewalResponse> {
     this.ensureAuthenticated();
 
-    const response = await fetch(`${BASE_URL}/8/api/renew-charges/${chargeId}`, {
-      method: 'POST',
-      headers: {
-        ...this.getAuthHeaders(),
-        'Content-Type': 'application/json',
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/api/renew-charges/${chargeId}`,
+      {
+        method: 'POST',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          circulationMethodCode: 'PYXIS',
+        }),
       },
-      body: JSON.stringify({
-        circulationMethodCode: 'PYXIS',
-      }),
-    });
+    );
 
     if (!response.ok) {
       throw new LibraryApiError(
         `Renewal failed with status ${response.status}`,
-        response.status
+        response.status,
       );
     }
 
@@ -128,11 +163,13 @@ export class LibraryClient {
       throw new LibraryApiError(
         `Renewal failed: ${data.message}`,
         400,
-        data.code
+        data.code,
       );
     }
 
-    console.log(`[LibraryClient] Renewed charge ${chargeId}, new due date: ${data.data.dueDate}`);
+    console.log(
+      `[LibraryClient] Renewed charge ${chargeId}, new due date: ${data.data.dueDate}`,
+    );
     return data;
   }
 
@@ -160,18 +197,23 @@ export class LibraryClient {
       // Fallback for environments that don't support getSetCookie
       const setCookie = headers.get('set-cookie');
       if (setCookie) {
-        return setCookie.split(',').map(cookie => {
-          const parts = cookie.split(';');
-          return parts[0].trim();
-        }).join('; ');
+        return setCookie
+          .split(',')
+          .map((cookie) => {
+            const parts = cookie.split(';');
+            return parts[0].trim();
+          })
+          .join('; ');
       }
       return '';
     }
 
-    return setCookieHeaders.map(cookie => {
-      const parts = cookie.split(';');
-      return parts[0].trim();
-    }).join('; ');
+    return setCookieHeaders
+      .map((cookie) => {
+        const parts = cookie.split(';');
+        return parts[0].trim();
+      })
+      .join('; ');
   }
 
   /**
@@ -183,7 +225,7 @@ export class LibraryClient {
     }
 
     return {
-      'Cookie': this.session.cookies,
+      Cookie: this.session.cookies,
       'pyxis-auth-token': this.session.accessToken,
     };
   }
@@ -196,6 +238,67 @@ export class LibraryClient {
       throw new LibraryApiError('Not authenticated. Call login() first.', 401);
     }
   }
+
+  /**
+   * Fetch with timeout and limited retries for transient failures
+   */
+  private async fetchWithResilience(
+    url: string,
+    options: FetchOptions,
+  ): Promise<Response> {
+    const {
+      retries = 2,
+      retryBackoffMs = 200,
+      timeoutMs = 5000,
+      ...rest
+    } = options;
+
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {
+          method: rest.method,
+          headers: rest.headers,
+          body: rest.body,
+          signal: controller.signal,
+        });
+
+        // Retry on 5xx only if attempts remain
+        if (
+          response.status >= 500 &&
+          response.status < 600 &&
+          attempt < retries
+        ) {
+          await this.delay(retryBackoffMs * 2 ** attempt);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+        const isAbort =
+          error instanceof DOMException && error.name === 'AbortError';
+        if (attempt < retries && (isAbort || error instanceof Error)) {
+          await this.delay(retryBackoffMs * 2 ** attempt);
+          continue;
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Unknown fetch error');
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 }
 
 /**
@@ -205,7 +308,7 @@ export class LibraryApiError extends Error {
   constructor(
     message: string,
     public statusCode: number,
-    public apiCode?: string
+    public apiCode?: string,
   ) {
     super(message);
     this.name = 'LibraryApiError';

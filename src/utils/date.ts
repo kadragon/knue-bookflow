@@ -1,7 +1,15 @@
 /**
  * Date utility functions
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004, TASK-015
  */
+
+const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function zoneDayNumber(ms: number, offsetMinutes: number): number {
+  return Math.floor((ms + offsetMinutes * 60 * 1000) / DAY_MS);
+}
 
 /**
  * Calculate the number of days between two dates
@@ -19,32 +27,37 @@ export function daysBetween(date1: Date, date2: Date): number {
  * Check if a date is within N days from today
  * @param dateString - Date string in YYYY-MM-DD format
  * @param days - Number of days threshold
+ * @param offsetMinutes - Timezone offset in minutes (default KST +540)
  * @returns true if date is within N days from today
  */
-export function isWithinDays(dateString: string, days: number): boolean {
-  const targetDate = new Date(dateString);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  targetDate.setHours(0, 0, 0, 0);
+export function isWithinDays(
+  dateString: string,
+  days: number,
+  offsetMinutes = KST_OFFSET_MINUTES,
+): boolean {
+  const targetMs = new Date(`${dateString}T00:00:00Z`).getTime();
+  const target = zoneDayNumber(targetMs, offsetMinutes);
+  const today = zoneDayNumber(Date.now(), offsetMinutes);
 
-  const diff = daysBetween(today, targetDate);
+  const diff = target - today;
   return diff >= 0 && diff <= days;
 }
 
 /**
  * Check if a date is today
  * @param dateString - Date string in YYYY-MM-DD format
+ * @param offsetMinutes - Timezone offset in minutes (default KST +540)
  * @returns true if date is today
  */
-export function isToday(dateString: string): boolean {
-  const targetDate = new Date(dateString);
-  const today = new Date();
+export function isToday(
+  dateString: string,
+  offsetMinutes = KST_OFFSET_MINUTES,
+): boolean {
+  const targetMs = new Date(`${dateString}T00:00:00Z`).getTime();
+  const target = zoneDayNumber(targetMs, offsetMinutes);
+  const today = zoneDayNumber(Date.now(), offsetMinutes);
 
-  return (
-    targetDate.getFullYear() === today.getFullYear() &&
-    targetDate.getMonth() === today.getMonth() &&
-    targetDate.getDate() === today.getDate()
-  );
+  return target === today;
 }
 
 /**
@@ -58,8 +71,10 @@ export function formatDate(date: Date): string {
 
 /**
  * Get today's date as YYYY-MM-DD string
+ * @param offsetMinutes - Timezone offset in minutes (default KST +540)
  * @returns Today's date string
  */
-export function getTodayString(): string {
-  return formatDate(new Date());
+export function getTodayString(offsetMinutes = KST_OFFSET_MINUTES): string {
+  const shifted = new Date(Date.now() + offsetMinutes * 60 * 1000);
+  return formatDate(shifted);
 }

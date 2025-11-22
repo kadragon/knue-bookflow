@@ -1,10 +1,16 @@
 /**
  * Date utility tests
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-015
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { daysBetween, isWithinDays, isToday, formatDate, getTodayString } from '../date';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  daysBetween,
+  formatDate,
+  getTodayString,
+  isToday,
+  isWithinDays,
+} from '../date';
 
 describe('date utilities', () => {
   describe('daysBetween', () => {
@@ -29,7 +35,7 @@ describe('date utilities', () => {
   describe('isWithinDays', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-01-15'));
+      vi.setSystemTime(new Date('2025-01-15T14:30:00Z')); // 23:30 KST
     });
 
     afterEach(() => {
@@ -37,7 +43,7 @@ describe('date utilities', () => {
     });
 
     it('should return true when date is within threshold', () => {
-      expect(isWithinDays('2025-01-17', 2)).toBe(true); // 2 days away
+      expect(isWithinDays('2025-01-17', 2)).toBe(true); // 2 days away (KST)
       expect(isWithinDays('2025-01-16', 2)).toBe(true); // 1 day away
       expect(isWithinDays('2025-01-15', 2)).toBe(true); // today
     });
@@ -55,7 +61,7 @@ describe('date utilities', () => {
   describe('isToday', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-01-15T12:00:00'));
+      vi.setSystemTime(new Date('2025-01-15T14:30:00Z')); // 23:30 KST
     });
 
     afterEach(() => {
@@ -82,7 +88,7 @@ describe('date utilities', () => {
   describe('getTodayString', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      vi.setSystemTime(new Date('2025-01-15T12:00:00'));
+      vi.setSystemTime(new Date('2025-01-15T15:30:00Z')); // 00:30 KST next day
     });
 
     afterEach(() => {
@@ -90,7 +96,7 @@ describe('date utilities', () => {
     });
 
     it('should return today as YYYY-MM-DD', () => {
-      expect(getTodayString()).toBe('2025-01-15');
+      expect(getTodayString()).toBe('2025-01-16');
     });
   });
 });

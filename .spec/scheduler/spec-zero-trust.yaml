@@ -1,0 +1,26 @@
+spec_id: SPEC-scheduler-001-zt
+title: "Manual Trigger behind Zero Trust"
+description: |
+  The /trigger endpoint will be exposed only through Cloudflare Zero Trust
+  policies (e.g., Access), so the Worker itself does not enforce a shared
+  secret. The endpoint must remain functional when called by authorized users
+  passing through Zero Trust.
+
+given_when_then:
+  - given: "Request reaches /trigger via Zero Trust-protected route"
+    when: "Worker receives POST /trigger"
+    then: "Workflow is enqueued and returns 200 with a confirmation message"
+
+  - given: "Request reaches /trigger directly without Zero Trust"
+    when: "Worker receives POST /trigger"
+    then: "Behavior is managed by Zero Trust at the edge; Worker does not enforce an extra secret"
+
+acceptance_tests:
+  - id: TEST-scheduler-zt-001
+    desc: "POST /trigger returns 200 and enqueues workflow without requiring TRIGGER_SECRET"
+
+dependencies:
+  - spec: "SPEC-scheduler-001"
+
+linked_tasks:
+  - TASK-016

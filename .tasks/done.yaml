@@ -11,3 +11,84 @@ completed_tasks: []
 #   summary: "Project initialized with all configurations"
 #   learnings:
 #     - "D1 binding requires specific wrangler.toml format"
+
+- task_id: TASK-011
+  title: "Post-build code audit and hardening recommendations"
+  completed_at: "2025-11-22T06:28:59Z"
+  outcome: success
+  spec_id: SPEC-maintenance-001
+  summary: |
+    Completed a repository-wide audit after the first build. Identified stale
+    renewal persistence, unsecured manual trigger endpoint, lack of retries and
+    pagination in library client, timezone-sensitive date logic, and HTTP usage
+    for Aladin API requests.
+  learnings:
+    - "Renewal workflow fetches charges twice and fails to persist renewed due dates/renewCnt."
+    - "Manual /trigger endpoint is unauthenticated, enabling arbitrary runs."
+    - "Library API calls need retries, timeouts, and pagination to avoid silent data loss."
+    - "Date utilities assume local timezone; should be KST-aware."
+    - "Aladin client should use HTTPS to avoid MITM and mixed-content issues."
+
+- task_id: TASK-012
+  title: "Persist renewed due dates and avoid duplicate charge fetch"
+  completed_at: "2025-11-22T06:32:40Z"
+  outcome: success
+  spec_id: SPEC-renewal-001
+  summary: |
+    Avoided duplicate charges fetch by letting renewal reuse pre-fetched data and mutated
+    charges in-memory to reflect renewed due dates/renew counts before persistence. Updated
+    workflow to call checkAndRenewBooks with existing charges; added tests to verify no extra
+    fetch and that charge objects are updated.
+  learnings:
+    - "Mutating the shared charges array after renewals keeps downstream persistence accurate."
+    - "Passing charges into renewal function prevents redundant API calls."
+
+- task_id: TASK-013
+  title: "Secure manual /trigger endpoint"
+  completed_at: "2025-11-22T06:34:32Z"
+  outcome: success
+  spec_id: SPEC-scheduler-001-sec
+  summary: |
+    Protected the manual /trigger endpoint with Bearer secret, added tests for missing/invalid/valid
+    secrets, and documented TRIGGER_SECRET in env/types and wrangler vars. Workflow only starts when
+    Authorization matches.
+  learnings:
+    - "Using a simple shared secret is the fastest guard; could swap to HMAC or SignedURL later."
+    - "Tests must stub waitUntil to assert the job is enqueued without running network calls."
+
+- task_id: TASK-014
+  title: "Add retries, timeouts, and pagination to library client"
+  completed_at: "2025-11-22T06:38:42Z"
+  outcome: success
+  spec_id: SPEC-auth-001
+  summary: |
+    Added resilience to library client: fetchWithResilience with timeouts/backoff, login retries,
+    paginated charges retrieval, and retryable renewals. Tests cover pagination and 5xx retry.
+  learnings:
+    - "Retry loops must cap attempts precisely to avoid exhausting fetch mocks."
+    - "Pagination combined with totalCount guards against silent truncation."
+
+- task_id: TASK-015
+  title: "Make date calculations timezone-safe (KST)"
+  completed_at: "2025-11-22T06:41:34Z"
+  outcome: success
+  spec_id: SPEC-renewal-001
+  summary: |
+    Date utilities now use a timezone-aware day calculation (default KST, overrideable),
+    renewal/new-book logic accepts offset, and tests cover KST day rollovers. This prevents
+    off-by-one around UTC/KST midnights.
+  learnings:
+    - "Shifting by offset before day-flooring keeps logic independent of host timezone."
+    - "Simple offset-shifted ISO splitting is a robust way to get date strings."
+
+- task_id: TASK-016
+  title: "Adjust /trigger to rely on Zero Trust (remove TRIGGER_SECRET)"
+  completed_at: "2025-11-22T06:46:00Z"
+  outcome: success
+  spec_id: SPEC-scheduler-001-zt
+  summary: |
+    Removed in-worker Bearer secret requirement for /trigger; security will be enforced via
+    Cloudflare Zero Trust/Access. Cleaned up env typings, wrangler vars, and secret tests.
+  learnings:
+    - "When Zero Trust guards the route, duplicate in-worker secrets add maintenance overhead."
+    - "Manual trigger tests should focus on behavior, not auth, when auth is delegated."
