@@ -4,6 +4,19 @@
  *        task_id: TASK-008
  */
 
+// HTTP utility types for resilient fetch operations
+export type HttpMethod = 'GET' | 'POST';
+
+export interface FetchOptions {
+  method: HttpMethod;
+  headers?: Record<string, string>;
+  body?: string;
+  timeoutMs?: number;
+  retries?: number;
+  retryBackoffMs?: number;
+}
+
+// Authentication types
 export interface LoginRequest {
   loginId: string;
   password: string;

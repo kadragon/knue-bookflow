@@ -6,26 +6,9 @@
  */
 
 import { createBookRepository } from '../services/book-repository';
-import type { BookRecord, Env } from '../types';
+import type { BookRecord, BookViewModel, DueStatus, Env } from '../types';
 
-export type DueStatus = 'overdue' | 'due_soon' | 'ok';
-
-export interface BookViewModel {
-  id: string;
-  title: string;
-  author: string;
-  publisher: string | null;
-  coverUrl: string | null;
-  description: string | null;
-  chargeDate: string;
-  dueDate: string;
-  renewCount: number;
-  daysLeft: number;
-  dueStatus: DueStatus;
-  loanState: 'on_loan';
-  noteCount: number;
-  noteState: 'not_started';
-}
+export type { BookViewModel, DueStatus };
 
 const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
 const DUE_SOON_DAYS = 3;

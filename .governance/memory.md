@@ -73,3 +73,16 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Completed TASK-020 (SPEC-notes-001): added stub note metadata (noteCount=0, noteState=not_started)
   to /api/books and surfaced a note CTA on the bookshelf cards, keeping API contract ready for future
   note persistence without DB changes yet.
+
+- Completed TASK-008: Consolidated TypeScript type definitions across codebase. Created src/types/renewal.ts
+  (RenewalCandidate, RenewalResult, RenewalConfig) and src/types/api.ts (DueStatus, BookViewModel, etc.).
+  Extracted inline types from services (FetchOptions, HttpMethod, ChargeWithBookInfo) into dedicated files.
+  All services now import from centralized types. 39 tests pass.
+
+- Completed TASK-009: Added comprehensive unit tests for all modules. Created book-repository.test.ts with
+  17 tests covering D1 operations (saveBook, findByChargeId, findByIsbn, findAll, logRenewal, getRenewalLogs,
+  createBookRecord). Test suite now has 56 tests total across 6 test files. All tests pass with mocked APIs.
+
+- Completed TASK-010: Verified production deployment. D1 database knue-bookflow-db with tables (books,
+  renewal_logs) confirmed. Secrets (LIBRARY_USER_ID, LIBRARY_PASSWORD, ALADIN_API_KEY) configured.
+  Cron trigger 10:00 UTC, custom domain book.kadragon.work, Smart Placement, and observability enabled.

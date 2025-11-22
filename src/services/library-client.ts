@@ -9,22 +9,12 @@
 import type {
   Charge,
   ChargesResponse,
+  FetchOptions,
   LoginRequest,
   LoginResponse,
   RenewalResponse,
   SessionData,
 } from '../types';
-
-type HttpMethod = 'GET' | 'POST';
-
-interface FetchOptions {
-  method: HttpMethod;
-  headers?: Record<string, string>;
-  body?: string;
-  timeoutMs?: number;
-  retries?: number;
-  retryBackoffMs?: number;
-}
 
 const BASE_URL = 'https://lib.knue.ac.kr/pyxis-api';
 

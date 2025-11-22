@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { useMemo, useState } from 'react';
-import { type ApiResponse, getBooks } from './api';
+import { useEffect, useMemo, useState } from 'react';
+import { type ApiResponse, getBooks, triggerWorkflow } from './api';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 
@@ -248,8 +248,38 @@ function ShelfStats({ books }: { books: BookItem[] }) {
 }
 
 export default function App() {
-  const { data, isLoading, isError } = useBooks();
+  const { data, isLoading, isError, refetch } = useBooks();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  const triggerMutation = useMutation({
+    mutationFn: triggerWorkflow,
+    onSuccess: () => {
+      setNotification({
+        type: 'success',
+        message: '워크플로우가 시작되었습니다. 완료 후 새로고침하세요.',
+      });
+    },
+    onError: () => {
+      setNotification({
+        type: 'error',
+        message: '워크플로우 실행에 실패했습니다.',
+      });
+    },
+  });
+
+  // Clear notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const authors = useMemo(() => {
     const set = new Set<string>();
@@ -296,6 +326,37 @@ export default function App() {
               대출 중인 책을 한눈에 보고, 반납 일정을 놓치지 마세요. Zero
               Trust로 보호된 전용 책장입니다.
             </p>
+          </div>
+          <div className="header-actions">
+            <div className="header-buttons">
+              <button
+                type="button"
+                className="trigger-button"
+                onClick={() => triggerMutation.mutate()}
+                disabled={triggerMutation.isPending}
+              >
+                {triggerMutation.isPending ? '실행 중...' : '갱신 실행'}
+              </button>
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                새로고침
+              </button>
+            </div>
+            {notification && (
+              <span
+                className={
+                  notification.type === 'success'
+                    ? 'trigger-success'
+                    : 'trigger-error'
+                }
+              >
+                {notification.message}
+              </span>
+            )}
           </div>
         </header>
 
