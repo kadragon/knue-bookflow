@@ -22,7 +22,7 @@ export interface BookRecord {
 export interface RenewalLog {
   id?: number;
   charge_id: string;
-  action: 'renewal_attempt' | 'renewal_success' | 'renewal_failure';
+  action: 'renewal_attempt' | 'renewal_success' | 'renewal_failure' | 'workflow_error';
   status: 'success' | 'failure';
   message: string;
   created_at?: string;
