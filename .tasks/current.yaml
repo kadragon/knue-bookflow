@@ -1,9 +1,3 @@
 # Current Task
 
-current_task:
-  task_id: TASK-010
-  title: "Deploy and configure production environment"
-  status: done
-  spec_id: null
-  started_at: "2025-11-22T05:00:00Z"
-  completed_at: "2025-11-22T20:40:00Z"
+current_task: null

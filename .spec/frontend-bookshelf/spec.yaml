@@ -22,6 +22,10 @@ given_when_then:
     when: "The Worker receives non-API requests"
     then: "Assets are served directly; unmatched routes fall back to index for SPA navigation"
 
+  - given: "A user opens the site in a browser"
+    when: "The page loads"
+    then: "A custom favicon representing the book workflow is displayed in the tab"
+
 acceptance_tests:
   - id: TEST-frontend-001
     desc: "/api/books returns derived status fields and sorts by charge_date desc"

@@ -138,7 +138,7 @@ completed_tasks: []
   spec_id: SPEC-notes-001
   summary: |
     Exposed noteCount/noteState fields from /api/books and surfaced a note CTA on cards to pave the way
-    for future note storage. Kept values stubbed (0/not_started) pending persistence design.
+    for future note persistence without DB changes yet. Kept values stubbed (0/not_started) pending persistence design.
   learnings:
     - "Including note metadata in the API now avoids a future contract change when persistence arrives."
     - "CTA can be present without functionality as long as semantics are explicit (not_started)."
@@ -186,3 +186,15 @@ completed_tasks: []
     - "wrangler d1 migrations list shows local status; use --remote for production state."
     - "D1 tables include internal _cf_KV and d1_migrations for Cloudflare management."
     - "Verify deployment with wrangler deployments list and d1 execute for table checks."
+
+- task_id: TASK-021
+  title: "Create and apply project favicon"
+  completed_at: "2025-11-22T21:10:00Z"
+  outcome: success
+  spec_id: SPEC-frontend-001
+  summary: |
+    Designed and added a custom SVG favicon representing an open book with the project's
+    gradient theme. Updated index.html to serve it.
+  learnings:
+    - "SVG favicons are lightweight and scale well."
+    - "Vite automatically copies files from public/ to dist/ during build."

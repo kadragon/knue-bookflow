@@ -86,3 +86,6 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Completed TASK-010: Verified production deployment. D1 database knue-bookflow-db with tables (books,
   renewal_logs) confirmed. Secrets (LIBRARY_USER_ID, LIBRARY_PASSWORD, ALADIN_API_KEY) configured.
   Cron trigger 10:00 UTC, custom domain book.kadragon.work, Smart Placement, and observability enabled.
+
+- Completed TASK-021 (SPEC-frontend-001): Created and applied a custom SVG favicon (book icon with
+  project gradient) to frontend/public/favicon.svg and linked it in index.html.
