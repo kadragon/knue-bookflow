@@ -2,6 +2,33 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-021
+    title: "Library-DB sync feature"
+    description: |
+      Synchronize all currently borrowed books from the library with the D1 database.
+      This ensures books that were missed during daily sync (due to errors or timing)
+      are properly registered with Aladin metadata.
+    priority: 1
+    spec_id: SPEC-sync-001
+    status: done
+    test_refs:
+      - TEST-sync-001
+      - TEST-sync-002
+      - TEST-sync-003
+      - TEST-sync-004
+      - TEST-sync-005
+      - TEST-sync-006
+    acceptance_criteria:
+      - POST /api/books/sync endpoint implemented
+      - Fetch all charges from library API
+      - Identify books missing from DB
+      - Add missing books with Aladin metadata
+      - Update existing books with latest charge data
+      - Return sync summary (added/updated/unchanged counts)
+      - Frontend sync button
+      - Tests passing (56 total)
+    estimated_complexity: medium
+
   - task_id: TASK-011
     title: "Post-build code audit and hardening recommendations"
     description: |
