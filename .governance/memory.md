@@ -89,3 +89,6 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 - Completed TASK-021 (SPEC-frontend-001): Created and applied a custom SVG favicon (book icon with
   project gradient) to frontend/public/favicon.svg and linked it in index.html.
+
+- Completed TASK-022 (SPEC-ci-001): Updated .github/dependabot.yml to track updates for "github-actions"
+  ecosystem weekly.

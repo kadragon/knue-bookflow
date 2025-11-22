@@ -198,3 +198,14 @@ completed_tasks: []
   learnings:
     - "SVG favicons are lightweight and scale well."
     - "Vite automatically copies files from public/ to dist/ during build."
+
+- task_id: TASK-022
+  title: "Enable Dependabot for GitHub Actions"
+  completed_at: "2025-11-22T21:20:00Z"
+  outcome: success
+  spec_id: SPEC-ci-001
+  summary: |
+    Updated .github/dependabot.yml to include the "github-actions" package ecosystem
+    with weekly interval.
+  learnings:
+    - "Dependabot can monitor GitHub Actions workflow files for action version updates."
