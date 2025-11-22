@@ -60,3 +60,7 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   routed renewal/new-book selection through offset-aware checks, and added tests for day rollover.
 - Completed TASK-016 (SPEC-scheduler-001-zt): removed TRIGGER_SECRET requirement; manual trigger now
   relies on Cloudflare Zero Trust for access control. Cleaned env/wrangler/test artifacts accordingly.
+- Completed TASK-017 (SPEC-deploy-001): added custom domain route for book.kadragon.work in wrangler.toml
+  with trace comment to keep routing aligned with deployment needs.
+- Completed TASK-018 (SPEC-observability-001): enabled Smart Placement and observability with 100% log
+  sampling and 10% trace sampling in wrangler.toml.

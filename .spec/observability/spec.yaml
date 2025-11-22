@@ -1,0 +1,32 @@
+spec_id: SPEC-observability-001
+title: "Worker Observability & Placement"
+description: |
+  Enable Cloudflare Workers observability with full log capture and sampled traces,
+  and activate Smart Placement for lower latency edge execution.
+
+given_when_then:
+  - given: "Observability is configured"
+    when: "The worker runs"
+    then: "Logs are captured at 100% sampling"
+
+  - given: "Tracing is configured"
+    when: "Requests flow through the worker"
+    then: "Distributed traces are sampled at 10% head rate"
+
+  - given: "Smart Placement is enabled"
+    when: "Requests arrive from users"
+    then: "Execution is placed near data or origin to reduce latency"
+
+acceptance_tests:
+  - id: TEST-observability-001
+    desc: "wrangler.toml sets logs head_sampling_rate to 1.0"
+  - id: TEST-observability-002
+    desc: "wrangler.toml sets traces head_sampling_rate to 0.1"
+  - id: TEST-observability-003
+    desc: "wrangler.toml enables placement mode smart"
+
+dependencies:
+  - governance: "env.yaml"
+
+linked_tasks:
+  - TASK-018

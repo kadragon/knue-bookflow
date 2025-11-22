@@ -217,6 +217,34 @@ tasks:
       - Tests updated to reflect no-secret behavior
     estimated_complexity: low
 
+  - task_id: TASK-017
+    title: "Add custom domain book.kadragon.work to worker routes"
+    description: |
+      Configure the Worker to serve on the custom hostname book.kadragon.work
+      by adding the route to wrangler.toml and ensuring deployment recognizes it.
+    priority: 1
+    spec_id: SPEC-deploy-001
+    status: done
+    acceptance_criteria:
+      - wrangler.toml includes a route for book.kadragon.work/*
+      - Route configuration is traceable to SPEC-deploy-001 and TASK-017
+      - Deployment instructions reflect the new domain
+    estimated_complexity: low
+
+  - task_id: TASK-018
+    title: "Enable observability and Smart Placement"
+    description: |
+      Configure full log sampling, 10% trace sampling, and Smart Placement in wrangler.toml
+      for better diagnostics and latency.
+    priority: 1
+    spec_id: SPEC-observability-001
+    status: done
+    acceptance_criteria:
+      - wrangler.toml sets logs head_sampling_rate to 1.0
+      - wrangler.toml sets traces head_sampling_rate to 0.1
+      - wrangler.toml enables placement mode smart
+    estimated_complexity: low
+
   - task_id: TASK-007
     title: "Implement scheduled workflow handler"
     description: |

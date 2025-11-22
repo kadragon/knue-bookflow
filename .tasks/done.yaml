@@ -92,3 +92,27 @@ completed_tasks: []
   learnings:
     - "When Zero Trust guards the route, duplicate in-worker secrets add maintenance overhead."
     - "Manual trigger tests should focus on behavior, not auth, when auth is delegated."
+
+- task_id: TASK-017
+  title: "Add custom domain book.kadragon.work to worker routes"
+  completed_at: "2025-11-22T00:30:00Z"
+  outcome: success
+  spec_id: SPEC-deploy-001
+  summary: |
+    Added a custom domain route for book.kadragon.work in wrangler.toml with traceability
+    comments so deployments map the Worker to the requested hostname.
+  learnings:
+    - "Routes array with zone_name is sufficient when account has the zone; no code changes needed."
+    - "Trace comments in config aid future auditing of domain mappings."
+
+- task_id: TASK-018
+  title: "Enable observability and Smart Placement"
+  completed_at: "2025-11-22T00:55:00Z"
+  outcome: success
+  spec_id: SPEC-observability-001
+  summary: |
+    Enabled Smart Placement and configured observability with 100% log sampling and 10% trace sampling
+    via wrangler.toml, with trace annotations for auditing.
+  learnings:
+    - "wrangler observability supports separate head_sampling_rate for logs and traces."
+    - "Placement block with mode=smart lowers latency without code changes."

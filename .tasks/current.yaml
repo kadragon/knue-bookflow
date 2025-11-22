@@ -1,12 +1,15 @@
 # Current Task
 
 current_task:
-  task_id: null
-  title: null
+  task_id: TASK-018
+  title: "Enable observability and Smart Placement"
   status: done
-  spec_id: null
-  test_refs: []
-  started_at: null
+  spec_id: SPEC-observability-001
+  test_refs:
+    - TEST-observability-001
+    - TEST-observability-002
+    - TEST-observability-003
+  started_at: "2025-11-22T00:45:00Z"
 
 # All core tasks (TASK-001 to TASK-007) completed
 # Next steps: TASK-008 (TypeScript types), TASK-009 (Unit tests), TASK-010 (Deploy)
