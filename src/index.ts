@@ -56,7 +56,10 @@ export default {
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)
-    if (url.pathname === '/trigger' && request.method === 'POST') {
+    if (url.pathname === '/trigger') {
+      if (request.method !== 'GET' && request.method !== 'POST') {
+        return new Response('Method Not Allowed', { status: 405 });
+      }
       ctx.waitUntil(handleScheduledTask(env));
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
         headers: { 'Content-Type': 'application/json' },
@@ -64,6 +67,10 @@ export default {
     }
 
     // Serve static assets (SPA) via Cloudflare Assets binding
+    if (!env.ASSETS) {
+      console.error('[BookFlow] ASSETS binding not configured');
+      return new Response('Service configuration error', { status: 500 });
+    }
     const assetResponse = await env.ASSETS.fetch(request);
     if (assetResponse.status !== 404) {
       return assetResponse;
