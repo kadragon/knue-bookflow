@@ -225,10 +225,12 @@ function EmptyState() {
 
 function ShelfStats({ books }: { books: BookItem[] }) {
   const totals = useMemo(() => {
-    const overdue = books.filter((b) => b.dueStatus === 'overdue').length;
-    const dueSoon = books.filter((b) => b.dueStatus === 'due_soon').length;
-    const ok = books.filter((b) => b.dueStatus === 'ok').length;
-    return { overdue, dueSoon, ok };
+    const stats = { overdue: 0, dueSoon: 0, ok: 0 } as const;
+    const mutable = { ...stats };
+    for (const book of books) {
+      mutable[book.dueStatus] += 1;
+    }
+    return mutable;
   }, [books]);
 
   return (
@@ -267,33 +269,25 @@ export default function App() {
 
   const filtered = useMemo(() => {
     if (!data?.items) return [];
+    const searchLower = filters.search.toLowerCase();
+
     return data.items.filter((book) => {
       if (
-        filters.search &&
-        !(
-          book.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          book.author.toLowerCase().includes(filters.search.toLowerCase()) ||
-          book.id.toLowerCase().includes(filters.search.toLowerCase())
-        )
+        searchLower &&
+        !book.title.toLowerCase().includes(searchLower) &&
+        !book.author.toLowerCase().includes(searchLower) &&
+        !book.id.toLowerCase().includes(searchLower)
       ) {
         return false;
       }
 
-      if (filters.author !== 'all' && book.author !== filters.author) {
+      if (filters.author !== 'all' && book.author !== filters.author)
         return false;
-      }
-
-      if (filters.dueStatus !== 'all' && book.dueStatus !== filters.dueStatus) {
+      if (filters.dueStatus !== 'all' && book.dueStatus !== filters.dueStatus)
         return false;
-      }
-
-      if (filters.loanState !== 'all' && book.loanState !== filters.loanState) {
+      if (filters.loanState !== 'all' && book.loanState !== filters.loanState)
         return false;
-      }
-
-      if (book.renewCount < filters.minRenew) {
-        return false;
-      }
+      if (book.renewCount < filters.minRenew) return false;
 
       return true;
     });

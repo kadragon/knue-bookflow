@@ -81,7 +81,7 @@ export function deriveBookViewModel(
 
 export function sortBooksByChargeDate(records: BookRecord[]): BookRecord[] {
   return [...records].sort((a, b) =>
-    a.charge_date < b.charge_date ? 1 : a.charge_date > b.charge_date ? -1 : 0,
+    b.charge_date.localeCompare(a.charge_date),
   );
 }
 
