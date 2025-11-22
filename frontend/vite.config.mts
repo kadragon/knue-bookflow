@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 export default defineConfig({
