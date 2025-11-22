@@ -256,18 +256,15 @@ export class LibraryClient {
     let lastError: unknown;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
         const response = await fetch(url, {
           method: rest.method,
           headers: rest.headers,
           body: rest.body,
           signal: controller.signal,
         });
-
-        clearTimeout(timeout);
 
         // Retry on 5xx only if attempts remain
         if (
@@ -289,6 +286,8 @@ export class LibraryClient {
           continue;
         }
         throw error;
+      } finally {
+        clearTimeout(timeout);
       }
     }
 
