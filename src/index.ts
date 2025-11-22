@@ -56,10 +56,8 @@ export default {
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)
-    if (url.pathname === '/trigger') {
-      if (request.method !== 'GET' && request.method !== 'POST') {
-        return new Response('Method Not Allowed', { status: 405 });
-      }
+    // POST only - triggering task has side effects, violates REST if GET allowed
+    if (url.pathname === '/trigger' && request.method === 'POST') {
       ctx.waitUntil(handleScheduledTask(env));
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
         headers: { 'Content-Type': 'application/json' },
