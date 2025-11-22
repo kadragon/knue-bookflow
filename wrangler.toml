@@ -10,7 +10,7 @@ crons = ["0 10 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "knue-bookflow-db"
-database_id = ""  # Will be filled after creating D1 database
+database_id = "4f8f9103-6005-47ef-83fd-37977ca20ffd"
 migrations_dir = "migrations"
 
 # Environment variables (non-secret)
