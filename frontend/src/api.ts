@@ -30,3 +30,14 @@ export const getBooks = async (): Promise<ApiResponse> => {
   }
   return res.json();
 };
+
+export const triggerWorkflow = async (): Promise<{ message: string }> => {
+  const res = await fetch('/trigger', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error('Failed to trigger workflow');
+  }
+  return res.json();
+};

@@ -5,31 +5,16 @@
  * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004, TASK-012
  */
 
-import type { Charge } from '../types';
+import type {
+  Charge,
+  RenewalCandidate,
+  RenewalConfig,
+  RenewalResult,
+} from '../types';
 import { isWithinDays } from '../utils';
 import { LibraryApiError, type LibraryClient } from './library-client';
 
-export interface RenewalCandidate {
-  charge: Charge;
-  reason: string;
-}
-
-export interface RenewalResult {
-  chargeId: number;
-  title: string;
-  success: boolean;
-  newDueDate?: string;
-  newRenewCount?: number;
-  errorMessage?: string;
-}
-
-/**
- * Configuration for renewal criteria
- */
-export interface RenewalConfig {
-  maxRenewCount: number;
-  daysBeforeDue: number;
-}
+export type { RenewalCandidate, RenewalConfig, RenewalResult };
 
 const DEFAULT_CONFIG: RenewalConfig = {
   maxRenewCount: 0, // Only renew if never renewed before

@@ -1,12 +1,9 @@
 # Current Task
 
 current_task:
-  task_id: TASK-020
-  title: "Expose note metadata and UI CTA (stub)"
+  task_id: TASK-010
+  title: "Deploy and configure production environment"
   status: done
-  spec_id: SPEC-notes-001
-  test_refs:
-    - TEST-notes-001
-    - TEST-notes-002
-  started_at: "2025-11-22T17:15:00Z"
-  completed_at: "2025-11-22T17:13:30Z"
+  spec_id: null
+  started_at: "2025-11-22T05:00:00Z"
+  completed_at: "2025-11-22T20:40:00Z"

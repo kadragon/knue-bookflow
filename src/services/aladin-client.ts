@@ -5,7 +5,12 @@
  * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-005
  */
 
-import type { AladinItemLookupResponse, BookInfo, Charge } from '../types';
+import type {
+  AladinItemLookupResponse,
+  BookInfo,
+  Charge,
+  ChargeWithBookInfo,
+} from '../types';
 import { isToday } from '../utils';
 
 // Use HTTPS to protect API key in transit
@@ -105,8 +110,8 @@ export function identifyNewBooks(
 export async function fetchNewBooksInfo(
   client: AladinClient,
   charges: Charge[],
-): Promise<Array<{ charge: Charge; bookInfo: BookInfo | null }>> {
-  const results: Array<{ charge: Charge; bookInfo: BookInfo | null }> = [];
+): Promise<ChargeWithBookInfo[]> {
+  const results: ChargeWithBookInfo[] = [];
 
   for (const charge of charges) {
     const isbn = charge.volume.bib.isbn;

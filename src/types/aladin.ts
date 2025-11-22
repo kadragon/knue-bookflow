@@ -3,6 +3,8 @@
  * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-008
  */
 
+import type { Charge } from './library';
+
 export interface AladinItemLookupResponse {
   version: string;
   title: string;
@@ -43,4 +45,12 @@ export interface BookInfo {
   description: string;
   coverUrl: string;
   categoryName: string;
+}
+
+/**
+ * Combined charge and book info for enrichment results
+ */
+export interface ChargeWithBookInfo {
+  charge: Charge;
+  bookInfo: BookInfo | null;
 }
