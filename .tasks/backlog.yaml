@@ -29,6 +29,28 @@ tasks:
       - Tests passing (56 total)
     estimated_complexity: medium
 
+  - task_id: TASK-022
+    title: "Consolidate shared types between frontend and backend"
+    description: |
+      Create a shared types package to eliminate duplicate type definitions
+      between frontend and backend. Currently SyncSummary, SyncResponse, and
+      other API types are defined in both places, leading to potential
+      inconsistencies and maintenance overhead.
+    priority: 3
+    spec_id: null
+    status: pending
+    acceptance_criteria:
+      - Create shared types directory or package
+      - Move common API response types to shared location
+      - Update frontend and backend imports
+      - Ensure build systems work with shared types
+      - Remove duplicate type definitions
+    estimated_complexity: medium
+    notes: |
+      PR review feedback from gemini-code-assist suggested this improvement.
+      Requires careful consideration of build system configuration for both
+      Vite (frontend) and Wrangler (backend).
+
   - task_id: TASK-011
     title: "Post-build code audit and hardening recommendations"
     description: |
