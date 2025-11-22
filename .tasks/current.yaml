@@ -1,15 +1,12 @@
 # Current Task
 
 current_task:
-  task_id: TASK-018
-  title: "Enable observability and Smart Placement"
+  task_id: TASK-020
+  title: "Expose note metadata and UI CTA (stub)"
   status: done
-  spec_id: SPEC-observability-001
+  spec_id: SPEC-notes-001
   test_refs:
-    - TEST-observability-001
-    - TEST-observability-002
-    - TEST-observability-003
-  started_at: "2025-11-22T00:45:00Z"
-
-# All core tasks (TASK-001 to TASK-007) completed
-# Next steps: TASK-008 (TypeScript types), TASK-009 (Unit tests), TASK-010 (Deploy)
+    - TEST-notes-001
+    - TEST-notes-002
+  started_at: "2025-11-22T17:15:00Z"
+  completed_at: "2025-11-22T17:13:30Z"

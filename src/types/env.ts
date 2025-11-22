@@ -7,6 +7,9 @@ export interface Env {
   // D1 Database
   DB: D1Database;
 
+  // Static asset binding (Cloudflare Workers assets)
+  ASSETS: Fetcher;
+
   // Secret environment variables
   LIBRARY_USER_ID: string;
   LIBRARY_PASSWORD: string;

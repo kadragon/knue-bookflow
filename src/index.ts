@@ -5,6 +5,7 @@
  * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016
  */
 
+import { handleBooksApi } from './handlers/books-handler';
 import {
   checkAndRenewBooks,
   createAladinClient,
@@ -50,12 +51,33 @@ export default {
       );
     }
 
+    if (url.pathname === '/api/books' && request.method === 'GET') {
+      return handleBooksApi(env);
+    }
+
     // Manual trigger endpoint (access controlled via Zero Trust)
     if (url.pathname === '/trigger' && request.method === 'POST') {
       ctx.waitUntil(handleScheduledTask(env));
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    // Serve static assets (SPA) via Cloudflare Assets binding
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (assetResponse.status !== 404) {
+      return assetResponse;
+    }
+
+    // SPA fallback to index.html when navigating client-side routes
+    const acceptHeader = request.headers.get('accept') || '';
+    if (acceptHeader.includes('text/html')) {
+      const indexResponse = await env.ASSETS.fetch(
+        new Request(new URL('/index.html', request.url).toString(), request),
+      );
+      if (indexResponse.status !== 404) {
+        return indexResponse;
+      }
     }
 
     return new Response('Not Found', { status: 404 });

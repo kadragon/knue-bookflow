@@ -8,6 +8,10 @@ routes = [
 ]
 # Trace: SPEC-deploy-001 / TASK-017
 
+[assets]
+directory = "frontend/dist"
+# Trace: SPEC-frontend-001 / TASK-019
+
 [placement]
 mode = "smart"
 # Trace: SPEC-observability-001 / TASK-018

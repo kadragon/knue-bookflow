@@ -64,3 +64,12 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   with trace comment to keep routing aligned with deployment needs.
 - Completed TASK-018 (SPEC-observability-001): enabled Smart Placement and observability with 100% log
   sampling and 10% trace sampling in wrangler.toml.
+
+- Completed TASK-019 (SPEC-frontend-001): served a React-based bookshelf SPA from Worker assets with
+  /api/books providing derived dueStatus/daysLeft, SPA index fallback via env.ASSETS.fetch, and
+  client-side filters for author, due status, renew count, and loan state. Vite config switched to
+  ESM (.mts) under single package.json; frontend build outputs to frontend/dist used by assets binding.
+
+- Completed TASK-020 (SPEC-notes-001): added stub note metadata (noteCount=0, noteState=not_started)
+  to /api/books and surfaced a note CTA on the bookshelf cards, keeping API contract ready for future
+  note persistence without DB changes yet.
