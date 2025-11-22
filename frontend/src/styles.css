@@ -100,17 +100,23 @@ body {
 
 .segmented {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.filter-group-wide {
+  grid-column: span 2;
 }
 
 .chip {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .chip-active {

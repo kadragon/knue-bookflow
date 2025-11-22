@@ -42,14 +42,17 @@ const STATUS_BG: Record<DueStatus, string> = {
 };
 
 function useBooks() {
-  return useQuery<ApiResponse>(['books'], async () => {
-    const res = await fetch('/api/books', {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      throw new Error('Failed to load books');
-    }
-    return res.json();
+  return useQuery<ApiResponse>({
+    queryKey: ['books'],
+    queryFn: async () => {
+      const res = await fetch('/api/books', {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        throw new Error('Failed to load books');
+      }
+      return res.json();
+    },
   });
 }
 
@@ -112,7 +115,7 @@ function FilterBar({
           ))}
         </select>
       </div>
-      <div className="filter-group">
+      <div className="filter-group filter-group-wide">
         <fieldset className="segmented" aria-label="반납 상태 필터">
           <legend className="label">반납 상태</legend>
           {(['all', 'overdue', 'due_soon', 'ok'] as const).map((status) => (
