@@ -38,3 +38,25 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Set up secrets: `wrangler secret put LIBRARY_USER_ID` etc.
 - Write unit tests for all services
 - Deploy to production
+
+## Session 2025-11-22
+- Completed TASK-011 (SPEC-maintenance-001): post-build code audit after first build.
+- Key findings:
+  - Renewal workflow fetches charges twice and persists stale due dates/renewCnt (see TASK-012).
+  - Manual `/trigger` endpoint lacks authentication (TASK-013).
+  - Library client missing retries/timeouts and pagination; risk of partial data (TASK-014).
+  - Date utilities assume local timezone; need KST-aware calculations (TASK-015).
+  - Aladin client uses HTTP instead of HTTPS; should switch to HTTPS to avoid MITM/mixed content.
+- Added backlog items TASK-012 to TASK-015 for follow-up work; spec_id references set.
+- Tests: `npm test` (Vitest) passing as of 2025-11-22.
+- Completed TASK-012 (SPEC-renewal-001): reuse pre-fetched charges in renewal workflow, mutate
+  charges with renewed dueDate/renewCnt, and add tests to ensure no duplicate fetch and accurate
+  persistence path.
+- Completed TASK-013 (SPEC-scheduler-001-sec): secured /trigger with Bearer secret, documented
+  TRIGGER_SECRET, and added tests covering missing/invalid/valid secrets.
+- Completed TASK-014 (SPEC-auth-001): added fetchWithResilience (timeouts/backoff), login retries,
+  paginated charges retrieval, and retryable renewals. Tests cover pagination and 5xx retry.
+- Completed TASK-015 (SPEC-renewal-001): made date utilities timezone-safe with offset defaults (KST),
+  routed renewal/new-book selection through offset-aware checks, and added tests for day rollover.
+- Completed TASK-016 (SPEC-scheduler-001-zt): removed TRIGGER_SECRET requirement; manual trigger now
+  relies on Cloudflare Zero Trust for access control. Cleaned env/wrangler/test artifacts accordingly.

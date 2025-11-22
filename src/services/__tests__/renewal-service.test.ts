@@ -1,20 +1,27 @@
 /**
  * Renewal service tests
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-012
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { identifyRenewalCandidates, RenewalConfig } from '../renewal-service';
-import { Charge } from '../../types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Charge } from '../../types';
+import {
+  checkAndRenewBooks,
+  identifyRenewalCandidates,
+  processRenewals,
+  type RenewalConfig,
+} from '../renewal-service';
 
 // Mock charge factory
-function createMockCharge(overrides: Partial<{
-  id: number;
-  renewCnt: number;
-  chargeDate: string;
-  dueDate: string;
-  title: string;
-}>): Charge {
+function createMockCharge(
+  overrides: Partial<{
+    id: number;
+    renewCnt: number;
+    chargeDate: string;
+    dueDate: string;
+    title: string;
+  }>,
+): Charge {
   return {
     id: overrides.id ?? 1,
     renewCnt: overrides.renewCnt ?? 0,
@@ -118,6 +125,81 @@ describe('renewal service', () => {
       const candidates = identifyRenewalCandidates(charges);
 
       expect(candidates[0].reason).toContain('renewCnt=0');
+    });
+  });
+
+  describe('processRenewals', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-01-13'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should update charge dueDate and renewCnt after successful renewal', async () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-15', renewCnt: 0 }),
+      ];
+      const candidates = identifyRenewalCandidates(charges);
+
+      const mockClient = {
+        renewCharge: vi.fn().mockResolvedValue({
+          success: true,
+          code: 'success',
+          message: 'ok',
+          data: {
+            id: 1,
+            renewCnt: 1,
+            dueDate: '2025-01-22',
+          },
+        }),
+      } as unknown as Parameters<typeof processRenewals>[0];
+
+      const results = await processRenewals(mockClient, candidates);
+
+      expect(results[0].newDueDate).toBe('2025-01-22');
+      expect(results[0].newRenewCount).toBe(1);
+      expect(charges[0].dueDate).toBe('2025-01-22');
+      expect(charges[0].renewCnt).toBe(1);
+    });
+  });
+
+  describe('checkAndRenewBooks', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-01-13'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should not fetch charges when provided', async () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-15', renewCnt: 0 }),
+      ];
+
+      const mockClient = {
+        getCharges: vi.fn(),
+        renewCharge: vi.fn().mockResolvedValue({
+          success: true,
+          code: 'success',
+          message: 'ok',
+          data: {
+            id: 1,
+            renewCnt: 1,
+            dueDate: '2025-01-22',
+          },
+        }),
+      } as unknown as Parameters<typeof processRenewals>[0];
+
+      await checkAndRenewBooks(mockClient as any, charges);
+
+      expect(mockClient.getCharges).not.toHaveBeenCalled();
+      expect(charges[0].dueDate).toBe('2025-01-22');
+      expect(charges[0].renewCnt).toBe(1);
     });
   });
 });

@@ -5,7 +5,7 @@
  * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-005
  */
 
-import { AladinItemLookupResponse, BookInfo, Charge } from '../types';
+import type { AladinItemLookupResponse, BookInfo, Charge } from '../types';
 import { isToday } from '../utils';
 
 const BASE_URL = 'http://www.aladin.co.kr/ttb/api';
@@ -68,8 +68,11 @@ export class AladinClient {
       console.log(`[AladinClient] Found book: ${bookInfo.title}`);
       return bookInfo;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.error(
+        `[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`,
+      );
       return null;
     }
   }
@@ -80,8 +83,13 @@ export class AladinClient {
  * @param charges - List of current charges
  * @returns Books that were borrowed today
  */
-export function identifyNewBooks(charges: Charge[]): Charge[] {
-  const newBooks = charges.filter(charge => isToday(charge.chargeDate));
+export function identifyNewBooks(
+  charges: Charge[],
+  offsetMinutes?: number,
+): Charge[] {
+  const newBooks = charges.filter((charge) =>
+    isToday(charge.chargeDate, offsetMinutes),
+  );
 
   console.log(`[AladinClient] Found ${newBooks.length} newly borrowed books`);
   return newBooks;
@@ -95,7 +103,7 @@ export function identifyNewBooks(charges: Charge[]): Charge[] {
  */
 export async function fetchNewBooksInfo(
   client: AladinClient,
-  charges: Charge[]
+  charges: Charge[],
 ): Promise<Array<{ charge: Charge; bookInfo: BookInfo | null }>> {
   const results: Array<{ charge: Charge; bookInfo: BookInfo | null }> = [];
 
@@ -106,8 +114,10 @@ export async function fetchNewBooksInfo(
     results.push({ charge, bookInfo });
   }
 
-  const foundCount = results.filter(r => r.bookInfo !== null).length;
-  console.log(`[AladinClient] Retrieved info for ${foundCount}/${charges.length} books`);
+  const foundCount = results.filter((r) => r.bookInfo !== null).length;
+  console.log(
+    `[AladinClient] Retrieved info for ${foundCount}/${charges.length} books`,
+  );
 
   return results;
 }

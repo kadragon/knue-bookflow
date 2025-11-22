@@ -3,8 +3,8 @@
  * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, task_id: TASK-009
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LibraryClient, LibraryApiError } from '../library-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LibraryApiError, LibraryClient } from '../library-client';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -49,7 +49,7 @@ describe('LibraryClient', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ loginId: 'testuser', password: 'testpass' }),
-        })
+        }),
       );
     });
 
@@ -66,7 +66,7 @@ describe('LibraryClient', () => {
       });
 
       await expect(
-        client.login({ loginId: 'wrong', password: 'wrong' })
+        client.login({ loginId: 'wrong', password: 'wrong' }),
       ).rejects.toThrow(LibraryApiError);
     });
 
@@ -75,9 +75,14 @@ describe('LibraryClient', () => {
         ok: false,
         status: 500,
       });
+      // retry attempt
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
 
       await expect(
-        client.login({ loginId: 'user', password: 'pass' })
+        client.login({ loginId: 'user', password: 'pass' }),
       ).rejects.toThrow('Login failed with status 500');
     });
   });
@@ -139,7 +144,7 @@ describe('LibraryClient', () => {
           headers: expect.objectContaining({
             'pyxis-auth-token': 'token',
           }),
-        })
+        }),
       );
     });
 
@@ -147,6 +152,77 @@ describe('LibraryClient', () => {
       client.clearSession();
 
       await expect(client.getCharges()).rejects.toThrow('Not authenticated');
+    });
+
+    it('should paginate when more than one page of charges', async () => {
+      // first login response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { accessToken: 'token', id: '1', name: 'User' },
+        }),
+        headers: new Headers({ 'set-cookie': 'session=abc' }),
+      });
+      await client.login({ loginId: 'user', password: 'pass' });
+      mockFetch.mockReset();
+
+      // first page
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            list: [
+              {
+                id: 1,
+                renewCnt: 0,
+                chargeDate: '2025-01-01',
+                dueDate: '2025-01-15',
+                volume: {
+                  id: 1,
+                  barcode: '123',
+                  shelfLocCode: 'A1',
+                  callNo: '000',
+                  bib: { id: 1, title: 'Book 1', author: 'A', isbn: '111' },
+                },
+              },
+            ],
+            totalCount: 2,
+          },
+        }),
+      });
+
+      // second page
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            list: [
+              {
+                id: 2,
+                renewCnt: 0,
+                chargeDate: '2025-01-02',
+                dueDate: '2025-01-16',
+                volume: {
+                  id: 2,
+                  barcode: '124',
+                  shelfLocCode: 'A1',
+                  callNo: '000',
+                  bib: { id: 2, title: 'Book 2', author: 'B', isbn: '222' },
+                },
+              },
+            ],
+            totalCount: 2,
+          },
+        }),
+      });
+
+      const charges = await client.getCharges();
+
+      expect(charges).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -187,7 +263,7 @@ describe('LibraryClient', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ circulationMethodCode: 'PYXIS' }),
-        })
+        }),
       );
     });
 
@@ -202,6 +278,35 @@ describe('LibraryClient', () => {
       });
 
       await expect(client.renewCharge(123)).rejects.toThrow('Book is reserved');
+    });
+
+    it('should retry on transient error and succeed', async () => {
+      // login first
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { accessToken: 'token', id: '1', name: 'User' },
+        }),
+        headers: new Headers({ 'set-cookie': 'session=abc' }),
+      });
+      await client.login({ loginId: 'user', password: 'pass' });
+      mockFetch.mockReset();
+
+      // first attempt: 500
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+      // second attempt: success
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { id: 123, renewCnt: 1, dueDate: '2025-01-29' },
+        }),
+      });
+
+      const result = await client.renewCharge(123);
+      expect(result.data.renewCnt).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });

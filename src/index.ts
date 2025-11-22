@@ -2,20 +2,20 @@
  * KNUE BookFlow - Cloudflare Worker Entry Point
  * Automatic book renewal system for Korea National University of Education library
  *
- * Trace: task_id: TASK-001, TASK-007
+ * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016
  */
 
-import { Env } from './types';
 import {
-  createLibraryClient,
-  createAladinClient,
-  createBookRepository,
-  createBookRecord,
   checkAndRenewBooks,
-  identifyNewBooks,
+  createAladinClient,
+  createBookRecord,
+  createBookRepository,
+  createLibraryClient,
   fetchNewBooksInfo,
-  RenewalResult,
+  identifyNewBooks,
+  type RenewalResult,
 } from './services';
+import type { Env } from './types';
 
 export default {
   /**
@@ -25,7 +25,7 @@ export default {
   async scheduled(
     event: ScheduledEvent,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<void> {
     ctx.waitUntil(handleScheduledTask(env, event));
   },
@@ -36,18 +36,21 @@ export default {
   async fetch(
     request: Request,
     env: Env,
-    ctx: ExecutionContext
+    ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
 
     // Health check endpoint
     if (url.pathname === '/health') {
-      return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }),
+        {
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
-    // Manual trigger endpoint (protected)
+    // Manual trigger endpoint (access controlled via Zero Trust)
     if (url.pathname === '/trigger' && request.method === 'POST') {
       ctx.waitUntil(handleScheduledTask(env));
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
@@ -63,9 +66,14 @@ export default {
  * Main workflow handler for scheduled task
  * Orchestrates the complete book renewal process
  */
-async function handleScheduledTask(env: Env, event?: ScheduledEvent): Promise<void> {
+async function handleScheduledTask(
+  env: Env,
+  event?: ScheduledEvent,
+): Promise<void> {
   const startTime = Date.now();
-  console.log(`[BookFlow] Starting scheduled task at ${new Date().toISOString()}`);
+  console.log(
+    `[BookFlow] Starting scheduled task at ${new Date().toISOString()}`,
+  );
 
   // Initialize services
   const libraryClient = createLibraryClient();
@@ -91,9 +99,9 @@ async function handleScheduledTask(env: Env, event?: ScheduledEvent): Promise<vo
       return;
     }
 
-    // Step 3-4: Check and process renewals
+    // Step 3-4: Check and process renewals (charges already fetched)
     console.log('[BookFlow] Step 3-4: Processing renewals...');
-    renewalResults = await checkAndRenewBooks(libraryClient);
+    renewalResults = await checkAndRenewBooks(libraryClient, charges);
 
     // Log renewal results to database
     for (const result of renewalResults) {
@@ -126,14 +134,17 @@ async function handleScheduledTask(env: Env, event?: ScheduledEvent): Promise<vo
 
     // Update existing books with latest charge data (due dates, renew counts)
     const existingBooks = charges.filter(
-      charge => !newBooks.some(nb => nb.id === charge.id)
+      (charge) => !newBooks.some((nb) => nb.id === charge.id),
     );
 
     for (const charge of existingBooks) {
       const existing = await bookRepository.findByChargeId(String(charge.id));
       if (existing) {
         // Update only if there are changes
-        if (existing.due_date !== charge.dueDate || existing.renew_count !== charge.renewCnt) {
+        if (
+          existing.due_date !== charge.dueDate ||
+          existing.renew_count !== charge.renewCnt
+        ) {
           const record = createBookRecord(charge);
           record.publisher = existing.publisher;
           record.cover_url = existing.cover_url;
@@ -145,8 +156,8 @@ async function handleScheduledTask(env: Env, event?: ScheduledEvent): Promise<vo
 
     // Step 8: Log summary
     const duration = Date.now() - startTime;
-    const successCount = renewalResults.filter(r => r.success).length;
-    const failCount = renewalResults.filter(r => !r.success).length;
+    const successCount = renewalResults.filter((r) => r.success).length;
+    const failCount = renewalResults.filter((r) => !r.success).length;
 
     console.log('[BookFlow] === Task Summary ===');
     console.log(`[BookFlow] Total charges: ${charges.length}`);
@@ -156,9 +167,9 @@ async function handleScheduledTask(env: Env, event?: ScheduledEvent): Promise<vo
     console.log(`[BookFlow] Renewals failed: ${failCount}`);
     console.log(`[BookFlow] Duration: ${duration}ms`);
     console.log('[BookFlow] Task completed successfully');
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error(`[BookFlow] Task failed: ${errorMessage}`);
 
     // Log the error

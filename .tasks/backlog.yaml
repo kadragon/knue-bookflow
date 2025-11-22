@@ -2,6 +2,20 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-011
+    title: "Post-build code audit and hardening recommendations"
+    description: |
+      Review the completed build, analyze the codebase for defects, risks,
+      and improvement opportunities, and propose actionable follow-ups.
+    priority: 1
+    spec_id: SPEC-maintenance-001
+    status: pending
+    acceptance_criteria:
+      - Audit findings documented with severity and file references
+      - Recommendations mapped to relevant specs or new tasks
+      - Follow-up backlog items created as needed
+    estimated_complexity: medium
+
   - task_id: TASK-001
     title: "Initialize Cloudflare Workers project"
     description: |
@@ -129,6 +143,79 @@ tasks:
       - Repository class with CRUD operations
       - Duplicate prevention logic
     estimated_complexity: medium
+
+  - task_id: TASK-012
+    title: "Persist renewed due dates and avoid duplicate charge fetch"
+    description: |
+      Align the renewal workflow so charges are fetched once, renewal outcomes
+      update persisted due dates/renew counts, and stale data is avoided.
+    priority: 1
+    spec_id: SPEC-renewal-001
+    status: done
+    dependencies:
+      - TASK-004
+    acceptance_criteria:
+      - Workflow uses a single source of charges for renewals and persistence
+      - Renewed dueDate and renewCnt are persisted to D1
+      - No redundant API calls for charges
+    estimated_complexity: medium
+
+  - task_id: TASK-013
+    title: "Secure manual /trigger endpoint"
+    description: |
+      Protect the manual trigger HTTP endpoint with authentication/authorization
+      to prevent unauthorized job execution.
+    priority: 1
+    spec_id: SPEC-scheduler-001
+    status: done
+    acceptance_criteria:
+      - /trigger requires a shared secret or auth mechanism
+      - Unauthorized requests receive 401/403
+      - Tests cover happy path and rejection cases
+    estimated_complexity: low
+
+  - task_id: TASK-014
+    title: "Add retries, timeouts, and pagination to library client"
+    description: |
+      Improve resilience of login/charges/renewal calls with bounded retries,
+      request timeouts, and pagination to handle more than 20 loans.
+    priority: 2
+    spec_id: SPEC-auth-001
+    status: done
+    acceptance_criteria:
+      - Fetch calls use AbortController-based timeouts
+      - Retry with exponential backoff on transient errors (5xx/ETIMEDOUT)
+      - Charges retrieval supports pagination for >20 items
+      - Unit tests cover retry/timeout behavior
+    estimated_complexity: medium
+
+  - task_id: TASK-015
+    title: "Make date calculations timezone-safe (KST)"
+    description: |
+      Ensure due-date comparisons and 'today' detection use KST to avoid
+      off-by-one errors around midnight UTC.
+    priority: 2
+    spec_id: SPEC-renewal-001
+    status: done
+    acceptance_criteria:
+      - Date utilities accept timezone or use ENVIRONMENT/KST offset
+      - Renewal candidate selection validated with KST-based tests
+      - identifyNewBooks respects chargeDate in KST
+    estimated_complexity: low
+
+  - task_id: TASK-016
+    title: "Adjust /trigger to rely on Zero Trust (remove TRIGGER_SECRET)"
+    description: |
+      Remove in-worker shared secret enforcement for /trigger; leave security to
+      Cloudflare Zero Trust Access while keeping manual trigger functional.
+    priority: 2
+    spec_id: SPEC-scheduler-001-zt
+    status: done
+    acceptance_criteria:
+      - /trigger works without TRIGGER_SECRET
+      - TRIGGER_SECRET removed from env typings and wrangler vars
+      - Tests updated to reflect no-secret behavior
+    estimated_complexity: low
 
   - task_id: TASK-007
     title: "Implement scheduled workflow handler"
