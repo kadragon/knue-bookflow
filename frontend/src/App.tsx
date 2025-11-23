@@ -169,8 +169,13 @@ function FilterBar({
 }
 
 function BookCard({ book }: { book: BookItem }) {
+  // Format date to YYYY-MM-DD
+  const formatDate = (dateStr: string) => {
+    return dateStr.split(' ')[0];
+  };
+
   return (
-    <article className="card">
+    <article className="card card-vertical">
       <div className="cover-frame">
         {book.coverUrl ? (
           <img src={book.coverUrl} alt={book.title} className="cover" />
@@ -179,35 +184,26 @@ function BookCard({ book }: { book: BookItem }) {
             <span className="placeholder-text">No Cover</span>
           </div>
         )}
-        <span className={clsx('badge', STATUS_BG[book.dueStatus])}>
+      </div>
+      <h3 className="card-title">{book.title}</h3>
+      <p className="card-author">{book.author}</p>
+      <div className="badge-row">
+        <span className={clsx('badge badge-inline', STATUS_BG[book.dueStatus])}>
           {DUE_STATUS_LABEL[book.dueStatus]}
         </span>
-      </div>
-      <div className="card-body">
-        <div className="title-row">
-          <h3>{book.title}</h3>
-          <span className="renew">연장 {book.renewCount}회</span>
-        </div>
-        <p className="muted">{book.author}</p>
-        {book.publisher && <p className="muted">{book.publisher}</p>}
-        <div className="meta">
-          <span>대출일 {book.chargeDate}</span>
-          <span>반납 예정 {book.dueDate}</span>
-          <span className="days">
-            D{book.daysLeft >= 0 ? '-' : '+'}
-            {Math.abs(book.daysLeft)}
+        {book.renewCount > 0 && (
+          <span className="badge badge-inline badge-renew">
+            연장 {book.renewCount}회
           </span>
-        </div>
-        {book.description && <p className="description">{book.description}</p>}
-        <div className="note-cta">
-          <div>
-            <span className="note-count">노트 {book.noteCount}개</span>
-            <span className="note-state">(작성 예정)</span>
-          </div>
-          <button className="note-button" type="button">
-            노트 남기기
-          </button>
-        </div>
+        )}
+        <span className="badge badge-inline badge-days">
+          D{book.daysLeft >= 0 ? '-' : '+'}
+          {Math.abs(book.daysLeft)}
+        </span>
+      </div>
+      <div className="date-info">
+        <span>대출 {formatDate(book.chargeDate)}</span>
+        <span>반납 {formatDate(book.dueDate)}</span>
       </div>
     </article>
   );

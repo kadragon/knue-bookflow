@@ -22,8 +22,10 @@ function computeDaysLeft(
   now: Date,
   offsetMinutes: number,
 ): number {
+  // Extract date part only (handles "2025-12-01 00:00:00" format)
+  const dueDateOnly = dueDate.split(' ')[0];
   const dueDay = zoneDayNumber(
-    Date.parse(`${dueDate}T00:00:00Z`),
+    Date.parse(`${dueDateOnly}T00:00:00Z`),
     offsetMinutes,
   );
   const today = zoneDayNumber(now.getTime(), offsetMinutes);
