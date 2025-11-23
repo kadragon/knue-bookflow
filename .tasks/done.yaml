@@ -278,3 +278,19 @@ completed_tasks: []
     - "Tracking send_count per note prevents over-sending the same quote while staying deterministic."
     - "D1 upsert with ON CONFLICT keeps send counters lightweight without extra reads."
     - "Cron branching via event.cron cleanly separates renewal and broadcast workflows."
+
+- task_id: TASK-029
+  title: "Frontend stats filters + default loan-state"
+  completed_at: "2025-11-23T16:36:45Z"
+  outcome: success
+  spec_id: SPEC-frontend-001
+  summary: |
+    Updated the top stats to 대여중/미완료/완료/총 with clickable cards that filter the list,
+    added stat-based filtering logic, and set the initial loan-state filter to '대출 중'
+    via shared defaultFilters. Implemented stat filtering in filterBooks, wired ShelfStats
+    to toggle filters, and ensured totals card resets to all books. Added tests for stat
+    filters and the default loan-state preset.
+  learnings:
+    - "Shared defaultFilters constant keeps UI defaults testable and aligned with acceptance."
+    - "Stat filters should set loanState to all when showing aggregate groups to avoid accidental narrowing."
+    - "Clickable stat cards benefit from simple role/button styling for accessibility without extra components."

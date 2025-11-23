@@ -52,9 +52,14 @@ import {
   updateNote,
   updateReadStatus,
 } from './api';
-import { filterBooks } from './filterBooks';
+import {
+  defaultFilters,
+  type Filters as FilterState,
+  filterBooks,
+  type StatFilter,
+} from './filterBooks';
 
-// Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
+// Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
 type LoanState = 'on_loan' | 'returned';
@@ -101,16 +106,6 @@ function useBooks() {
     queryFn: getBooks,
   });
 }
-
-interface FilterState {
-  search: string;
-  loanState: 'all' | LoanState;
-}
-
-const defaultFilters: FilterState = {
-  search: '',
-  loanState: 'all',
-};
 
 function FilterBar({
   filters,
@@ -644,24 +639,68 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   );
 }
 
-function ShelfStats({ books }: { books: BookItem[] }) {
+function ShelfStats({
+  books,
+  activeStat,
+  onSelect,
+}: {
+  books: BookItem[];
+  activeStat: StatFilter;
+  onSelect: (stat: StatFilter) => void;
+}) {
   const stats = useMemo(() => {
     let onLoan = 0;
-    let reading = 0;
+    let incomplete = 0;
     let completed = 0;
 
     for (const book of books) {
-      if (book.isRead) {
-        completed += 1;
-      } else if (book.noteCount > 0) {
-        reading += 1;
-      } else if (book.loanState === 'on_loan') {
+      if (book.loanState === 'on_loan') {
         onLoan += 1;
+      }
+      if (!book.isRead) {
+        incomplete += 1;
+      } else {
+        completed += 1;
       }
     }
 
-    return { onLoan, reading, completed, total: books.length };
+    return { onLoan, incomplete, completed, total: books.length };
   }, [books]);
+
+  const cards = useMemo(
+    () => [
+      {
+        key: 'on_loan' as StatFilter,
+        label: '대여중',
+        value: stats.onLoan,
+        color: 'primary.main',
+      },
+      {
+        key: 'incomplete' as StatFilter,
+        label: '미완료',
+        value: stats.incomplete,
+        color: 'warning.main',
+      },
+      {
+        key: 'completed' as StatFilter,
+        label: '완료',
+        value: stats.completed,
+        color: 'success.main',
+      },
+      { key: 'none' as StatFilter, label: '총', value: stats.total },
+    ],
+    [stats],
+  );
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLDivElement>,
+    stat: StatFilter,
+  ) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(stat);
+    }
+  };
 
   return (
     <Box
@@ -672,38 +711,48 @@ function ShelfStats({ books }: { books: BookItem[] }) {
         mb: 4,
       }}
     >
-      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          대여중
-        </Typography>
-        <Typography variant="h5" fontWeight="bold" color="primary.main">
-          {stats.onLoan}
-        </Typography>
-      </Paper>
-      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          독서중
-        </Typography>
-        <Typography variant="h5" fontWeight="bold" color="warning.main">
-          {stats.reading}
-        </Typography>
-      </Paper>
-      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          완료
-        </Typography>
-        <Typography variant="h5" fontWeight="bold" color="success.main">
-          {stats.completed}
-        </Typography>
-      </Paper>
-      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          총
-        </Typography>
-        <Typography variant="h5" fontWeight="bold">
-          {stats.total}
-        </Typography>
-      </Paper>
+      {cards.map((card) => {
+        const isActive = activeStat === card.key;
+        return (
+          <Paper
+            key={card.key}
+            variant="outlined"
+            tabIndex={0}
+            sx={{
+              p: 2,
+              textAlign: 'center',
+              borderColor: isActive ? 'primary.main' : 'divider',
+              boxShadow: isActive ? 2 : 0,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: 'primary.light',
+                backgroundColor: 'action.hover',
+              },
+              '&:focus-visible': {
+                outline: '2px solid',
+                outlineColor: 'primary.main',
+                outlineOffset: 2,
+              },
+            }}
+            onClick={() => onSelect(card.key)}
+            onKeyDown={(e) => handleKeyDown(e, card.key)}
+            role="button"
+            aria-pressed={isActive}
+          >
+            <Typography variant="caption" color="text.secondary">
+              {card.label}
+            </Typography>
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              color={card.color ?? 'text.primary'}
+            >
+              {card.value}
+            </Typography>
+          </Paper>
+        );
+      })}
     </Box>
   );
 }
@@ -728,6 +777,20 @@ export default function App() {
 
   const handleNotesChanged = () => {
     queryClient.invalidateQueries({ queryKey: ['books'] });
+  };
+
+  const handleStatSelect = (stat: StatFilter) => {
+    setFilters((prev) => {
+      if (stat === 'none') {
+        // The '총' (Total) card resets both stat and loanState filters.
+        return { ...prev, stat: 'none', loanState: 'all' };
+      }
+
+      // Toggle the stat filter. If it's the same, turn it off.
+      const nextStat = prev.stat === stat ? 'none' : stat;
+
+      return { ...prev, stat: nextStat };
+    });
   };
 
   const readStatusMutation = useMutation({
@@ -868,7 +931,13 @@ export default function App() {
           </Alert>
         )}
 
-        {data && <ShelfStats books={data.items} />}
+        {data && (
+          <ShelfStats
+            books={data.items}
+            activeStat={filters.stat}
+            onSelect={handleStatSelect}
+          />
+        )}
 
         {!isLoading && filtered.length === 0 ? (
           <EmptyState />

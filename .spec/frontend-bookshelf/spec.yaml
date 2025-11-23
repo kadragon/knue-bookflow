@@ -37,6 +37,10 @@ acceptance_tests:
     desc: "Search and loan-state controls update the visible list client-side"
   - id: TEST-frontend-005
     desc: "Worker serves SPA assets from configured assets directory with index fallback for non-API routes"
+  - id: TEST-frontend-006
+    desc: "Top-level stats (대여중/미완료/완료/총) display correct counts and act as clickable filters for the list"
+  - id: TEST-frontend-007
+    desc: "Initial load defaults the loan-state filter to '대출 중' so only borrowed books show first"
 
 dependencies:
   - governance: "memory.md"

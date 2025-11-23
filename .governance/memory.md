@@ -158,3 +158,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   - Added TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to env types/config; new cron 0 3 * * * in wrangler
   - Scheduled handler branches on event.cron between renewal (0 10) and note broadcast (0 3)
   - Tests: selection fairness, formatting, skip when no notes, Telegram failure handling; `npm test` passing (73 tests)
+
+### Session 2025-11-23 (Stats filter + defaults)
+- Completed TASK-029 (SPEC-frontend-001): Updated top stats to 대여중/미완료/완료/총 with clickable cards that filter the grid,
+  introduced stat-based filtering in filterBooks, and set the initial loan-state filter to '대출 중' via shared defaultFilters.
+  Tests: `npm test -- filterBooks` (stat filters + default preset).
+  Pattern: keep shared defaults exported so acceptance requirements stay testable and in sync with UI state.
