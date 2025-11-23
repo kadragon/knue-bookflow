@@ -65,11 +65,10 @@ const mockAladinResponse = {
   pubDate: '2025-01-01',
   description: 'Desc',
   coverUrl: 'https://covers.aladin.co.kr/Big/9781234567890.jpg',
-  categoryName: 'Category',
 };
 
 describe('processCharge', () => {
-  it('refreshes cover when existing record has none', async () => {
+  it('recovers metadata when existing record has no cover_url', async () => {
     const charge = createMockCharge();
 
     const mockBookRepository = createMockBookRepository({
@@ -137,8 +136,8 @@ describe('processCharge', () => {
     expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
   });
 
-  it('handles Aladin lookup failure gracefully', async () => {
-    const charge = createMockCharge();
+  it('updates when due_date changes', async () => {
+    const charge = createMockCharge({ dueDate: '2025-01-22' });
 
     const mockBookRepository = createMockBookRepository({
       id: 10,
@@ -147,17 +146,15 @@ describe('processCharge', () => {
       title: charge.biblio.titleStatement,
       author: 'Author',
       publisher: 'Publisher',
-      cover_url: null,
-      description: null,
+      cover_url: 'https://existing-cover.jpg',
+      description: 'Existing desc',
       charge_date: charge.chargeDate,
-      due_date: charge.dueDate,
+      due_date: '2025-01-15',
       renew_count: charge.renewCnt,
       is_read: 0,
     });
 
-    const mockAladinClient = {
-      lookupByIsbn: vi.fn().mockRejectedValue(new Error('API timeout')),
-    } as unknown as AladinClient;
+    const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
       charge,
@@ -165,12 +162,12 @@ describe('processCharge', () => {
       mockAladinClient,
     );
 
-    expect(status).toBe('unchanged');
-    expect(mockAladinClient.lookupByIsbn).toHaveBeenCalled();
-    expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
+    expect(status).toBe('updated');
+    expect(mockAladinClient.lookupByIsbn).not.toHaveBeenCalled();
+    expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 
-  it('handles Aladin returning null', async () => {
+  it('returns unchanged when Aladin returns null for metadata recovery', async () => {
     const charge = createMockCharge();
 
     const mockBookRepository = createMockBookRepository({

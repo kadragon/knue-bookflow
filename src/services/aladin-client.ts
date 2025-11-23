@@ -69,7 +69,6 @@ export class AladinClient {
         pubDate: item.pubDate,
         description: item.description,
         coverUrl: item.cover,
-        categoryName: item.categoryName,
       };
 
       console.log(`[AladinClient] Found book: ${bookInfo.title}`);

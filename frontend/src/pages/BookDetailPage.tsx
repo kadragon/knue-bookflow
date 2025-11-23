@@ -167,6 +167,15 @@ function BookInfoPanel({
             </Box>
           )}
 
+          {book.pubDate && (
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                출판일
+              </Typography>
+              <Typography variant="body2">{book.pubDate}</Typography>
+            </Box>
+          )}
+
           <Box>
             <Typography variant="caption" color="text.secondary">
               대출 상태

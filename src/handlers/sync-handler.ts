@@ -164,22 +164,22 @@ export async function processCharge(
     return 'added';
   }
 
-  // Check if cover refresh is needed
-  const coverMissing = !existing.cover_url;
+  // Check if metadata recovery is needed (cover_url is null)
+  const needsMetadataRecovery = !existing.cover_url;
   let bookInfo: BookInfo | null = null;
 
-  if (coverMissing) {
+  if (needsMetadataRecovery) {
     console.log(
-      `[SyncHandler] Cover missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
+      `[SyncHandler] Metadata missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
     );
-    bookInfo = await fetchBookInfo(isbn, aladinClient, 'cover refresh');
+    bookInfo = await fetchBookInfo(isbn, aladinClient, 'metadata recovery');
   }
 
-  const coverRefreshed = coverMissing && !!bookInfo?.coverUrl;
+  const metadataRecovered = needsMetadataRecovery && !!bookInfo?.coverUrl;
 
   // Book exists - check if update needed
   const needsUpdate =
-    coverRefreshed ||
+    metadataRecovered ||
     existing.due_date !== charge.dueDate ||
     existing.renew_count !== charge.renewCnt;
 
@@ -187,6 +187,16 @@ export async function processCharge(
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
     const record = createBookRecord(charge, bookInfo || undefined);
+
+    // Preserve existing metadata when Aladin lookup was not attempted or failed
+    if (!bookInfo) {
+      record.publisher = existing.publisher;
+      record.cover_url = existing.cover_url;
+      record.description = existing.description;
+      record.isbn13 = existing.isbn13;
+      record.pub_date = existing.pub_date;
+    }
+
     await bookRepository.saveBook(record);
     return 'updated';
   }

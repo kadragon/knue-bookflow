@@ -30,6 +30,8 @@ export interface BookViewModel {
   publisher: string | null;
   coverUrl: string | null;
   description: string | null;
+  isbn13: string | null;
+  pubDate: string | null;
   chargeDate: string;
   dueDate: string;
   renewCount: number;

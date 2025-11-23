@@ -50,19 +50,21 @@ export class BookRepository {
       await this.db
         .prepare(
           `INSERT INTO books (
-            charge_id, isbn, title, author, publisher,
-            cover_url, description, charge_date, due_date,
+            charge_id, isbn, isbn13, title, author, publisher,
+            cover_url, description, pub_date, charge_date, due_date,
             renew_count, is_read, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           record.charge_id,
           record.isbn,
+          record.isbn13,
           record.title,
           record.author,
           record.publisher,
           record.cover_url,
           record.description,
+          record.pub_date,
           record.charge_date,
           record.due_date,
           record.renew_count,
@@ -197,11 +199,13 @@ export function createBookRecord(
   return {
     charge_id: String(charge.id),
     isbn: charge.biblio.isbn || bookInfo?.isbn || '',
+    isbn13: bookInfo?.isbn13 || null,
     title: bookInfo?.title || charge.biblio.titleStatement,
     author: bookInfo?.author || '',
     publisher: bookInfo?.publisher || null,
     cover_url: bookInfo?.coverUrl || null,
     description: bookInfo?.description || null,
+    pub_date: bookInfo?.pubDate || null,
     charge_date: charge.chargeDate,
     due_date: charge.dueDate,
     renew_count: charge.renewCnt,

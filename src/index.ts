@@ -16,16 +16,13 @@ import {
   handleGetNotes,
   handleUpdateNote,
 } from './handlers/notes-handler';
-import { handleSyncBooks } from './handlers/sync-handler';
+import { handleSyncBooks, processCharge } from './handlers/sync-handler';
 import {
   broadcastDailyNote,
   checkAndRenewBooks,
   createAladinClient,
-  createBookRecord,
   createBookRepository,
   createLibraryClient,
-  fetchNewBooksInfo,
-  identifyNewBooks,
   NOTE_BROADCAST_CRON,
   type RenewalResult,
 } from './services';
@@ -222,78 +219,27 @@ async function handleScheduledTask(
       });
     }
 
-    // Step 5: Detect new books
-    console.log('[BookFlow] Step 5: Detecting new books...');
-    const newBooks = identifyNewBooks(charges);
+    // Step 5: Sync all books with database
+    console.log('[BookFlow] Step 5: Syncing books with database...');
 
-    // Step 6: Fetch book info from Aladin
-    console.log('[BookFlow] Step 6: Fetching book info from Aladin...');
-    const newBooksWithInfo = await fetchNewBooksInfo(aladinClient, newBooks);
-
-    // Step 7: Save/update records in D1
-    console.log('[BookFlow] Step 7: Saving records to database...');
-
-    // Save new books with enriched data
-    for (const { charge, bookInfo } of newBooksWithInfo) {
-      const record = createBookRecord(charge, bookInfo);
-      await bookRepository.saveBook(record);
-    }
-
-    // Update existing books with latest charge data (due dates, renew counts)
-    const existingBooks = charges.filter(
-      (charge) => !newBooks.some((nb) => nb.id === charge.id),
+    const syncStatuses = await Promise.all(
+      charges.map((charge) =>
+        processCharge(charge, bookRepository, aladinClient),
+      ),
     );
 
-    for (const charge of existingBooks) {
-      const existing = await bookRepository.findByChargeId(String(charge.id));
-      if (existing) {
-        const needsMetadataRefresh = existing.cover_url === null;
-        const needsChargeUpdate =
-          existing.due_date !== charge.dueDate ||
-          existing.renew_count !== charge.renewCnt;
+    const addedCount = syncStatuses.filter((s) => s === 'added').length;
+    const updatedCount = syncStatuses.filter((s) => s === 'updated').length;
 
-        if (needsMetadataRefresh || needsChargeUpdate) {
-          let bookInfo = null;
-
-          // Fetch from Aladin if metadata is missing
-          if (needsMetadataRefresh && charge.biblio.isbn) {
-            console.log(
-              `[BookFlow] Refreshing metadata for: ${charge.biblio.titleStatement}`,
-            );
-            try {
-              bookInfo = await aladinClient.lookupByIsbn(charge.biblio.isbn);
-            } catch (error) {
-              const message =
-                error instanceof Error ? error.message : 'Unknown error';
-              console.error(
-                `[BookFlow] Aladin lookup failed for ${charge.biblio.isbn}: ${message}`,
-              );
-              // Continue with existing metadata
-            }
-          }
-
-          const record = createBookRecord(charge, bookInfo);
-
-          // Preserve existing metadata when Aladin lookup was not attempted or failed
-          if (!bookInfo) {
-            record.publisher = existing.publisher;
-            record.cover_url = existing.cover_url;
-            record.description = existing.description;
-          }
-
-          await bookRepository.saveBook(record);
-        }
-      }
-    }
-
-    // Step 8: Log summary
+    // Step 6: Log summary
     const duration = Date.now() - startTime;
     const successCount = renewalResults.filter((r) => r.success).length;
     const failCount = renewalResults.filter((r) => !r.success).length;
 
     console.log('[BookFlow] === Task Summary ===');
     console.log(`[BookFlow] Total charges: ${charges.length}`);
-    console.log(`[BookFlow] New books saved: ${newBooks.length}`);
+    console.log(`[BookFlow] Books added: ${addedCount}`);
+    console.log(`[BookFlow] Books updated: ${updatedCount}`);
     console.log(`[BookFlow] Renewals attempted: ${renewalResults.length}`);
     console.log(`[BookFlow] Renewals succeeded: ${successCount}`);
     console.log(`[BookFlow] Renewals failed: ${failCount}`);
