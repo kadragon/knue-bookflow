@@ -76,15 +76,17 @@ export function deriveBookViewModel(
     loanState: 'on_loan',
     noteCount,
     noteState,
-    isRead: Boolean(record.is_read),
+    isRead: Boolean(record.is_read ?? 0),
   };
 }
 
 export function sortBooks(records: BookRecord[]): BookRecord[] {
   return [...records].sort((a, b) => {
     // Sort by read status (unread first)
-    if (a.is_read !== b.is_read) {
-      return a.is_read - b.is_read;
+    const readA = a.is_read ?? 0;
+    const readB = b.is_read ?? 0;
+    if (readA !== readB) {
+      return readA - readB;
     }
     // Then by charge date (newest first)
     return b.charge_date.localeCompare(a.charge_date);

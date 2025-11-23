@@ -201,7 +201,6 @@ export function createBookRecord(
     charge_date: charge.chargeDate,
     due_date: charge.dueDate,
     renew_count: charge.renewCnt,
-    is_read: 0,
   };
 }
 

@@ -408,7 +408,6 @@ describe('createBookRecord', () => {
       charge_date: '2025-01-01',
       due_date: '2025-01-15',
       renew_count: 0,
-      is_read: 0,
     });
   });
 
