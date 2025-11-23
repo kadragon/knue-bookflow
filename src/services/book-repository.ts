@@ -27,10 +27,17 @@ export class BookRepository {
           `UPDATE books SET
             due_date = ?,
             renew_count = ?,
+            is_read = COALESCE(?, is_read),
             updated_at = ?
           WHERE charge_id = ?`,
         )
-        .bind(record.due_date, record.renew_count, now, record.charge_id)
+        .bind(
+          record.due_date,
+          record.renew_count,
+          record.is_read,
+          now,
+          record.charge_id,
+        )
         .run();
 
       console.log(`[BookRepository] Updated book: ${record.title}`);
@@ -41,8 +48,8 @@ export class BookRepository {
           `INSERT INTO books (
             charge_id, isbn, title, author, publisher,
             cover_url, description, charge_date, due_date,
-            renew_count, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            renew_count, is_read, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           record.charge_id,
@@ -55,6 +62,7 @@ export class BookRepository {
           record.charge_date,
           record.due_date,
           record.renew_count,
+          record.is_read ?? 0,
           now,
           now,
         )
@@ -62,6 +70,28 @@ export class BookRepository {
 
       console.log(`[BookRepository] Saved new book: ${record.title}`);
     }
+  }
+
+  /**
+   * Update the read status of a book
+   * @param id - Database ID of the book
+   * @param isRead - New read status
+   */
+  async updateReadStatus(id: number, isRead: boolean): Promise<void> {
+    const now = new Date().toISOString();
+    await this.db
+      .prepare(
+        `UPDATE books SET
+          is_read = ?,
+          updated_at = ?
+        WHERE id = ?`,
+      )
+      .bind(isRead ? 1 : 0, now, id)
+      .run();
+
+    console.log(
+      `[BookRepository] Updated read status for book ${id}: ${isRead}`,
+    );
   }
 
   /**
@@ -171,6 +201,7 @@ export function createBookRecord(
     charge_date: charge.chargeDate,
     due_date: charge.dueDate,
     renew_count: charge.renewCnt,
+    is_read: 0,
   };
 }
 

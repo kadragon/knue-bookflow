@@ -15,6 +15,7 @@ export interface BookRecord {
   charge_date: string;
   due_date: string;
   renew_count: number;
+  is_read: number;
   created_at?: string;
   updated_at?: string;
 }

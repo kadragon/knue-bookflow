@@ -38,6 +38,14 @@ export interface BookViewModel {
   loanState: LoanState;
   noteCount: number;
   noteState: NoteState;
+  isRead: boolean;
+}
+
+/**
+ * Update read status request body
+ */
+export interface UpdateReadStatusRequest {
+  isRead: boolean;
 }
 
 /**
