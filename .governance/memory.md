@@ -192,3 +192,6 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-11-23 (Cover refresh)
 - Refreshed sync logic to re-fetch Aladin metadata when a stored book has a missing cover_url. BookRepository updates now coalesce new cover/description values on update. Added tests for cover refresh and update bindings.
+
+### Session 2025-11-23 (Return sync)
+- Completed TASK-034 (SPEC-return-001): Added discharge_date column via migration 0006, fetched paginated charge histories, matched returns by charge_id with ISBN fallback, and updated sync summary to report marked-returned count. Returned books now emit loanState=returned with daysLeft=0 and dueStatus=ok so they drop from the active loan view while remaining queryable.

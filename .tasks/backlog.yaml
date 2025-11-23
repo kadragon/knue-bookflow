@@ -2,6 +2,29 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-034
+    title: "Mark returned books using charge histories"
+    description: |
+      Extend sync to fetch charge histories, match returned items by charge_id/ISBN,
+      store discharge_date in DB, and surface loanState=returned so returned books
+      drop out of the active loan list while remaining viewable in history.
+    priority: 1
+    spec_id: SPEC-return-001
+    status: done
+    test_refs:
+      - TEST-return-sync-001
+      - TEST-return-sync-002
+      - TEST-return-sync-003
+      - TEST-return-sync-004
+      - TEST-return-sync-005
+    acceptance_criteria:
+      - Sync fetches charge histories with pagination and auth
+      - Returned books matched by charge_id first, ISBN fallback
+      - Books updated with discharge_date and loanState returned
+      - Default on-loan list hides returned books; loanState filter can show them
+      - Sync summary reports how many books were marked returned
+    estimated_complexity: medium
+
   - task_id: TASK-031
     title: "Allow notes to expand book detail page height (no inner scroll)"
     description: |

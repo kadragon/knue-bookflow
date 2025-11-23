@@ -2,12 +2,14 @@
  * KNUE Library Pyxis API Client
  * Handles authentication, charges retrieval, and renewals
  *
- * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, SPEC-renewal-001
- *        task_id: TASK-002, TASK-003, TASK-004
+ * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, SPEC-renewal-001, SPEC-return-001
+ *        task_id: TASK-002, TASK-003, TASK-004, TASK-034
  */
 
 import type {
   Charge,
+  ChargeHistoriesResponse,
+  ChargeHistory,
   ChargesResponse,
   FetchOptions,
   LoginRequest,
@@ -116,6 +118,59 @@ export class LibraryClient {
       `[LibraryClient] Retrieved ${allCharges.length} charges (paginated)`,
     );
     return allCharges;
+  }
+
+  /**
+   * Get list of charge histories (returned books)
+   * @returns Array of charge history records
+   */
+  async getChargeHistories(): Promise<ChargeHistory[]> {
+    this.ensureAuthenticated();
+
+    const pageSize = 20;
+    let offset = 0;
+    let histories: ChargeHistory[] = [];
+
+    while (true) {
+      const response = await this.fetchWithResilience(
+        `${BASE_URL}/8/api/charge-histories?max=${pageSize}&offset=${offset}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        },
+      );
+
+      if (!response.ok) {
+        throw new LibraryApiError(
+          `Failed to fetch charge histories with status ${response.status}`,
+          response.status,
+        );
+      }
+
+      const data: ChargeHistoriesResponse = await response.json();
+
+      if (!data.success) {
+        throw new LibraryApiError(
+          `Failed to fetch charge histories: ${data.message}`,
+          400,
+          data.code,
+        );
+      }
+
+      histories = histories.concat(data.data.list);
+
+      const total = data.data.totalCount;
+      offset += pageSize;
+
+      if (histories.length >= total || data.data.list.length === 0) {
+        break;
+      }
+    }
+
+    console.log(
+      `[LibraryClient] Retrieved ${histories.length} charge histories (paginated)`,
+    );
+    return histories;
   }
 
   /**

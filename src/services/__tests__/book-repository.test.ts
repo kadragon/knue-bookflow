@@ -106,6 +106,7 @@ function createMockBookRecord(overrides: Partial<BookRecord> = {}): BookRecord {
     pub_date: overrides.pub_date ?? null,
     charge_date: overrides.charge_date ?? '2025-01-01',
     due_date: overrides.due_date ?? '2025-01-15',
+    discharge_date: overrides.discharge_date ?? null,
     renew_count: overrides.renew_count ?? 0,
     is_read: overrides.is_read ?? 0,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00Z',
@@ -207,12 +208,49 @@ describe('BookRepository', () => {
 
       expect(mockBindUpdate).toHaveBeenCalledWith(
         updatedRecord.due_date,
+        updatedRecord.discharge_date ?? null,
         updatedRecord.renew_count,
-        updatedRecord.is_read,
-        updatedRecord.cover_url,
-        updatedRecord.description,
+        updatedRecord.is_read ?? null,
+        updatedRecord.cover_url ?? null,
+        updatedRecord.description ?? null,
         expect.any(String),
         updatedRecord.charge_id,
+      );
+    });
+
+    it('should set discharge_date when book is returned', async () => {
+      const existingRecord = createMockBookRecord({
+        charge_id: '321',
+        discharge_date: null,
+      });
+
+      const returnedRecord = createMockBookRecord({
+        charge_id: '321',
+        discharge_date: '2025-09-16 00:00:00',
+      });
+
+      const mockBindSelect = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(existingRecord),
+      });
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce({ bind: mockBindSelect })
+        .mockReturnValueOnce({ bind: mockBindUpdate });
+
+      await repository.saveBook(returnedRecord);
+
+      expect(mockBindUpdate).toHaveBeenCalledWith(
+        returnedRecord.due_date,
+        returnedRecord.discharge_date,
+        returnedRecord.renew_count,
+        returnedRecord.is_read ?? null,
+        returnedRecord.cover_url ?? null,
+        returnedRecord.description ?? null,
+        expect.any(String),
+        returnedRecord.charge_id,
       );
     });
   });
@@ -453,6 +491,7 @@ describe('createBookRecord', () => {
       pub_date: null,
       charge_date: '2025-01-01',
       due_date: '2025-01-15',
+      discharge_date: null,
       renew_count: 0,
     });
   });

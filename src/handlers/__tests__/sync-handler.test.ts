@@ -6,8 +6,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AladinClient } from '../../services/aladin-client';
 import type { BookRepository } from '../../services/book-repository';
-import type { Charge } from '../../types';
-import { processCharge } from '../sync-handler';
+import type { Charge, ChargeHistory } from '../../types';
+import { processCharge, processChargeHistory } from '../sync-handler';
 
 function createMockCharge(overrides: Partial<Charge> = {}): Charge {
   const defaultBiblio = {
@@ -40,6 +40,38 @@ function createMockCharge(overrides: Partial<Charge> = {}): Charge {
     supplementNote: null,
     isRenewed: false,
     isRenewable: true,
+  };
+}
+
+function createMockChargeHistory(
+  overrides: Partial<ChargeHistory> = {},
+): ChargeHistory {
+  return {
+    id: overrides.id ?? 1,
+    barcode: overrides.barcode ?? '123456',
+    biblio: overrides.biblio ?? {
+      id: 1,
+      titleStatement: 'Test Book',
+      isbn: '9781234567890',
+      thumbnail: null,
+    },
+    chargeDate: overrides.chargeDate ?? '2025-01-01',
+    dueDate: overrides.dueDate ?? '2025-01-15',
+    dischargeDate: overrides.dischargeDate ?? '2025-01-20',
+    chargeType:
+      overrides.chargeType ??
+      ({
+        id: 1,
+        name: '일반대출',
+      } as ChargeHistory['chargeType']),
+    dischargeType:
+      overrides.dischargeType ??
+      ({
+        id: 1,
+        name: '정상반납',
+        code: 'RETURN',
+      } as ChargeHistory['dischargeType']),
+    supplementNote: overrides.supplementNote ?? null,
   };
 }
 
@@ -256,5 +288,132 @@ describe('processCharge', () => {
         description: mockAladinResponse.description,
       }),
     );
+  });
+});
+
+describe('processChargeHistory', () => {
+  it('marks book as returned using charge_id match', async () => {
+    const history = createMockChargeHistory({
+      id: 999,
+      dischargeDate: '2025-09-16 00:00:00',
+    });
+
+    const existingRecord = {
+      id: 10,
+      charge_id: String(history.id),
+      isbn: history.biblio.isbn,
+      isbn13: null,
+      title: history.biblio.titleStatement,
+      author: 'Author',
+      publisher: 'Publisher',
+      cover_url: 'https://existing-cover.jpg',
+      description: 'Existing desc',
+      pub_date: null,
+      charge_date: history.chargeDate,
+      due_date: history.dueDate,
+      discharge_date: null,
+      renew_count: 0,
+      is_read: 0,
+    };
+
+    const mockBookRepository = {
+      findByChargeId: vi.fn().mockResolvedValue(existingRecord),
+      findByIsbn: vi.fn(),
+      saveBook: vi.fn(),
+    } as unknown as BookRepository;
+
+    const status = await processChargeHistory(history, mockBookRepository);
+
+    expect(status).toBe('returned');
+    expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        charge_id: String(history.id),
+        discharge_date: '2025-09-16 00:00:00',
+      }),
+    );
+  });
+
+  it('falls back to ISBN match when charge_id is unknown', async () => {
+    const history = createMockChargeHistory({
+      id: 777,
+      dischargeDate: '2025-09-17 00:00:00',
+      biblio: {
+        id: 2,
+        titleStatement: 'No Charge Match',
+        isbn: '9780000000002',
+        thumbnail: null,
+      },
+    });
+
+    const existingRecord = {
+      id: 11,
+      charge_id: 'other',
+      isbn: '9780000000002',
+      isbn13: null,
+      title: 'No Charge Match',
+      author: 'Author',
+      publisher: 'Publisher',
+      cover_url: null,
+      description: null,
+      pub_date: null,
+      charge_date: history.chargeDate,
+      due_date: history.dueDate,
+      discharge_date: null,
+      renew_count: 0,
+      is_read: 0,
+    };
+
+    const mockBookRepository = {
+      findByChargeId: vi.fn().mockResolvedValue(null),
+      findByIsbn: vi.fn().mockResolvedValue([existingRecord]),
+      saveBook: vi.fn(),
+    } as unknown as BookRepository;
+
+    const status = await processChargeHistory(history, mockBookRepository);
+
+    expect(status).toBe('returned');
+    expect(mockBookRepository.findByIsbn).toHaveBeenCalledWith(
+      history.biblio.isbn,
+    );
+    expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discharge_date: '2025-09-17 00:00:00',
+      }),
+    );
+  });
+
+  it('ignores already returned books', async () => {
+    const history = createMockChargeHistory({
+      dischargeDate: '2025-09-18 00:00:00',
+    });
+
+    const existingRecord = {
+      id: 12,
+      charge_id: String(history.id),
+      isbn: history.biblio.isbn,
+      isbn13: null,
+      title: history.biblio.titleStatement,
+      author: 'Author',
+      publisher: 'Publisher',
+      cover_url: null,
+      description: null,
+      pub_date: null,
+      charge_date: history.chargeDate,
+      due_date: history.dueDate,
+      discharge_date: '2025-09-18 00:00:00',
+      renew_count: 0,
+      is_read: 0,
+    };
+
+    const mockBookRepository = {
+      findByChargeId: vi.fn().mockResolvedValue(existingRecord),
+      findByIsbn: vi.fn(),
+      saveBook: vi.fn(),
+    } as unknown as BookRepository;
+
+    const status = await processChargeHistory(history, mockBookRepository);
+
+    expect(status).toBe('unchanged');
+    expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
   });
 });

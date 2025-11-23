@@ -1,0 +1,50 @@
+spec_id: SPEC-return-001
+title: "Return Sync and Discharge Tracking"
+description: |
+  Detect books that have been returned at the library by fetching charge histories,
+  update local records with discharge dates, and expose returned status so the UI
+  no longer shows them in the active loan list.
+
+given_when_then:
+  - given: "A book exists in DB from a previous loan"
+    when: "Charge history for that charge shows a dischargeDate"
+    then: "The book record stores discharge_date and marks the loan as returned"
+
+  - given: "Charge history entries include both charge id and ISBN"
+    when: "Matching a returned book"
+    then: "Match by charge_id first, then by ISBN if charge_id is missing"
+
+  - given: "Returned books are included in API responses"
+    when: "GET /api/books is called"
+    then: "loanState is 'returned' and defaults filters hide them from on-loan view"
+
+  - given: "Sync runs"
+    when: "Charge histories contain multiple pages"
+    then: "Pagination is handled so all returned books are processed"
+
+  - given: "Sync completes"
+    when: "Summary is returned"
+    then: "Includes count of books newly marked as returned"
+
+acceptance_tests:
+  - id: TEST-return-sync-001
+    desc: "Fetch charge histories with pagination and auth"
+  - id: TEST-return-sync-002
+    desc: "Match returned books by charge_id first, then ISBN fallback"
+  - id: TEST-return-sync-003
+    desc: "Update book record with discharge_date and mark as returned"
+  - id: TEST-return-sync-004
+    desc: "Hide returned books from default on-loan listing while still retrievable via loanState filter"
+  - id: TEST-return-sync-005
+    desc: "Sync summary includes returned count"
+
+dependencies:
+  - spec: SPEC-sync-001
+  - spec: SPEC-storage-001
+  - service: library-client.ts
+  - service: book-repository.ts
+  - handler: sync-handler.ts
+  - handler: books-handler.ts
+
+linked_tasks:
+  - TASK-034

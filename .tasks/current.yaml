@@ -1,3 +1,8 @@
 # Current Task
 
-current_task: null
+current_task:
+  task_id: null
+  title: null
+  spec_id: null
+  status: idle
+  started_at: null

@@ -34,6 +34,7 @@ export interface BookViewModel {
   pubDate: string | null;
   chargeDate: string;
   dueDate: string;
+  dischargeDate: string | null;
   renewCount: number;
   daysLeft: number;
   dueStatus: DueStatus;

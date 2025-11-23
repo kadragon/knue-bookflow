@@ -263,6 +263,93 @@ describe('LibraryClient', () => {
     });
   });
 
+  describe('getChargeHistories', () => {
+    beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { accessToken: 'token', id: '1', name: 'User' },
+        }),
+        headers: new Headers({ 'set-cookie': 'session=abc' }),
+      });
+      await client.login({ loginId: 'user', password: 'pass' });
+      mockFetch.mockReset();
+    });
+
+    it('fetches charge histories with pagination', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              list: [
+                {
+                  id: 1,
+                  barcode: '123',
+                  biblio: {
+                    id: 1,
+                    titleStatement: 'Returned Book 1',
+                    isbn: '111',
+                    thumbnail: null,
+                  },
+                  chargeDate: '2025-07-01',
+                  dueDate: '2025-07-21',
+                  dischargeDate: '2025-07-15',
+                  chargeType: { id: 1, name: '일반대출' },
+                  dischargeType: { id: 1, name: '정상반납', code: 'RETURN' },
+                  supplementNote: null,
+                },
+              ],
+              totalCount: 2,
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              list: [
+                {
+                  id: 2,
+                  barcode: '124',
+                  biblio: {
+                    id: 2,
+                    titleStatement: 'Returned Book 2',
+                    isbn: '222',
+                    thumbnail: null,
+                  },
+                  chargeDate: '2025-07-05',
+                  dueDate: '2025-07-25',
+                  dischargeDate: '2025-07-20',
+                  chargeType: { id: 1, name: '일반대출' },
+                  dischargeType: { id: 1, name: '정상반납', code: 'RETURN' },
+                  supplementNote: null,
+                },
+              ],
+              totalCount: 2,
+            },
+          }),
+        });
+
+      const histories = await client.getChargeHistories();
+
+      expect(histories).toHaveLength(2);
+      expect(histories[0].dischargeDate).toBe('2025-07-15');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://lib.knue.ac.kr/pyxis-api/8/api/charge-histories?max=20&offset=0',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'pyxis-auth-token': 'token',
+          }),
+        }),
+      );
+    });
+  });
+
   describe('renewCharge', () => {
     beforeEach(async () => {
       // Login first
