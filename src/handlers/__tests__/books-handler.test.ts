@@ -123,7 +123,7 @@ describe('handleBooksApi', () => {
     } as const;
 
     const fakeNoteRepo = {
-      countByBookId: async () => 0,
+      countNotesForBookIds: async () => new Map<number, number>(),
     } as const;
 
     const env: Env = {
@@ -170,7 +170,7 @@ describe('handleBooksApi', () => {
     } as const;
 
     const fakeNoteRepo = {
-      countByBookId: async () => 3,
+      countNotesForBookIds: async () => new Map<number, number>([[1, 3]]),
     } as const;
 
     const env: Env = {

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   type ApiResponse,
   createNote,
@@ -244,6 +244,56 @@ function EmptyState() {
   );
 }
 
+// Confirm Dialog Component
+interface ConfirmDialogProps {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div
+      className="confirm-backdrop"
+      onClick={onCancel}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-message"
+      tabIndex={-1}
+    >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: Inner dialog container needs to stop event propagation */}
+      <div
+        className="confirm-dialog"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <p id="confirm-message" className="confirm-message">
+          {message}
+        </p>
+        <div className="confirm-actions">
+          <button type="button" className="btn-secondary" onClick={onCancel}>
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn-primary btn-danger"
+            onClick={onConfirm}
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Note Modal Component
 interface NoteModalProps {
   book: BookItem;
@@ -252,82 +302,104 @@ interface NoteModalProps {
 }
 
 function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
-  const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [formData, setFormData] = useState({ pageNumber: '', content: '' });
-  const [isSaving, setIsSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  // Load notes
-  const loadNotes = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await getNotes(book.dbId);
-      setNotes(response.notes);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : '노트를 불러오지 못했습니다.',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [book.dbId]);
+  // Fetch notes using react-query
+  const {
+    data: notesData,
+    isLoading,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ['notes', book.dbId],
+    queryFn: () => getNotes(book.dbId),
+  });
 
-  useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+  const notes = notesData?.notes || [];
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.pageNumber || !formData.content.trim()) return;
+  // Create note mutation
+  const createMutation = useMutation({
+    mutationFn: (data: { page_number: number; content: string }) =>
+      createNote(book.dbId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      onNotesChanged();
+      setFormData({ pageNumber: '', content: '' });
+      setIsFormOpen(false);
+    },
+  });
 
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      if (editingNote) {
-        await updateNote(editingNote.id, {
-          page_number: parseInt(formData.pageNumber, 10),
-          content: formData.content.trim(),
-        });
-      } else {
-        await createNote(book.dbId, {
-          page_number: parseInt(formData.pageNumber, 10),
-          content: formData.content.trim(),
-        });
-      }
-
+  // Update note mutation
+  const updateMutation = useMutation({
+    mutationFn: ({
+      noteId,
+      data,
+    }: {
+      noteId: number;
+      data: { page_number: number; content: string };
+    }) => updateNote(noteId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      onNotesChanged();
       setFormData({ pageNumber: '', content: '' });
       setIsFormOpen(false);
       setEditingNote(null);
-      await loadNotes();
+    },
+  });
+
+  // Delete note mutation
+  const deleteMutation = useMutation({
+    mutationFn: (noteId: number) => deleteNote(noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
       onNotesChanged();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : '노트 저장에 실패했습니다.',
-      );
-    } finally {
-      setIsSaving(false);
+      setDeleteConfirm(null);
+    },
+  });
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const error =
+    fetchError ||
+    createMutation.error ||
+    updateMutation.error ||
+    deleteMutation.error;
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.pageNumber || !formData.content.trim()) return;
+
+    const data = {
+      page_number: parseInt(formData.pageNumber, 10),
+      content: formData.content.trim(),
+    };
+
+    if (editingNote) {
+      updateMutation.mutate({ noteId: editingNote.id, data });
+    } else {
+      createMutation.mutate(data);
     }
   };
 
-  // Handle delete
-  const handleDelete = async (noteId: number) => {
-    if (!confirm('이 노트를 삭제하시겠습니까?')) return;
+  // Handle delete confirmation
+  const handleDeleteClick = (noteId: number) => {
+    setDeleteConfirm(noteId);
+  };
 
-    try {
-      await deleteNote(noteId);
-      await loadNotes();
-      onNotesChanged();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : '노트 삭제에 실패했습니다.',
-      );
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm !== null) {
+      deleteMutation.mutate(deleteConfirm);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
   };
 
   // Handle edit
@@ -361,126 +433,153 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   };
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: Modal backdrop with click-to-close is a common UI pattern
-    <div
-      className="modal-backdrop"
-      onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="modal">
-        <div className="modal-header">
-          <h2 className="modal-title">{book.title}</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            &times;
-          </button>
-        </div>
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: Modal backdrop with click-to-close is a common UI pattern */}
+      <div
+        className="modal-backdrop"
+        onClick={handleBackdropClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="modal">
+          <div className="modal-header">
+            <h2 className="modal-title">{book.title}</h2>
+            <button type="button" className="modal-close" onClick={onClose}>
+              &times;
+            </button>
+          </div>
 
-        <div className="modal-content">
-          {error && <div className="modal-error">{error}</div>}
+          <div className="modal-content">
+            {error && (
+              <div className="modal-error">
+                {error instanceof Error
+                  ? error.message
+                  : '오류가 발생했습니다.'}
+              </div>
+            )}
 
-          {isLoading ? (
-            <p className="muted">노트를 불러오는 중...</p>
-          ) : (
-            <>
-              {/* Note list */}
-              {notes.length === 0 ? (
-                <div className="notes-empty">
-                  <p>아직 작성된 노트가 없습니다.</p>
-                </div>
-              ) : (
-                <div className="notes-list">
-                  {notes.map((note) => (
-                    <div key={note.id} className="note-item">
-                      <div className="note-header">
-                        <span className="note-page">p. {note.pageNumber}</span>
-                        <div className="note-actions">
-                          <button
-                            type="button"
-                            className="note-action-btn"
-                            onClick={() => handleEdit(note)}
-                          >
-                            수정
-                          </button>
-                          <button
-                            type="button"
-                            className="note-action-btn note-action-delete"
-                            onClick={() => handleDelete(note.id)}
-                          >
-                            삭제
-                          </button>
+            {isLoading ? (
+              <p className="muted">노트를 불러오는 중...</p>
+            ) : (
+              <>
+                {/* Note list */}
+                {notes.length === 0 ? (
+                  <div className="notes-empty">
+                    <p>아직 작성된 노트가 없습니다.</p>
+                  </div>
+                ) : (
+                  <div className="notes-list">
+                    {notes.map((note) => (
+                      <div key={note.id} className="note-item">
+                        <div className="note-header">
+                          <span className="note-page">
+                            p. {note.pageNumber}
+                          </span>
+                          <div className="note-actions">
+                            <button
+                              type="button"
+                              className="note-action-btn"
+                              onClick={() => handleEdit(note)}
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              className="note-action-btn note-action-delete"
+                              onClick={() => handleDeleteClick(note.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </div>
+                        <blockquote className="note-content">
+                          {note.content}
+                        </blockquote>
                       </div>
-                      <blockquote className="note-content">
-                        {note.content}
-                      </blockquote>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              {/* Add/Edit form */}
-              {isFormOpen ? (
-                <form className="note-form" onSubmit={handleSubmit}>
-                  <div className="form-group">
-                    <label htmlFor="pageNumber">페이지</label>
-                    <input
-                      id="pageNumber"
-                      type="number"
-                      className="input"
-                      min={1}
-                      value={formData.pageNumber}
-                      onChange={(e) =>
-                        setFormData({ ...formData, pageNumber: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="content">내용</label>
-                    <textarea
-                      id="content"
-                      className="input textarea"
-                      rows={4}
-                      value={formData.content}
-                      onChange={(e) =>
-                        setFormData({ ...formData, content: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-actions">
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={handleCancel}
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn-primary"
-                      disabled={isSaving}
-                    >
-                      {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-add-note"
-                  onClick={() => setIsFormOpen(true)}
-                >
-                  + 노트 추가
-                </button>
-              )}
-            </>
-          )}
+                {/* Add/Edit form */}
+                {isFormOpen ? (
+                  <form className="note-form" onSubmit={handleSubmit}>
+                    <div className="form-group">
+                      <label htmlFor="pageNumber">페이지</label>
+                      <input
+                        id="pageNumber"
+                        type="number"
+                        className="input"
+                        min={1}
+                        value={formData.pageNumber}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pageNumber: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="content">내용</label>
+                      <textarea
+                        id="content"
+                        className="input textarea"
+                        rows={4}
+                        value={formData.content}
+                        onChange={(e) =>
+                          setFormData({ ...formData, content: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={handleCancel}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={isSaving}
+                      >
+                        {isSaving
+                          ? '저장 중...'
+                          : editingNote
+                            ? '수정'
+                            : '추가'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-add-note"
+                    onClick={() => setIsFormOpen(true)}
+                  >
+                    + 노트 추가
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirm !== null && (
+        <ConfirmDialog
+          message="이 노트를 삭제하시겠습니까?"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+        />
+      )}
+    </>
   );
 }
 

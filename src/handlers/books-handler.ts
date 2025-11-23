@@ -86,7 +86,10 @@ export function sortBooksByChargeDate(records: BookRecord[]): BookRecord[] {
 }
 
 type BookRepo = Pick<ReturnType<typeof createBookRepository>, 'findAll'>;
-type NoteRepo = Pick<ReturnType<typeof createNoteRepository>, 'countByBookId'>;
+type NoteRepo = Pick<
+  ReturnType<typeof createNoteRepository>,
+  'countNotesForBookIds'
+>;
 
 export async function handleBooksApi(
   env: Env,
@@ -96,13 +99,16 @@ export async function handleBooksApi(
   const records = await bookRepo.findAll();
   const sorted = sortBooksByChargeDate(records);
 
-  // Fetch note counts for all books
-  const viewPromises = sorted.map(async (record) => {
-    const noteCount = record.id ? await noteRepo.countByBookId(record.id) : 0;
+  // Fetch all note counts in a single query to avoid N+1 problem
+  const bookIds = sorted
+    .map((r) => r.id)
+    .filter((id): id is number => id !== undefined);
+  const noteCounts = await noteRepo.countNotesForBookIds(bookIds);
+
+  const view = sorted.map((record) => {
+    const noteCount = record.id ? noteCounts.get(record.id) || 0 : 0;
     return deriveBookViewModel(record, noteCount);
   });
-
-  const view = await Promise.all(viewPromises);
 
   return new Response(JSON.stringify({ items: view }), {
     headers: { 'Content-Type': 'application/json' },

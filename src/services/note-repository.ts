@@ -138,6 +138,39 @@ export class NoteRepository {
 
     return result?.count || 0;
   }
+
+  /**
+   * Count notes for multiple books in a single query
+   * @param bookIds - Array of book IDs
+   * @returns Map of book ID to note count
+   */
+  async countNotesForBookIds(bookIds: number[]): Promise<Map<number, number>> {
+    const counts = new Map<number, number>();
+
+    if (bookIds.length === 0) {
+      return counts;
+    }
+
+    // Build placeholders for IN clause
+    const placeholders = bookIds.map(() => '?').join(', ');
+    const query = `
+      SELECT book_id, COUNT(*) as count
+      FROM notes
+      WHERE book_id IN (${placeholders})
+      GROUP BY book_id
+    `;
+
+    const result = await this.db
+      .prepare(query)
+      .bind(...bookIds)
+      .all<{ book_id: number; count: number }>();
+
+    for (const row of result.results) {
+      counts.set(row.book_id, row.count);
+    }
+
+    return counts;
+  }
 }
 
 /**

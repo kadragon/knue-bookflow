@@ -40,9 +40,7 @@ export async function handleGetNotes(
   const bookRepository = createBookRepository(env.DB);
 
   // Check if book exists by looking up via database id
-  // Note: bookId here is the database id, not charge_id
-  const allBooks = await bookRepository.findAll();
-  const book = allBooks.find((b) => b.id === bookId);
+  const book = await bookRepository.findById(bookId);
 
   if (!book) {
     return new Response(JSON.stringify({ error: 'Book not found' }), {
@@ -103,8 +101,7 @@ export async function handleCreateNote(
   const bookRepository = createBookRepository(env.DB);
 
   // Check if book exists
-  const allBooks = await bookRepository.findAll();
-  const book = allBooks.find((b) => b.id === bookId);
+  const book = await bookRepository.findById(bookId);
 
   if (!book) {
     return new Response(JSON.stringify({ error: 'Book not found' }), {
