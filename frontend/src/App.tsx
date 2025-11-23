@@ -667,32 +667,40 @@ function ShelfStats({
     return { onLoan, incomplete, completed, total: books.length };
   }, [books]);
 
-  const cards: Array<{
-    key: StatFilter;
-    label: string;
-    value: number;
-    color?: string;
-  }> = [
-    {
-      key: 'on_loan',
-      label: '대여중',
-      value: stats.onLoan,
-      color: 'primary.main',
-    },
-    {
-      key: 'incomplete',
-      label: '미완료',
-      value: stats.incomplete,
-      color: 'warning.main',
-    },
-    {
-      key: 'completed',
-      label: '완료',
-      value: stats.completed,
-      color: 'success.main',
-    },
-    { key: 'none', label: '총', value: stats.total },
-  ];
+  const cards = useMemo(
+    () => [
+      {
+        key: 'on_loan' as StatFilter,
+        label: '대여중',
+        value: stats.onLoan,
+        color: 'primary.main',
+      },
+      {
+        key: 'incomplete' as StatFilter,
+        label: '미완료',
+        value: stats.incomplete,
+        color: 'warning.main',
+      },
+      {
+        key: 'completed' as StatFilter,
+        label: '완료',
+        value: stats.completed,
+        color: 'success.main',
+      },
+      { key: 'none' as StatFilter, label: '총', value: stats.total },
+    ],
+    [stats],
+  );
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLDivElement>,
+    stat: StatFilter,
+  ) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect(stat);
+    }
+  };
 
   return (
     <Box
@@ -709,6 +717,7 @@ function ShelfStats({
           <Paper
             key={card.key}
             variant="outlined"
+            tabIndex={0}
             sx={{
               p: 2,
               textAlign: 'center',
@@ -716,8 +725,18 @@ function ShelfStats({
               boxShadow: isActive ? 2 : 0,
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: 'primary.light',
+                backgroundColor: 'action.hover',
+              },
+              '&:focus-visible': {
+                outline: '2px solid',
+                outlineColor: 'primary.main',
+                outlineOffset: 2,
+              },
             }}
             onClick={() => onSelect(card.key)}
+            onKeyDown={(e) => handleKeyDown(e, card.key)}
             role="button"
             aria-pressed={isActive}
           >
@@ -763,19 +782,14 @@ export default function App() {
   const handleStatSelect = (stat: StatFilter) => {
     setFilters((prev) => {
       if (stat === 'none') {
+        // The '총' (Total) card resets both stat and loanState filters.
         return { ...prev, stat: 'none', loanState: 'all' };
       }
 
-      const isSame = prev.stat === stat;
-      const nextStat = isSame ? 'none' : stat;
+      // Toggle the stat filter. If it's the same, turn it off.
+      const nextStat = prev.stat === stat ? 'none' : stat;
 
-      const nextLoanState = stat === 'on_loan' ? 'on_loan' : 'all';
-
-      return {
-        ...prev,
-        stat: nextStat,
-        loanState: nextStat === 'none' ? prev.loanState : nextLoanState,
-      };
+      return { ...prev, stat: nextStat };
     });
   };
 

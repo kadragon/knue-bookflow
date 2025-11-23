@@ -39,11 +39,15 @@ export function filterBooks<T extends BookListItem>(
       return false;
     }
 
-    if (filters.loanState !== 'all' && book.loanState !== filters.loanState) {
-      return false;
-    }
-
-    if (filters.stat === 'on_loan' && book.loanState !== 'on_loan') {
+    // Stat filter for on_loan takes precedence over loanState dropdown
+    if (filters.stat === 'on_loan') {
+      if (book.loanState !== 'on_loan') {
+        return false;
+      }
+    } else if (
+      filters.loanState !== 'all' &&
+      book.loanState !== filters.loanState
+    ) {
       return false;
     }
 
