@@ -247,15 +247,40 @@ async function handleScheduledTask(
     for (const charge of existingBooks) {
       const existing = await bookRepository.findByChargeId(String(charge.id));
       if (existing) {
-        // Update only if there are changes
-        if (
+        const needsMetadataRefresh = existing.cover_url === null;
+        const needsChargeUpdate =
           existing.due_date !== charge.dueDate ||
-          existing.renew_count !== charge.renewCnt
-        ) {
-          const record = createBookRecord(charge);
-          record.publisher = existing.publisher;
-          record.cover_url = existing.cover_url;
-          record.description = existing.description;
+          existing.renew_count !== charge.renewCnt;
+
+        if (needsMetadataRefresh || needsChargeUpdate) {
+          let bookInfo = null;
+
+          // Fetch from Aladin if metadata is missing
+          if (needsMetadataRefresh && charge.biblio.isbn) {
+            console.log(
+              `[BookFlow] Refreshing metadata for: ${charge.biblio.titleStatement}`,
+            );
+            try {
+              bookInfo = await aladinClient.lookupByIsbn(charge.biblio.isbn);
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : 'Unknown error';
+              console.error(
+                `[BookFlow] Aladin lookup failed for ${charge.biblio.isbn}: ${message}`,
+              );
+              // Continue with existing metadata
+            }
+          }
+
+          const record = createBookRecord(charge, bookInfo);
+
+          // Preserve existing metadata when Aladin lookup was not attempted or failed
+          if (!bookInfo) {
+            record.publisher = existing.publisher;
+            record.cover_url = existing.cover_url;
+            record.description = existing.description;
+          }
+
           await bookRepository.saveBook(record);
         }
       }
