@@ -44,6 +44,11 @@ const STATUS_BG: Record<DueStatus, string> = {
   ok: 'badge-green',
 };
 
+// Format date string to YYYY-MM-DD
+function formatDate(dateStr: string): string {
+  return dateStr.split(' ')[0];
+}
+
 function useBooks() {
   return useQuery<ApiResponse>({
     queryKey: ['books'],
@@ -169,11 +174,6 @@ function FilterBar({
 }
 
 function BookCard({ book }: { book: BookItem }) {
-  // Format date to YYYY-MM-DD
-  const formatDate = (dateStr: string) => {
-    return dateStr.split(' ')[0];
-  };
-
   return (
     <article className="card card-vertical">
       <div className="cover-frame">
