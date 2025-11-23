@@ -7,7 +7,6 @@ import {
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
   Refresh as RefreshIcon,
-  Sync as SyncIcon,
 } from '@mui/icons-material';
 import {
   Alert,
@@ -47,8 +46,6 @@ import {
   getBooks,
   getNotes,
   type NoteItem,
-  type SyncResponse,
-  syncBooks,
   triggerWorkflow,
   updateNote,
   updateReadStatus,
@@ -846,24 +843,6 @@ function BookshelfPage() {
     },
   });
 
-  const syncMutation = useMutation({
-    mutationFn: syncBooks,
-    onSuccess: (result: SyncResponse) => {
-      const { added, updated, unchanged } = result.summary;
-      setNotification({
-        type: 'success',
-        message: `동기화 완료: ${added}개 추가, ${updated}개 업데이트, ${unchanged}개 변경없음`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-    },
-    onError: (error: Error) => {
-      setNotification({
-        type: 'error',
-        message: error.message || '동기화에 실패했습니다.',
-      });
-    },
-  });
-
   // Clear notification after 5 seconds
   useEffect(() => {
     if (notification) {
@@ -906,22 +885,13 @@ function BookshelfPage() {
             </Box>
             <Stack direction="row" spacing={1}>
               <Button
-                variant="outlined"
-                startIcon={<SyncIcon />}
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                color="inherit"
-              >
-                동기화
-              </Button>
-              <Button
                 variant="contained"
                 startIcon={<PlayArrowIcon />}
                 onClick={() => triggerMutation.mutate()}
                 disabled={triggerMutation.isPending}
                 color="primary"
               >
-                갱신 실행
+                갱신
               </Button>
               <IconButton
                 onClick={() => refetch()}
