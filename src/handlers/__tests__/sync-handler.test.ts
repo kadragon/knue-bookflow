@@ -68,7 +68,7 @@ const mockAladinResponse = {
 };
 
 describe('processCharge', () => {
-  it('returns unchanged when existing book has same due_date and renew_count', async () => {
+  it('recovers metadata when existing record has no cover_url', async () => {
     const charge = createMockCharge();
 
     const mockBookRepository = createMockBookRepository({
@@ -80,6 +80,43 @@ describe('processCharge', () => {
       publisher: 'Publisher',
       cover_url: null,
       description: null,
+      charge_date: charge.chargeDate,
+      due_date: charge.dueDate,
+      renew_count: charge.renewCnt,
+      is_read: 0,
+    });
+
+    const mockAladinClient = createMockAladinClient(mockAladinResponse);
+
+    const status = await processCharge(
+      charge,
+      mockBookRepository,
+      mockAladinClient,
+    );
+
+    expect(status).toBe('updated');
+    expect(mockAladinClient.lookupByIsbn).toHaveBeenCalledWith(
+      charge.biblio.isbn,
+    );
+    expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cover_url: 'https://covers.aladin.co.kr/Big/9781234567890.jpg',
+      }),
+    );
+  });
+
+  it('skips Aladin lookup when cover already exists', async () => {
+    const charge = createMockCharge();
+
+    const mockBookRepository = createMockBookRepository({
+      id: 10,
+      charge_id: String(charge.id),
+      isbn: charge.biblio.isbn,
+      title: charge.biblio.titleStatement,
+      author: 'Author',
+      publisher: 'Publisher',
+      cover_url: 'https://existing-cover.jpg',
+      description: 'Existing desc',
       charge_date: charge.chargeDate,
       due_date: charge.dueDate,
       renew_count: charge.renewCnt,
@@ -130,8 +167,8 @@ describe('processCharge', () => {
     expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 
-  it('updates when renew_count changes', async () => {
-    const charge = createMockCharge({ renewCnt: 1 });
+  it('returns unchanged when Aladin returns null for metadata recovery', async () => {
+    const charge = createMockCharge();
 
     const mockBookRepository = createMockBookRepository({
       id: 10,
@@ -144,11 +181,11 @@ describe('processCharge', () => {
       description: null,
       charge_date: charge.chargeDate,
       due_date: charge.dueDate,
-      renew_count: 0,
+      renew_count: charge.renewCnt,
       is_read: 0,
     });
 
-    const mockAladinClient = createMockAladinClient(mockAladinResponse);
+    const mockAladinClient = createMockAladinClient(null);
 
     const status = await processCharge(
       charge,
@@ -156,9 +193,9 @@ describe('processCharge', () => {
       mockAladinClient,
     );
 
-    expect(status).toBe('updated');
-    expect(mockAladinClient.lookupByIsbn).not.toHaveBeenCalled();
-    expect(mockBookRepository.saveBook).toHaveBeenCalled();
+    expect(status).toBe('unchanged');
+    expect(mockAladinClient.lookupByIsbn).toHaveBeenCalled();
+    expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
   });
 
   it('skips Aladin lookup when book has no ISBN', async () => {

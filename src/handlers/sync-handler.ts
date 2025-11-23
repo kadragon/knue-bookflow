@@ -164,15 +164,29 @@ export async function processCharge(
     return 'added';
   }
 
-  // Book exists - check if update needed (due_date or renew_count changed)
+  // Check if metadata recovery is needed (cover_url is null)
+  const needsMetadataRecovery = !existing.cover_url;
+  let bookInfo: BookInfo | null = null;
+
+  if (needsMetadataRecovery) {
+    console.log(
+      `[SyncHandler] Metadata missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
+    );
+    bookInfo = await fetchBookInfo(isbn, aladinClient, 'metadata recovery');
+  }
+
+  const metadataRecovered = needsMetadataRecovery && !!bookInfo?.coverUrl;
+
+  // Book exists - check if update needed
   const needsUpdate =
+    metadataRecovered ||
     existing.due_date !== charge.dueDate ||
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
-    const record = createBookRecord(charge);
+    const record = createBookRecord(charge, bookInfo || undefined);
     await bookRepository.saveBook(record);
     return 'updated';
   }
