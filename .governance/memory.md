@@ -164,3 +164,22 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   introduced stat-based filtering in filterBooks, and set the initial loan-state filter to '대출 중' via shared defaultFilters.
   Tests: `npm test -- filterBooks` (stat filters + default preset).
   Pattern: keep shared defaults exported so acceptance requirements stay testable and in sync with UI state.
+
+### Session 2025-11-23 (Book Detail Page)
+- Completed TASK-030 (SPEC-book-detail-001): Created dedicated book detail page with two-column layout
+  - Added React Router (react-router-dom) for client-side navigation
+  - Created GET /api/books/:id endpoint returning single book with notes
+  - Implemented BookDetailPage component with:
+    - Left panel: Book info (cover, title, author, publisher, description, dates, status chips)
+    - Right panel: Notes list with full CRUD (add/edit/delete)
+    - Completion toggle (완독) button
+    - Back navigation to bookshelf
+  - Added handleGetBook in books-handler.ts using findById and findByBookId
+  - Refactored App.tsx: BookshelfPage component with Routes wrapper
+  - Clickable book covers and titles navigate to /books/:id
+  - Responsive layout: single column on mobile, two columns on desktop
+  - All 83 tests passing, lint clean
+  - Key patterns:
+    - Shared NoteItem type between App and BookDetailPage
+    - React Query cache invalidation for books and book detail queries
+    - dbId (database ID) used for routing and API calls

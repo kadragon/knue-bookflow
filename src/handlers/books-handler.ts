@@ -149,3 +149,67 @@ export async function handleUpdateReadStatus(
     return new Response('Internal Server Error', { status: 500 });
   }
 }
+
+/**
+ * Get a single book by ID with notes
+ * Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+ */
+type FullBookRepo = Pick<
+  ReturnType<typeof createBookRepository>,
+  'findById' | 'updateReadStatus'
+>;
+type FullNoteRepo = Pick<
+  ReturnType<typeof createNoteRepository>,
+  'countNotesForBookIds' | 'findByBookId'
+>;
+
+export async function handleGetBook(
+  env: Env,
+  bookId: number,
+  bookRepo: FullBookRepo = createBookRepository(env.DB),
+  noteRepo: FullNoteRepo = createNoteRepository(env.DB),
+): Promise<Response> {
+  try {
+    const record = await bookRepo.findById(bookId);
+
+    if (!record) {
+      return new Response(JSON.stringify({ error: 'Book not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get note count
+    const noteCounts = await noteRepo.countNotesForBookIds([bookId]);
+    const noteCount = noteCounts.get(bookId) || 0;
+
+    // Get notes
+    const notes = await noteRepo.findByBookId(bookId);
+    const notesView = notes.map((note) => ({
+      id: note.id ?? 0,
+      bookId: note.book_id,
+      pageNumber: note.page_number,
+      content: note.content,
+      createdAt: note.created_at ?? '',
+      updatedAt: note.updated_at ?? '',
+    }));
+
+    const bookView = deriveBookViewModel(record, noteCount);
+
+    return new Response(
+      JSON.stringify({
+        book: bookView,
+        notes: notesView,
+      }),
+      {
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  } catch (error) {
+    console.error(`[BooksHandler] Failed to get book: ${error}`);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}

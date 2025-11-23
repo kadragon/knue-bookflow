@@ -33,6 +33,25 @@ export const getBooks = async (): Promise<ApiResponse> => {
   return res.json();
 };
 
+// Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+export interface BookDetailResponse {
+  book: BookItem;
+  notes: NoteItem[];
+}
+
+export const getBook = async (bookId: number): Promise<BookDetailResponse> => {
+  const res = await fetch(`/api/books/${bookId}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to load book');
+  }
+  return res.json();
+};
+
+export type { BookItem };
+
 export const updateReadStatus = async (
   bookId: number,
   isRead: boolean,
