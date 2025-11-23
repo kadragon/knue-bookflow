@@ -51,21 +51,30 @@ function createMockCharge(
 ): Charge {
   return {
     id: overrides.id ?? 1,
-    renewCnt: overrides.renewCnt ?? 0,
+    barcode: '123456',
+    biblio: {
+      id: 1,
+      titleStatement: overrides.title ?? 'Test Book',
+      isbn: overrides.isbn ?? '9781234567890',
+      thumbnail: null,
+    },
+    branch: {
+      id: 1,
+      name: 'Test Library',
+      alias: 'Test',
+      libraryCode: '123456',
+      sortOrder: 1,
+    },
+    callNo: '000.00',
     chargeDate: overrides.chargeDate ?? '2025-01-01',
     dueDate: overrides.dueDate ?? '2025-01-15',
-    volume: {
-      id: 1,
-      barcode: '123456',
-      shelfLocCode: 'A1',
-      callNo: '000.00',
-      bib: {
-        id: 1,
-        title: overrides.title ?? 'Test Book',
-        author: overrides.author ?? 'Test Author',
-        isbn: overrides.isbn ?? '9781234567890',
-      },
-    },
+    overdueDays: 0,
+    renewCnt: overrides.renewCnt ?? 0,
+    holdCnt: 0,
+    isMediaCharge: false,
+    supplementNote: null,
+    isRenewed: false,
+    isRenewable: true,
   };
 }
 
@@ -379,7 +388,6 @@ describe('createBookRecord', () => {
     const charge = createMockCharge({
       id: 123,
       title: 'Library Book',
-      author: 'Some Author',
       isbn: '9780123456789',
       chargeDate: '2025-01-01',
       dueDate: '2025-01-15',
@@ -392,7 +400,7 @@ describe('createBookRecord', () => {
       charge_id: '123',
       isbn: '9780123456789',
       title: 'Library Book',
-      author: 'Some Author',
+      author: '', // API doesn't provide author
       publisher: null,
       cover_url: null,
       description: null,
@@ -431,13 +439,12 @@ describe('createBookRecord', () => {
     const charge = createMockCharge({
       id: 789,
       title: 'Fallback Title',
-      author: 'Fallback Author',
     });
 
     const record = createBookRecord(charge, null);
 
     expect(record.title).toBe('Fallback Title');
-    expect(record.author).toBe('Fallback Author');
+    expect(record.author).toBe(''); // API doesn't provide author
     expect(record.publisher).toBeNull();
   });
 

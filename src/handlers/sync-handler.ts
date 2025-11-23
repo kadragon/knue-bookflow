@@ -128,9 +128,11 @@ async function processCharge(
 
   if (!existing) {
     // Book not in DB - add with Aladin metadata
-    console.log(`[SyncHandler] New book found: ${charge.volume.bib.title}`);
+    console.log(
+      `[SyncHandler] New book found: ${charge.biblio.titleStatement}`,
+    );
 
-    const isbn = charge.volume.bib.isbn;
+    const isbn = charge.biblio.isbn;
     let bookInfo = null;
 
     if (isbn) {
@@ -149,7 +151,7 @@ async function processCharge(
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
-    console.log(`[SyncHandler] Updating book: ${charge.volume.bib.title}`);
+    console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
     const record = createBookRecord(charge);
     await bookRepository.saveBook(record);

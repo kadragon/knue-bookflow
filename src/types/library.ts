@@ -40,21 +40,30 @@ export interface SessionData {
 
 export interface Charge {
   id: number;
-  renewCnt: number;
+  barcode: string;
+  biblio: {
+    id: number;
+    titleStatement: string;
+    isbn: string;
+    thumbnail: string | null;
+  };
+  branch: {
+    id: number;
+    name: string;
+    alias: string;
+    libraryCode: string;
+    sortOrder: number;
+  };
+  callNo: string;
   chargeDate: string;
   dueDate: string;
-  volume: {
-    id: number;
-    barcode: string;
-    shelfLocCode: string;
-    callNo: string;
-    bib: {
-      id: number;
-      title: string;
-      author: string;
-      isbn: string;
-    };
-  };
+  overdueDays: number;
+  renewCnt: number;
+  holdCnt: number;
+  isMediaCharge: boolean;
+  supplementNote: string | null;
+  isRenewed: boolean;
+  isRenewable: boolean;
 }
 
 export interface ChargesResponse {

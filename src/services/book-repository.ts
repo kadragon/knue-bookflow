@@ -149,9 +149,9 @@ export function createBookRecord(
 ): BookRecord {
   return {
     charge_id: String(charge.id),
-    isbn: charge.volume.bib.isbn || bookInfo?.isbn || '',
-    title: bookInfo?.title || charge.volume.bib.title,
-    author: bookInfo?.author || charge.volume.bib.author || '',
+    isbn: charge.biblio.isbn || bookInfo?.isbn || '',
+    title: bookInfo?.title || charge.biblio.titleStatement,
+    author: bookInfo?.author || '',
     publisher: bookInfo?.publisher || null,
     cover_url: bookInfo?.coverUrl || null,
     description: bookInfo?.description || null,
