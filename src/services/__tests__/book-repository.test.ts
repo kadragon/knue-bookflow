@@ -106,6 +106,7 @@ function createMockBookRecord(overrides: Partial<BookRecord> = {}): BookRecord {
     charge_date: overrides.charge_date ?? '2025-01-01',
     due_date: overrides.due_date ?? '2025-01-15',
     renew_count: overrides.renew_count ?? 0,
+    is_read: overrides.is_read ?? 0,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00Z',
     updated_at: overrides.updated_at ?? '2025-01-01T00:00:00Z',
   };

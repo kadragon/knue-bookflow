@@ -3,7 +3,7 @@ import type { BookRecord, Env } from '../../types';
 import {
   deriveBookViewModel,
   handleBooksApi,
-  sortBooksByChargeDate,
+  sortBooks,
 } from '../books-handler';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
@@ -21,6 +21,7 @@ describe('deriveBookViewModel', () => {
     charge_date: '2025-11-20',
     due_date: '2025-11-25',
     renew_count: 1,
+    is_read: 0,
   };
 
   it('flags overdue when due date is in the past (KST aware)', () => {
@@ -53,7 +54,7 @@ describe('deriveBookViewModel', () => {
   });
 });
 
-describe('sortBooksByChargeDate', () => {
+describe('sortBooks', () => {
   const records: BookRecord[] = [
     {
       charge_id: '1',
@@ -66,6 +67,7 @@ describe('sortBooksByChargeDate', () => {
       charge_date: '2025-10-01',
       due_date: '2025-10-10',
       renew_count: 0,
+      is_read: 0,
     },
     {
       charge_id: '2',
@@ -78,11 +80,12 @@ describe('sortBooksByChargeDate', () => {
       charge_date: '2025-11-01',
       due_date: '2025-11-10',
       renew_count: 1,
+      is_read: 0,
     },
   ];
 
   it('sorts by charge_date descending', () => {
-    const sorted = sortBooksByChargeDate(records);
+    const sorted = sortBooks(records);
     expect(sorted[0].charge_date).toBe('2025-11-01');
     expect(sorted[1].charge_date).toBe('2025-10-01');
   });
@@ -105,6 +108,7 @@ describe('handleBooksApi', () => {
             charge_date: '2025-11-02',
             due_date: '2025-11-12',
             renew_count: 0,
+            is_read: 0,
           },
           {
             id: 1,
@@ -118,8 +122,10 @@ describe('handleBooksApi', () => {
             charge_date: '2025-10-01',
             due_date: '2025-10-10',
             renew_count: 1,
+            is_read: 0,
           },
         ] satisfies BookRecord[],
+      updateReadStatus: async () => {},
     } as const;
 
     const fakeNoteRepo = {
@@ -165,8 +171,10 @@ describe('handleBooksApi', () => {
             charge_date: '2025-11-02',
             due_date: '2025-11-12',
             renew_count: 0,
+            is_read: 0,
           },
         ] satisfies BookRecord[],
+      updateReadStatus: async () => {},
     } as const;
 
     const fakeNoteRepo = {

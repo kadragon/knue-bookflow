@@ -16,6 +16,7 @@ interface BookItem {
   loanState: 'on_loan' | 'returned';
   noteCount: number;
   noteState: 'not_started' | 'in_progress' | 'completed';
+  isRead: boolean;
 }
 
 export interface ApiResponse {
@@ -29,6 +30,26 @@ export const getBooks = async (): Promise<ApiResponse> => {
   if (!res.ok) {
     throw new Error('Failed to load books');
   }
+  return res.json();
+};
+
+export const updateReadStatus = async (
+  bookId: number,
+  isRead: boolean,
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/books/${bookId}/read-status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ isRead }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update read status');
+  }
+
   return res.json();
 };
 

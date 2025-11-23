@@ -12,6 +12,7 @@ import {
   syncBooks,
   triggerWorkflow,
   updateNote,
+  updateReadStatus,
 } from './api';
 import { filterBooks } from './filterBooks';
 import { shouldShowPlannedLabel } from './noteCta';
@@ -38,6 +39,7 @@ interface BookItem {
   loanState: LoanState;
   noteCount: number;
   noteState: 'not_started' | 'in_progress' | 'completed';
+  isRead: boolean;
 }
 
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
@@ -124,18 +126,25 @@ function FilterBar({
 function BookCard({
   book,
   onNoteClick,
+  onReadStatusToggle,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
+  onReadStatusToggle: (book: BookItem) => void;
 }) {
   return (
-    <article className="card card-vertical">
+    <article className={clsx('card card-vertical', book.isRead && 'card-read')}>
       <div className="cover-frame">
         {book.coverUrl ? (
           <img src={book.coverUrl} alt={book.title} className="cover" />
         ) : (
           <div className="cover placeholder">
             <span className="placeholder-text">No Cover</span>
+          </div>
+        )}
+        {book.isRead && (
+          <div className="read-overlay">
+            <span>완독</span>
           </div>
         )}
       </div>
@@ -159,19 +168,28 @@ function BookCard({
         <span>대출 {formatDate(book.chargeDate)}</span>
         <span>반납 {formatDate(book.dueDate)}</span>
       </div>
-      <div className="note-cta">
-        <div>
-          <span className="note-count">노트 {book.noteCount}개</span>
-          {shouldShowPlannedLabel(book.noteCount) && (
-            <span className="note-state">(작성 예정)</span>
-          )}
+      <div className="card-actions">
+        <div className="note-cta">
+          <div>
+            <span className="note-count">노트 {book.noteCount}개</span>
+            {shouldShowPlannedLabel(book.noteCount) && (
+              <span className="note-state">(작성 예정)</span>
+            )}
+          </div>
+          <button
+            className="note-button"
+            type="button"
+            onClick={() => onNoteClick(book)}
+          >
+            {book.noteCount > 0 ? '노트 보기' : '노트 남기기'}
+          </button>
         </div>
         <button
-          className="note-button"
           type="button"
-          onClick={() => onNoteClick(book)}
+          className={clsx('read-button', book.isRead ? 'is-read' : '')}
+          onClick={() => onReadStatusToggle(book)}
         >
-          {book.noteCount > 0 ? '노트 보기' : '노트 남기기'}
+          {book.isRead ? '완독 취소' : '완독 표시'}
         </button>
       </div>
     </article>
@@ -528,7 +546,11 @@ function ShelfStats({ books }: { books: BookItem[] }) {
     const stats = { overdue: 0, dueSoon: 0, ok: 0 } as const;
     const mutable = { ...stats };
     for (const book of books) {
-      mutable[book.dueStatus] += 1;
+      if (book.dueStatus === 'due_soon') {
+        mutable.dueSoon += 1;
+      } else {
+        mutable[book.dueStatus] += 1;
+      }
     }
     return mutable;
   }, [books]);
@@ -626,6 +648,27 @@ export default function App() {
     return filterBooks(data.items, filters);
   }, [data, filters]);
 
+  const readStatusMutation = useMutation({
+    mutationFn: ({ bookId, isRead }: { bookId: number; isRead: boolean }) =>
+      updateReadStatus(bookId, isRead),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    },
+    onError: () => {
+      setNotification({
+        type: 'error',
+        message: '완독 상태 변경에 실패했습니다.',
+      });
+    },
+  });
+
+  const handleReadStatusToggle = (book: BookItem) => {
+    readStatusMutation.mutate({
+      bookId: book.dbId,
+      isRead: !book.isRead,
+    });
+  };
+
   return (
     <div className="page">
       <div className="glass">
@@ -695,6 +738,7 @@ export default function App() {
                 key={book.id}
                 book={book}
                 onNoteClick={handleNoteClick}
+                onReadStatusToggle={handleReadStatusToggle}
               />
             ))}
           </div>

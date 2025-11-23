@@ -76,16 +76,27 @@ export function deriveBookViewModel(
     loanState: 'on_loan',
     noteCount,
     noteState,
+    isRead: Boolean(record.is_read ?? 0),
   };
 }
 
-export function sortBooksByChargeDate(records: BookRecord[]): BookRecord[] {
-  return [...records].sort((a, b) =>
-    b.charge_date.localeCompare(a.charge_date),
-  );
+export function sortBooks(records: BookRecord[]): BookRecord[] {
+  return [...records].sort((a, b) => {
+    // Sort by read status (unread first)
+    const readA = a.is_read ?? 0;
+    const readB = b.is_read ?? 0;
+    if (readA !== readB) {
+      return readA - readB;
+    }
+    // Then by charge date (newest first)
+    return b.charge_date.localeCompare(a.charge_date);
+  });
 }
 
-type BookRepo = Pick<ReturnType<typeof createBookRepository>, 'findAll'>;
+type BookRepo = Pick<
+  ReturnType<typeof createBookRepository>,
+  'findAll' | 'updateReadStatus'
+>;
 type NoteRepo = Pick<
   ReturnType<typeof createNoteRepository>,
   'countNotesForBookIds'
@@ -97,7 +108,7 @@ export async function handleBooksApi(
   noteRepo: NoteRepo = createNoteRepository(env.DB),
 ): Promise<Response> {
   const records = await bookRepo.findAll();
-  const sorted = sortBooksByChargeDate(records);
+  const sorted = sortBooks(records);
 
   // Fetch all note counts in a single query to avoid N+1 problem
   const bookIds = sorted
@@ -113,4 +124,28 @@ export async function handleBooksApi(
   return new Response(JSON.stringify({ items: view }), {
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+export async function handleUpdateReadStatus(
+  env: Env,
+  bookId: number,
+  request: Request,
+  bookRepo: BookRepo = createBookRepository(env.DB),
+): Promise<Response> {
+  try {
+    const body = (await request.json()) as { isRead: boolean };
+
+    if (typeof body.isRead !== 'boolean') {
+      return new Response('Invalid request body', { status: 400 });
+    }
+
+    await bookRepo.updateReadStatus(bookId, body.isRead);
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error(`[BooksHandler] Failed to update read status: ${error}`);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }

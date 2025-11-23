@@ -5,7 +5,10 @@
  * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023
  */
 
-import { handleBooksApi } from './handlers/books-handler';
+import {
+  handleBooksApi,
+  handleUpdateReadStatus,
+} from './handlers/books-handler';
 import {
   handleCreateNote,
   handleDeleteNote,
@@ -65,6 +68,15 @@ export default {
     // Library-DB sync endpoint
     if (url.pathname === '/api/books/sync' && request.method === 'POST') {
       return handleSyncBooks(env);
+    }
+
+    // Update read status endpoint
+    const readStatusMatch = url.pathname.match(
+      /^\/api\/books\/(\d+)\/read-status$/,
+    );
+    if (readStatusMatch && request.method === 'PATCH') {
+      const bookId = parseInt(readStatusMatch[1], 10);
+      return handleUpdateReadStatus(env, bookId, request);
     }
 
     // Notes API endpoints
