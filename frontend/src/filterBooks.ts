@@ -14,10 +14,10 @@ export interface Filters {
   loanState: 'all' | LoanState;
 }
 
-export function filterBooks(
-  items: BookListItem[],
+export function filterBooks<T extends BookListItem>(
+  items: T[],
   filters: Filters,
-): BookListItem[] {
+): T[] {
   const searchLower = filters.search.toLowerCase();
 
   return items.filter((book) => {
