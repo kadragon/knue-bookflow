@@ -116,6 +116,31 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
 }
 
 /**
+ * Fetch book metadata from Aladin with error handling
+ */
+async function fetchBookInfo(
+  isbn: string | null,
+  aladinClient: AladinClient,
+  context: string,
+): Promise<BookInfo | null> {
+  if (!isbn) {
+    return null;
+  }
+
+  try {
+    console.log(`[SyncHandler] Looking up ISBN: ${isbn} (${context})`);
+    return await aladinClient.lookupByIsbn(isbn);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[SyncHandler] Aladin lookup failed for ${isbn}: ${errorMessage}`,
+    );
+    return null;
+  }
+}
+
+/**
  * Process a single charge and return sync status
  */
 export async function processCharge(
@@ -125,12 +150,7 @@ export async function processCharge(
 ): Promise<SyncStatus> {
   const chargeId = String(charge.id);
   const existing = await bookRepository.findByChargeId(chargeId);
-
   const isbn = charge.biblio.isbn;
-  const hasIsbn = Boolean(isbn);
-  const coverMissing =
-    existing?.cover_url === null || existing?.cover_url === '';
-  let bookInfo: BookInfo | null = null;
 
   if (!existing) {
     // Book not in DB - add with Aladin metadata
@@ -138,22 +158,21 @@ export async function processCharge(
       `[SyncHandler] New book found: ${charge.biblio.titleStatement}`,
     );
 
-    if (hasIsbn) {
-      console.log(`[SyncHandler] Looking up ISBN: ${isbn}`);
-      bookInfo = await aladinClient.lookupByIsbn(isbn);
-    }
-
+    const bookInfo = await fetchBookInfo(isbn, aladinClient, 'new book');
     const record = createBookRecord(charge, bookInfo);
     await bookRepository.saveBook(record);
     return 'added';
   }
 
-  // Refresh cover if missing
-  if (coverMissing && hasIsbn) {
+  // Check if cover refresh is needed
+  const coverMissing = !existing.cover_url;
+  let bookInfo: BookInfo | null = null;
+
+  if (coverMissing) {
     console.log(
       `[SyncHandler] Cover missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
     );
-    bookInfo = await aladinClient.lookupByIsbn(isbn);
+    bookInfo = await fetchBookInfo(isbn, aladinClient, 'cover refresh');
   }
 
   const coverRefreshed = coverMissing && !!bookInfo?.coverUrl;
