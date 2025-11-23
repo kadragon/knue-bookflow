@@ -4,18 +4,42 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     background: {
-      default: '#ffffff',
-      paper: '#f5f5f5',
+      default: '#fafbfc',
+      paper: '#ffffff',
     },
     primary: {
-      main: '#1976d2', // Standard Blue
+      main: '#7EB8DA', // Pastel Blue
+      light: '#A8D4F0',
+      dark: '#5A9BC4',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#9c27b0', // Purple
+      main: '#A8D5BA', // Pastel Mint
+      light: '#C4E8D1',
+      dark: '#8BC4A0',
+      contrastText: '#2D5A3F',
+    },
+    success: {
+      main: '#A8D5BA', // Pastel Green
+      light: '#C4E8D1',
+      dark: '#8BC4A0',
+      contrastText: '#2D5A3F',
+    },
+    warning: {
+      main: '#F5D89A', // Pastel Yellow
+      light: '#FBE9B8',
+      dark: '#E5C77A',
+      contrastText: '#5C4A1F',
+    },
+    error: {
+      main: '#F4A7B9', // Pastel Pink
+      light: '#FACDD8',
+      dark: '#E8899F',
+      contrastText: '#5C1F2E',
     },
     text: {
-      primary: '#121212',
-      secondary: '#666666',
+      primary: '#2C3E50',
+      secondary: '#6B7C8A',
     },
   },
   typography: {

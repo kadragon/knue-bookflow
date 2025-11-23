@@ -1,4 +1,6 @@
 import {
+  CheckCircle as CheckCircleIcon,
+  CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
@@ -36,7 +38,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   type ApiResponse,
   createNote,
@@ -48,9 +50,9 @@ import {
   syncBooks,
   triggerWorkflow,
   updateNote,
+  updateReadStatus,
 } from './api';
 import { filterBooks } from './filterBooks';
-import { shouldShowPlannedLabel } from './noteCta';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
 
@@ -73,6 +75,7 @@ interface BookItem {
   loanState: LoanState;
   noteCount: number;
   noteState: 'not_started' | 'in_progress' | 'completed';
+  isRead: boolean;
 }
 
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
@@ -160,9 +163,11 @@ function FilterBar({
 function BookCard({
   book,
   onNoteClick,
+  onReadStatusChange,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
+  onReadStatusChange: (book: BookItem, isRead: boolean) => void;
 }) {
   return (
     <Card
@@ -266,29 +271,40 @@ function BookCard({
             pt: 2,
             borderTop: 1,
             borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
           }}
         >
-          <Box>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1.5,
+            }}
+          >
             <Typography variant="subtitle2" fontWeight="bold">
               노트 {book.noteCount}개
             </Typography>
-            {shouldShowPlannedLabel(book.noteCount) && (
-              <Typography variant="caption" color="text.secondary">
-                (작성 예정)
-              </Typography>
-            )}
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => onNoteClick(book)}
+              startIcon={<NoteIcon />}
+              color="secondary"
+            >
+              {book.noteCount > 0 ? '보기' : '작성'}
+            </Button>
           </Box>
           <Button
-            variant="contained"
+            fullWidth
+            variant={book.isRead ? 'contained' : 'outlined'}
             size="small"
-            onClick={() => onNoteClick(book)}
-            startIcon={<NoteIcon />}
-            color="secondary"
+            onClick={() => onReadStatusChange(book, !book.isRead)}
+            startIcon={
+              book.isRead ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
+            }
+            color={book.isRead ? 'success' : 'inherit'}
           >
-            {book.noteCount > 0 ? '보기' : '작성'}
+            {book.isRead ? '완독' : '완독 표시'}
           </Button>
         </Box>
       </CardContent>
@@ -347,6 +363,7 @@ interface NoteModalProps {
 
 function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   const queryClient = useQueryClient();
+  const dialogContentRef = useRef<HTMLDivElement>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [formData, setFormData] = useState({ pageNumber: '', content: '' });
@@ -445,6 +462,13 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   const handleDeleteCancel = () => {
     setDeleteConfirmId(null);
   };
+
+  // Scroll to top when editing a note
+  useEffect(() => {
+    if (editingNote) {
+      dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [editingNote]);
 
   // Handle edit
   const handleEdit = (note: NoteItem) => {
@@ -591,7 +615,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers ref={dialogContentRef}>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error instanceof Error ? error.message : '오류가 발생했습니다.'}
@@ -621,13 +645,22 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
 }
 
 function ShelfStats({ books }: { books: BookItem[] }) {
-  const totals = useMemo(() => {
-    const stats = { overdue: 0, due_soon: 0, ok: 0 } as const;
-    const mutable = { ...stats };
+  const stats = useMemo(() => {
+    let onLoan = 0;
+    let reading = 0;
+    let completed = 0;
+
     for (const book of books) {
-      mutable[book.dueStatus] += 1;
+      if (book.isRead) {
+        completed += 1;
+      } else if (book.noteCount > 0) {
+        reading += 1;
+      } else if (book.loanState === 'on_loan') {
+        onLoan += 1;
+      }
     }
-    return mutable;
+
+    return { onLoan, reading, completed, total: books.length };
   }, [books]);
 
   return (
@@ -641,34 +674,34 @@ function ShelfStats({ books }: { books: BookItem[] }) {
     >
       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="caption" color="text.secondary">
-          총 도서
+          대여중
         </Typography>
-        <Typography variant="h5" fontWeight="bold">
-          {books.length}
-        </Typography>
-      </Paper>
-      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="caption" color="text.secondary">
-          연체
-        </Typography>
-        <Typography variant="h5" fontWeight="bold" color="error.main">
-          {totals.overdue}
+        <Typography variant="h5" fontWeight="bold" color="primary.main">
+          {stats.onLoan}
         </Typography>
       </Paper>
       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="caption" color="text.secondary">
-          임박
+          독서중
         </Typography>
         <Typography variant="h5" fontWeight="bold" color="warning.main">
-          {totals.due_soon}
+          {stats.reading}
         </Typography>
       </Paper>
       <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="caption" color="text.secondary">
-          여유
+          완료
         </Typography>
         <Typography variant="h5" fontWeight="bold" color="success.main">
-          {totals.ok}
+          {stats.completed}
+        </Typography>
+      </Paper>
+      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          총
+        </Typography>
+        <Typography variant="h5" fontWeight="bold">
+          {stats.total}
         </Typography>
       </Paper>
     </Box>
@@ -695,6 +728,24 @@ export default function App() {
 
   const handleNotesChanged = () => {
     queryClient.invalidateQueries({ queryKey: ['books'] });
+  };
+
+  const readStatusMutation = useMutation({
+    mutationFn: ({ bookId, isRead }: { bookId: number; isRead: boolean }) =>
+      updateReadStatus(bookId, isRead),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    },
+    onError: () => {
+      setNotification({
+        type: 'error',
+        message: '완독 상태 변경에 실패했습니다.',
+      });
+    },
+  });
+
+  const handleReadStatusChange = (book: BookItem, isRead: boolean) => {
+    readStatusMutation.mutate({ bookId: book.dbId, isRead });
   };
 
   const triggerMutation = useMutation({
@@ -844,6 +895,7 @@ export default function App() {
                 key={book.id}
                 book={book}
                 onNoteClick={handleNoteClick}
+                onReadStatusChange={handleReadStatusChange}
               />
             ))}
           </Box>

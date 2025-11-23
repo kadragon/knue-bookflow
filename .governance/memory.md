@@ -126,3 +126,27 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Completed TASK-025 (SPEC-notes-002): removed the '(작성 예정)' placeholder on book cards when no notes exist, added helper + test (TEST-notes-ui-007) to keep the copy hidden.
 - Completed TASK-026 (SPEC-frontend-001): simplified filters by removing author/due-status/min-renew controls; only search and loan-state remain. Updated spec TEST-frontend-004 and added filterBooks helper + tests.
 - Addressed PR feedback (2025-11-23): removed noteLayout helper/ordering indirection; NoteModal now renders entry section followed by notes directly to reduce complexity.
+
+### Session 2025-11-23 (UI improvements)
+- Completed TASK-027 (SPEC-frontend-001): Frontend UI improvements
+  - Established pastel color design system:
+    - primary: #7EB8DA (pastel blue)
+    - secondary: #A8D5BA (pastel mint)
+    - success: #A8D5BA (pastel green)
+    - warning: #F5D89A (pastel yellow)
+    - error: #F4A7B9 (pastel pink)
+  - Added completion status (완독) toggle UI:
+    - Integrated existing updateReadStatus API
+    - Added CheckCircle icons and success color for completed state
+    - Toggle button below notes section in BookCard
+  - Updated main page statistics:
+    - Changed from dueStatus-based (연체/임박/여유) to reading progress-based
+    - New stats: 대여중, 독서중, 완료, 총
+    - 대여중: on_loan && !isRead && noteCount === 0
+    - 독서중: noteCount > 0 && !isRead
+    - 완료: isRead === true
+  - Fixed note edit button:
+    - Added scroll-to-top behavior when edit form opens
+    - Uses dialogContentRef with smooth scroll animation
+- All 68 tests passing
+- Branch: feature/frontend-ui-improvements
