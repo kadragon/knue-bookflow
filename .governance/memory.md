@@ -92,3 +92,31 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 - Completed TASK-022 (SPEC-ci-001): Updated .github/dependabot.yml to track updates for "github-actions"
   ecosystem weekly.
+
+## Session 2025-11-23 (Continued)
+- Completed TASK-023 (SPEC-notes-002): Implemented full note-taking feature with CRUD operations.
+  - Added D1 migration for notes table (0002_add_notes_table.sql) with FK to books
+  - Created NoteRecord type in database.ts and NoteViewModel in api.ts
+  - Implemented NoteRepository with findByBookId, findById, create, update, delete, countByBookId
+  - Added API endpoints: GET/POST /api/books/:id/notes, PUT/DELETE /api/notes/:id
+  - Created notes-handler.ts with validation and error handling
+  - Updated books-handler to include actual noteCount and noteState (in_progress when notes exist)
+  - Added dbId to BookViewModel for proper note API calls
+  - Implemented frontend NoteModal component with:
+    - Note list display in page order with quote styling
+    - Add/Edit form with page number and content fields
+    - Delete confirmation
+    - Close on backdrop click or Escape key
+  - Added CSS styles for modal, notes list, forms, and buttons
+  - All 59 tests passing, linting clean
+  - Key pattern: Used database id (dbId) instead of charge_id for note API endpoints
+
+### Implementation Notes
+- Notes sorted by page_number ASC in repository
+- Modal closes on backdrop click with proper a11y (role="button", onKeyDown)
+- NoteState: 'not_started' (0 notes), 'in_progress' (>0 notes)
+- Nullable coalescing (record.id ?? 0) to avoid non-null assertion
+
+### Next Steps
+- Deploy migration: `wrangler d1 migrations apply knue-bookflow-db`
+- Test note creation/editing in production

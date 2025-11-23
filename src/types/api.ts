@@ -24,6 +24,7 @@ export type NoteState = 'not_started' | 'in_progress' | 'completed';
  */
 export interface BookViewModel {
   id: string;
+  dbId: number;
   title: string;
   author: string;
   publisher: string | null;
@@ -59,4 +60,54 @@ export interface HealthResponse {
  */
 export interface TriggerResponse {
   message: string;
+}
+
+/**
+ * Note view model for frontend display
+ * Trace: spec_id: SPEC-notes-002, task_id: TASK-023
+ */
+export interface NoteViewModel {
+  id: number;
+  bookId: number;
+  pageNumber: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Notes API response
+ */
+export interface NotesApiResponse {
+  notes: NoteViewModel[];
+}
+
+/**
+ * Single note API response
+ */
+export interface NoteApiResponse {
+  note: NoteViewModel;
+}
+
+/**
+ * Create note request body
+ */
+export interface CreateNoteRequest {
+  page_number: number;
+  content: string;
+}
+
+/**
+ * Update note request body
+ */
+export interface UpdateNoteRequest {
+  page_number?: number;
+  content?: string;
+}
+
+/**
+ * Delete note response
+ */
+export interface DeleteNoteResponse {
+  success: boolean;
 }

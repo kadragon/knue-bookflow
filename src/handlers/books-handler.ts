@@ -2,11 +2,18 @@
  * Books API handler
  * Serves normalized book list for the bookshelf frontend
  *
- * Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
+ * Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
  */
 
 import { createBookRepository } from '../services/book-repository';
-import type { BookRecord, BookViewModel, DueStatus, Env } from '../types';
+import { createNoteRepository } from '../services/note-repository';
+import type {
+  BookRecord,
+  BookViewModel,
+  DueStatus,
+  Env,
+  NoteState,
+} from '../types';
 
 export type { BookViewModel, DueStatus };
 
@@ -34,6 +41,7 @@ function computeDaysLeft(
 
 export function deriveBookViewModel(
   record: BookRecord,
+  noteCount = 0,
   now = new Date(),
   offsetMinutes = KST_OFFSET_MINUTES,
 ): BookViewModel {
@@ -46,8 +54,15 @@ export function deriveBookViewModel(
     dueStatus = 'due_soon';
   }
 
+  // Determine note state based on count
+  let noteState: NoteState = 'not_started';
+  if (noteCount > 0) {
+    noteState = 'in_progress';
+  }
+
   return {
     id: record.charge_id,
+    dbId: record.id || 0,
     title: record.title,
     author: record.author,
     publisher: record.publisher,
@@ -59,8 +74,8 @@ export function deriveBookViewModel(
     daysLeft,
     dueStatus,
     loanState: 'on_loan',
-    noteCount: 0,
-    noteState: 'not_started',
+    noteCount,
+    noteState,
   };
 }
 
@@ -71,14 +86,23 @@ export function sortBooksByChargeDate(records: BookRecord[]): BookRecord[] {
 }
 
 type BookRepo = Pick<ReturnType<typeof createBookRepository>, 'findAll'>;
+type NoteRepo = Pick<ReturnType<typeof createNoteRepository>, 'countByBookId'>;
 
 export async function handleBooksApi(
   env: Env,
-  repo: BookRepo = createBookRepository(env.DB),
+  bookRepo: BookRepo = createBookRepository(env.DB),
+  noteRepo: NoteRepo = createNoteRepository(env.DB),
 ): Promise<Response> {
-  const records = await repo.findAll();
+  const records = await bookRepo.findAll();
   const sorted = sortBooksByChargeDate(records);
-  const view = sorted.map((record) => deriveBookViewModel(record));
+
+  // Fetch note counts for all books
+  const viewPromises = sorted.map(async (record) => {
+    const noteCount = record.id ? await noteRepo.countByBookId(record.id) : 0;
+    return deriveBookViewModel(record, noteCount);
+  });
+
+  const view = await Promise.all(viewPromises);
 
   return new Response(JSON.stringify({ items: view }), {
     headers: { 'Content-Type': 'application/json' },
