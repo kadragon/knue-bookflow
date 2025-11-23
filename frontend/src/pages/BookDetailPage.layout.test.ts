@@ -7,5 +7,6 @@ describe('BookDetailPage layout', () => {
   it('does not constrain the notes list with an inner scrollbar', () => {
     expect(NOTES_LIST_SX).not.toHaveProperty('maxHeight');
     expect(NOTES_LIST_SX).not.toHaveProperty('overflow');
+    expect(NOTES_LIST_SX).not.toHaveProperty('overflowY');
   });
 });
