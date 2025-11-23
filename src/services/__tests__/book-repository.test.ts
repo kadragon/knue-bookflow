@@ -171,6 +171,49 @@ describe('BookRepository', () => {
         expect.stringContaining('UPDATE books SET'),
       );
     });
+
+    it('should update cover_url when provided', async () => {
+      const existingRecord = createMockBookRecord({
+        charge_id: '123',
+        cover_url: null,
+        description: null,
+      });
+
+      const updatedRecord = createMockBookRecord({
+        charge_id: '123',
+        due_date: '2025-01-15',
+        renew_count: 0,
+        cover_url: 'https://covers.aladin.co.kr/Big/1234567890.jpg',
+        description: 'Updated description',
+      });
+
+      const mockBindSelect = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(existingRecord),
+      });
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce({ bind: mockBindSelect })
+        .mockReturnValueOnce({ bind: mockBindUpdate });
+
+      await repository.saveBook(updatedRecord);
+
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE books SET'),
+      );
+
+      expect(mockBindUpdate).toHaveBeenCalledWith(
+        updatedRecord.due_date,
+        updatedRecord.renew_count,
+        updatedRecord.is_read,
+        updatedRecord.cover_url,
+        updatedRecord.description,
+        expect.any(String),
+        updatedRecord.charge_id,
+      );
+    });
   });
 
   describe('findByChargeId', () => {

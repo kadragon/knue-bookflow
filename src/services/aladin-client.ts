@@ -2,7 +2,7 @@
  * Aladin Open API Client
  * Fetches book metadata from Aladin's ItemLookUp API
  *
- * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-005
+ * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-005, TASK-032
  */
 
 import type {
@@ -40,6 +40,7 @@ export class AladinClient {
       output: 'js',
       Version: '20131101',
       OptResult: 'previewImgList',
+      Cover: 'Big',
     });
 
     try {

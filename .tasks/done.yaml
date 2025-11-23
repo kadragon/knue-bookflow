@@ -308,3 +308,18 @@ completed_tasks: []
   learnings:
     - "Avoiding nested scroll areas on detail pages keeps keyboard and touch navigation intuitive."
     - "Lightweight style constants make layout intent testable without pulling in extra UI test deps."
+
+- task_id: TASK-032
+  title: "Use largest Aladin cover image"
+  completed_at: "2025-11-23T21:33:00Z"
+  outcome: success
+  spec_id: SPEC-bookinfo-001
+  summary: |
+    Updated the Aladin ItemLookUp request to include `Cover=Big` so returned cover images use the
+    largest available size. Refreshed sync logic to re-fetch Aladin metadata when a stored book is
+    missing cover_url, and allowed BookRepository updates to coalesce new cover/description values.
+    Added unit tests for the request parameter, cover refresh, and update bindings.
+  learnings:
+    - "Aladin supports cover size selection via the Cover query param (Big/Mid/Small/Mini)."
+    - "Small client tweaks stay safe when guarded by a dedicated request-parameter test."
+    - "Missing covers can be recovered by nulling cover_url and rerunning sync; repository must update cover_url on existing rows."

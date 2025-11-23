@@ -1,6 +1,6 @@
 /**
  * Aladin client tests
- * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-009
+ * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-009, TASK-032
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,6 +79,33 @@ describe('AladinClient', () => {
       expect(bookInfo?.isbn13).toBe('9780132350884');
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('ttbkey=test-api-key'),
+      );
+    });
+
+    it('should request the Big cover size', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          item: [
+            {
+              title: 'Cover Test',
+              author: '',
+              publisher: '',
+              pubDate: '',
+              description: '',
+              isbn: '',
+              isbn13: '',
+              cover: '',
+              categoryName: '',
+            },
+          ],
+        }),
+      });
+
+      await client.lookupByIsbn('9780132350884');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('Cover=Big'),
       );
     });
 

@@ -28,6 +28,8 @@ export class BookRepository {
             due_date = ?,
             renew_count = ?,
             is_read = COALESCE(?, is_read),
+            cover_url = COALESCE(?, cover_url),
+            description = COALESCE(?, description),
             updated_at = ?
           WHERE charge_id = ?`,
         )
@@ -35,6 +37,8 @@ export class BookRepository {
           record.due_date,
           record.renew_count,
           record.is_read,
+          record.cover_url,
+          record.description,
           now,
           record.charge_id,
         )
