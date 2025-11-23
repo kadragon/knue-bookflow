@@ -333,9 +333,10 @@ describe('processChargeHistory', () => {
     );
   });
 
-  it('falls back to ISBN match when charge_id is unknown', async () => {
+  it('falls back to ISBN match with chargeDate comparison when charge_id is unknown', async () => {
     const history = createMockChargeHistory({
       id: 777,
+      chargeDate: '2025-01-01',
       dischargeDate: '2025-09-17 00:00:00',
       biblio: {
         id: 2,
@@ -356,7 +357,7 @@ describe('processChargeHistory', () => {
       cover_url: null,
       description: null,
       pub_date: null,
-      charge_date: history.chargeDate,
+      charge_date: '2025-01-01', // Must match history.chargeDate
       due_date: history.dueDate,
       discharge_date: null,
       renew_count: 0,
@@ -380,6 +381,49 @@ describe('processChargeHistory', () => {
         discharge_date: '2025-09-17 00:00:00',
       }),
     );
+  });
+
+  it('skips ISBN match when chargeDate does not match', async () => {
+    const history = createMockChargeHistory({
+      id: 888,
+      chargeDate: '2025-01-01',
+      dischargeDate: '2025-09-18 00:00:00',
+      biblio: {
+        id: 3,
+        titleStatement: 'Different Loan Cycle',
+        isbn: '9780000000003',
+        thumbnail: null,
+      },
+    });
+
+    const existingRecord = {
+      id: 13,
+      charge_id: 'other',
+      isbn: '9780000000003',
+      isbn13: null,
+      title: 'Different Loan Cycle',
+      author: 'Author',
+      publisher: 'Publisher',
+      cover_url: null,
+      description: null,
+      pub_date: null,
+      charge_date: '2025-06-01', // Different chargeDate - should not match
+      due_date: '2025-06-15',
+      discharge_date: null,
+      renew_count: 0,
+      is_read: 0,
+    };
+
+    const mockBookRepository = {
+      findByChargeId: vi.fn().mockResolvedValue(null),
+      findByIsbn: vi.fn().mockResolvedValue([existingRecord]),
+      saveBook: vi.fn(),
+    } as unknown as BookRepository;
+
+    const status = await processChargeHistory(history, mockBookRepository);
+
+    expect(status).toBe('unchanged');
+    expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
   });
 
   it('ignores already returned books', async () => {

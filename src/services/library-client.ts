@@ -121,54 +121,41 @@ export class LibraryClient {
   }
 
   /**
-   * Get list of charge histories (returned books)
-   * @returns Array of charge history records
+   * Get list of recent charge histories (returned books)
+   * @returns Array of charge history records (max 20)
    */
   async getChargeHistories(): Promise<ChargeHistory[]> {
     this.ensureAuthenticated();
 
-    const pageSize = 20;
-    let offset = 0;
-    let histories: ChargeHistory[] = [];
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/api/charge-histories?max=20&offset=0`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+    );
 
-    while (true) {
-      const response = await this.fetchWithResilience(
-        `${BASE_URL}/8/api/charge-histories?max=${pageSize}&offset=${offset}`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        },
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to fetch charge histories with status ${response.status}`,
+        response.status,
       );
-
-      if (!response.ok) {
-        throw new LibraryApiError(
-          `Failed to fetch charge histories with status ${response.status}`,
-          response.status,
-        );
-      }
-
-      const data: ChargeHistoriesResponse = await response.json();
-
-      if (!data.success) {
-        throw new LibraryApiError(
-          `Failed to fetch charge histories: ${data.message}`,
-          400,
-          data.code,
-        );
-      }
-
-      histories = histories.concat(data.data.list);
-
-      const total = data.data.totalCount;
-      offset += pageSize;
-
-      if (histories.length >= total || data.data.list.length === 0) {
-        break;
-      }
     }
 
+    const data: ChargeHistoriesResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to fetch charge histories: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    const histories = data.data.list;
+
     console.log(
-      `[LibraryClient] Retrieved ${histories.length} charge histories (paginated)`,
+      `[LibraryClient] Retrieved ${histories.length} charge histories`,
     );
     return histories;
   }

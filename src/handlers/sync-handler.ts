@@ -241,9 +241,17 @@ export async function processChargeHistory(
 
   let existing = await bookRepository.findByChargeId(chargeId);
 
+  // ISBN fallback with chargeDate comparison for data consistency
   if (!existing && history.biblio.isbn) {
     const matches = await bookRepository.findByIsbn(history.biblio.isbn);
-    existing = matches[0];
+    // Find exact match by chargeDate to avoid matching different loan cycles
+    existing =
+      matches.find((m) => m.charge_date === history.chargeDate) ?? null;
+    if (existing) {
+      console.log(
+        `[SyncHandler] Matched return ${chargeId} via ISBN fallback: ${history.biblio.isbn}`,
+      );
+    }
   }
 
   if (!existing) {
@@ -264,6 +272,14 @@ export async function processChargeHistory(
     renew_count: existing.renew_count ?? history.renewCnt ?? 0,
   };
 
-  await bookRepository.saveBook(recordToUpdate);
-  return 'returned';
+  try {
+    await bookRepository.saveBook(recordToUpdate);
+    return 'returned';
+  } catch (error) {
+    console.error(
+      `[SyncHandler] Failed to mark ${chargeId} as returned:`,
+      error,
+    );
+    return 'unchanged';
+  }
 }

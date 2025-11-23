@@ -217,7 +217,8 @@ export function createBookRecord(
     pub_date: bookInfo?.pubDate || null,
     charge_date: charge.chargeDate,
     due_date: charge.dueDate,
-    discharge_date: (charge as ChargeHistory).dischargeDate ?? null,
+    discharge_date:
+      'dischargeDate' in charge ? (charge.dischargeDate ?? null) : null,
     renew_count: charge.renewCnt ?? 0,
   };
 }
