@@ -23,6 +23,7 @@ const theme = createTheme({
       main: '#A8D5BA', // Pastel Green
       light: '#C4E8D1',
       dark: '#8BC4A0',
+      contrastText: '#2D5A3F',
     },
     warning: {
       main: '#F5D89A', // Pastel Yellow

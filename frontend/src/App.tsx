@@ -303,9 +303,6 @@ function BookCard({
               book.isRead ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
             }
             color={book.isRead ? 'success' : 'inherit'}
-            sx={{
-              justifyContent: 'center',
-            }}
           >
             {book.isRead ? '완독' : '완독 표시'}
           </Button>
@@ -466,6 +463,13 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
     setDeleteConfirmId(null);
   };
 
+  // Scroll to top when editing a note
+  useEffect(() => {
+    if (editingNote) {
+      dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [editingNote]);
+
   // Handle edit
   const handleEdit = (note: NoteItem) => {
     setEditingNote(note);
@@ -474,10 +478,6 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
       content: note.content,
     });
     setIsFormOpen(true);
-    // Scroll to top to show the form
-    setTimeout(() => {
-      dialogContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 0);
   };
 
   // Cancel form
