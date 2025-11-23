@@ -2,7 +2,7 @@
  * Book Detail Page
  * Shows book information and reading notes in a two-column layout
  *
- * Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+ * Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030,TASK-031
  */
 
 import {
@@ -46,6 +46,7 @@ import {
   updateNote,
   updateReadStatus,
 } from '../api';
+import { NOTES_LIST_SX } from './bookDetailLayout';
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
 
@@ -438,7 +439,7 @@ function NotesPanel({
             <Typography>아직 작성된 노트가 없습니다.</Typography>
           </Box>
         ) : (
-          <Stack spacing={2} sx={{ maxHeight: 500, overflow: 'auto' }}>
+          <Stack spacing={2} sx={NOTES_LIST_SX}>
             {notes.map((note) => (
               <Paper key={note.id} variant="outlined" sx={{ p: 2 }}>
                 <Box
