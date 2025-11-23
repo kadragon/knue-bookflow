@@ -186,3 +186,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-11-23 (Notes layout)
 - Completed TASK-031 (SPEC-book-detail-001): Removed inner scrollbar from book detail notes list so long notes expand page height; added NOTES_LIST_SX constant and layout test to prevent reintroducing fixed-height overflow.
+
+### Session 2025-11-23 (Aladin cover size)
+- Completed TASK-032 (SPEC-bookinfo-001): Added `Cover=Big` to Aladin ItemLookUp requests so we always fetch the largest cover image. Added a unit test to assert the parameter is present.
+
+### Session 2025-11-23 (Cover refresh)
+- Refreshed sync logic to re-fetch Aladin metadata when a stored book has a missing cover_url. BookRepository updates now coalesce new cover/description values on update. Added tests for cover refresh and update bindings.

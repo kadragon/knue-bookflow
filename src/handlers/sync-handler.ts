@@ -13,7 +13,7 @@ import {
 } from '../services';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
-import type { Charge, Env } from '../types';
+import type { BookInfo, Charge, Env } from '../types';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged';
 
@@ -118,7 +118,7 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
 /**
  * Process a single charge and return sync status
  */
-async function processCharge(
+export async function processCharge(
   charge: Charge,
   bookRepository: BookRepository,
   aladinClient: AladinClient,
@@ -126,16 +126,19 @@ async function processCharge(
   const chargeId = String(charge.id);
   const existing = await bookRepository.findByChargeId(chargeId);
 
+  const isbn = charge.biblio.isbn;
+  const hasIsbn = Boolean(isbn);
+  const coverMissing =
+    existing?.cover_url === null || existing?.cover_url === '';
+  let bookInfo: BookInfo | null = null;
+
   if (!existing) {
     // Book not in DB - add with Aladin metadata
     console.log(
       `[SyncHandler] New book found: ${charge.biblio.titleStatement}`,
     );
 
-    const isbn = charge.biblio.isbn;
-    let bookInfo = null;
-
-    if (isbn) {
+    if (hasIsbn) {
       console.log(`[SyncHandler] Looking up ISBN: ${isbn}`);
       bookInfo = await aladinClient.lookupByIsbn(isbn);
     }
@@ -145,15 +148,26 @@ async function processCharge(
     return 'added';
   }
 
+  // Refresh cover if missing
+  if (coverMissing && hasIsbn) {
+    console.log(
+      `[SyncHandler] Cover missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
+    );
+    bookInfo = await aladinClient.lookupByIsbn(isbn);
+  }
+
+  const coverRefreshed = coverMissing && !!bookInfo?.coverUrl;
+
   // Book exists - check if update needed
   const needsUpdate =
+    coverRefreshed ||
     existing.due_date !== charge.dueDate ||
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
-    const record = createBookRecord(charge);
+    const record = createBookRecord(charge, bookInfo || undefined);
     await bookRepository.saveBook(record);
     return 'updated';
   }
