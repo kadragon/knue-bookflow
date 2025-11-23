@@ -15,7 +15,6 @@ import {
 } from './api';
 import { filterBooks } from './filterBooks';
 import { shouldShowPlannedLabel } from './noteCta';
-import { buildNoteSections } from './noteLayout';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
 
@@ -375,8 +374,6 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
     }
   };
 
-  const noteSections = buildNoteSections(notes.length > 0);
-
   const renderEntrySection = () => (
     <div className="note-entry" key="entry">
       {isFormOpen ? (
@@ -507,12 +504,8 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
 
             {isLoading ? (
               <p className="muted">노트를 불러오는 중...</p>
-            ) : noteSections[1] === 'list' ? (
-              renderNotesSection()
             ) : (
-              <div className="notes-empty">
-                <p>아직 작성된 노트가 없습니다.</p>
-              </div>
+              renderNotesSection()
             )}
           </div>
         </div>
