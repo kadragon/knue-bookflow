@@ -164,29 +164,15 @@ export async function processCharge(
     return 'added';
   }
 
-  // Check if cover refresh is needed
-  const coverMissing = !existing.cover_url;
-  let bookInfo: BookInfo | null = null;
-
-  if (coverMissing) {
-    console.log(
-      `[SyncHandler] Cover missing for ${charge.biblio.titleStatement}, fetching from Aladin`,
-    );
-    bookInfo = await fetchBookInfo(isbn, aladinClient, 'cover refresh');
-  }
-
-  const coverRefreshed = coverMissing && !!bookInfo?.coverUrl;
-
-  // Book exists - check if update needed
+  // Book exists - check if update needed (due_date or renew_count changed)
   const needsUpdate =
-    coverRefreshed ||
     existing.due_date !== charge.dueDate ||
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
-    const record = createBookRecord(charge, bookInfo || undefined);
+    const record = createBookRecord(charge);
     await bookRepository.saveBook(record);
     return 'updated';
   }

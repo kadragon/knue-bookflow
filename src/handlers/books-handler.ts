@@ -68,6 +68,8 @@ export function deriveBookViewModel(
     publisher: record.publisher,
     coverUrl: record.cover_url,
     description: record.description,
+    isbn13: record.isbn13,
+    pubDate: record.pub_date,
     chargeDate: record.charge_date,
     dueDate: record.due_date,
     renewCount: record.renew_count,

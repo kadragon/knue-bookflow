@@ -7,11 +7,13 @@ export interface BookRecord {
   id?: number;
   charge_id: string;
   isbn: string;
+  isbn13: string | null;
   title: string;
   author: string;
   publisher: string | null;
   cover_url: string | null;
   description: string | null;
+  pub_date: string | null;
   charge_date: string;
   due_date: string;
   renew_count: number;

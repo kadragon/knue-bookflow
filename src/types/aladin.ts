@@ -44,7 +44,6 @@ export interface BookInfo {
   pubDate: string;
   description: string;
   coverUrl: string;
-  categoryName: string;
 }
 
 /**

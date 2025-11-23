@@ -89,7 +89,6 @@ function createMockBookInfo(overrides: Partial<BookInfo> = {}): BookInfo {
     description:
       overrides.description ?? 'A handbook of agile software craftsmanship',
     coverUrl: overrides.coverUrl ?? 'https://example.com/cover.jpg',
-    categoryName: overrides.categoryName ?? 'Programming',
   };
 }
 
@@ -98,11 +97,13 @@ function createMockBookRecord(overrides: Partial<BookRecord> = {}): BookRecord {
     id: overrides.id ?? 1,
     charge_id: overrides.charge_id ?? '1',
     isbn: overrides.isbn ?? '9781234567890',
+    isbn13: overrides.isbn13 ?? null,
     title: overrides.title ?? 'Test Book',
     author: overrides.author ?? 'Test Author',
     publisher: overrides.publisher ?? 'Test Publisher',
     cover_url: overrides.cover_url ?? 'https://example.com/cover.jpg',
     description: overrides.description ?? 'A test book description',
+    pub_date: overrides.pub_date ?? null,
     charge_date: overrides.charge_date ?? '2025-01-01',
     due_date: overrides.due_date ?? '2025-01-15',
     renew_count: overrides.renew_count ?? 0,
@@ -443,11 +444,13 @@ describe('createBookRecord', () => {
     expect(record).toEqual({
       charge_id: '123',
       isbn: '9780123456789',
+      isbn13: null,
       title: 'Library Book',
       author: '', // API doesn't provide author
       publisher: null,
       cover_url: null,
       description: null,
+      pub_date: null,
       charge_date: '2025-01-01',
       due_date: '2025-01-15',
       renew_count: 0,

@@ -33,11 +33,13 @@ interface NoteCandidateRow {
   note_updated_at?: string | null;
   charge_id: string;
   isbn: string;
+  isbn13: string | null;
   title: string;
   author: string;
   publisher: string | null;
   cover_url: string | null;
   description: string | null;
+  pub_date: string | null;
   charge_date: string;
   due_date: string;
   renew_count: number;
@@ -68,11 +70,13 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
           n.updated_at AS note_updated_at,
           b.charge_id,
           b.isbn,
+          b.isbn13,
           b.title,
           b.author,
           b.publisher,
           b.cover_url,
           b.description,
+          b.pub_date,
           b.charge_date,
           b.due_date,
           b.renew_count,
@@ -99,11 +103,13 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
         id: row.book_id,
         charge_id: row.charge_id,
         isbn: row.isbn,
+        isbn13: row.isbn13,
         title: row.title,
         author: row.author,
         publisher: row.publisher,
         cover_url: row.cover_url,
         description: row.description,
+        pub_date: row.pub_date,
         charge_date: row.charge_date,
         due_date: row.due_date,
         renew_count: row.renew_count,
