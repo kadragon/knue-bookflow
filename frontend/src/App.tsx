@@ -1,5 +1,41 @@
+import {
+  Close as CloseIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Note as NoteIcon,
+  PlayArrow as PlayArrowIcon,
+  Refresh as RefreshIcon,
+  Sync as SyncIcon,
+} from '@mui/icons-material';
+import {
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardMedia,
+  Chip,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Stack,
+  TextField,
+  Toolbar,
+  Typography,
+} from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import {
   type ApiResponse,
@@ -12,7 +48,6 @@ import {
   syncBooks,
   triggerWorkflow,
   updateNote,
-  updateReadStatus,
 } from './api';
 import { filterBooks } from './filterBooks';
 import { shouldShowPlannedLabel } from './noteCta';
@@ -20,7 +55,6 @@ import { shouldShowPlannedLabel } from './noteCta';
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
-
 type LoanState = 'on_loan' | 'returned';
 
 interface BookItem {
@@ -39,7 +73,6 @@ interface BookItem {
   loanState: LoanState;
   noteCount: number;
   noteState: 'not_started' | 'in_progress' | 'completed';
-  isRead: boolean;
 }
 
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
@@ -48,10 +81,10 @@ const DUE_STATUS_LABEL: Record<DueStatus, string> = {
   ok: '대출 중',
 };
 
-const STATUS_BG: Record<DueStatus, string> = {
-  overdue: 'badge-red',
-  due_soon: 'badge-amber',
-  ok: 'badge-green',
+const STATUS_COLOR: Record<DueStatus, 'error' | 'warning' | 'success'> = {
+  overdue: 'error',
+  due_soon: 'warning',
+  ok: 'success',
 };
 
 // Format date string to YYYY-MM-DD
@@ -84,173 +117,224 @@ function FilterBar({
   onChange: (next: FilterState) => void;
 }) {
   return (
-    <div className="filter-bar">
-      <div className="filter-group">
-        <label className="label" htmlFor="search">
-          검색
-        </label>
-        <input
-          id="search"
-          className="input"
-          placeholder="제목, 저자, ISBN"
-          value={filters.search}
-          onChange={(e) =>
-            onChange({ ...filters, search: e.currentTarget.value })
-          }
-        />
-      </div>
-      <div className="filter-group">
-        <label className="label" htmlFor="loanState">
-          대출 상태
-        </label>
-        <select
-          id="loanState"
-          className="input"
-          value={filters.loanState}
-          onChange={(e) =>
-            onChange({
-              ...filters,
-              loanState: e.target.value as FilterState['loanState'],
-            })
-          }
-        >
-          <option value="all">전체</option>
-          <option value="on_loan">대출 중</option>
-          <option value="returned">반납됨</option>
-        </select>
-      </div>
-    </div>
+    <Box sx={{ mb: 3, mt: 3 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Box sx={{ flexGrow: 1 }}>
+          <TextField
+            fullWidth
+            label="검색"
+            placeholder="제목, 저자, ISBN"
+            value={filters.search}
+            onChange={(e) =>
+              onChange({ ...filters, search: e.currentTarget.value })
+            }
+            variant="outlined"
+            size="small"
+          />
+        </Box>
+        <Box sx={{ minWidth: 200 }}>
+          <FormControl fullWidth size="small">
+            <InputLabel id="loan-state-label">대출 상태</InputLabel>
+            <Select
+              labelId="loan-state-label"
+              value={filters.loanState}
+              label="대출 상태"
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  loanState: e.target.value as FilterState['loanState'],
+                })
+              }
+            >
+              <MenuItem value="all">전체</MenuItem>
+              <MenuItem value="on_loan">대출 중</MenuItem>
+              <MenuItem value="returned">반납됨</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Stack>
+    </Box>
   );
 }
 
 function BookCard({
   book,
   onNoteClick,
-  onReadStatusToggle,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
-  onReadStatusToggle: (book: BookItem) => void;
 }) {
   return (
-    <article className={clsx('card card-vertical', book.isRead && 'card-read')}>
-      <div className="cover-frame">
+    <Card
+      variant="outlined"
+      sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    >
+      <Box
+        sx={{
+          position: 'relative',
+          pt: 2,
+          px: 2,
+          display: 'flex',
+          justifyContent: 'center',
+          bgcolor: 'background.paper',
+        }}
+      >
         {book.coverUrl ? (
-          <img src={book.coverUrl} alt={book.title} className="cover" />
+          <CardMedia
+            component="img"
+            image={book.coverUrl}
+            alt={book.title}
+            sx={{
+              width: 110,
+              height: 150,
+              borderRadius: 1,
+              objectFit: 'cover',
+            }}
+          />
         ) : (
-          <div className="cover placeholder">
-            <span className="placeholder-text">No Cover</span>
-          </div>
-        )}
-        {book.isRead && (
-          <div className="read-overlay">
-            <span>완독</span>
-          </div>
-        )}
-      </div>
-      <h3 className="card-title">{book.title}</h3>
-      <p className="card-author">{book.author}</p>
-      <div className="badge-row">
-        <span className={clsx('badge badge-inline', STATUS_BG[book.dueStatus])}>
-          {DUE_STATUS_LABEL[book.dueStatus]}
-        </span>
-        {book.renewCount > 0 && (
-          <span className="badge badge-inline badge-renew">
-            연장 {book.renewCount}회
-          </span>
-        )}
-        <span className="badge badge-inline badge-days">
-          D{book.daysLeft >= 0 ? '-' : '+'}
-          {Math.abs(book.daysLeft)}
-        </span>
-      </div>
-      <div className="date-info">
-        <span>대출 {formatDate(book.chargeDate)}</span>
-        <span>반납 {formatDate(book.dueDate)}</span>
-      </div>
-      <div className="card-actions">
-        <div className="note-cta">
-          <div>
-            <span className="note-count">노트 {book.noteCount}개</span>
-            {shouldShowPlannedLabel(book.noteCount) && (
-              <span className="note-state">(작성 예정)</span>
-            )}
-          </div>
-          <button
-            className="note-button"
-            type="button"
-            onClick={() => onNoteClick(book)}
+          <Box
+            sx={{
+              width: 110,
+              height: 150,
+              borderRadius: 1,
+              bgcolor: 'action.hover',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            {book.noteCount > 0 ? '노트 보기' : '노트 남기기'}
-          </button>
-        </div>
-        <button
-          type="button"
-          className={clsx('read-button', book.isRead ? 'is-read' : '')}
-          onClick={() => onReadStatusToggle(book)}
+            <Typography variant="caption" color="text.secondary">
+              No Cover
+            </Typography>
+          </Box>
+        )}
+      </Box>
+      <CardContent
+        sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}
+      >
+        <Typography
+          variant="h6"
+          component="h3"
+          sx={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.3 }}
         >
-          {book.isRead ? '완독 취소' : '완독 표시'}
-        </button>
-      </div>
-    </article>
+          {book.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          {book.author}
+        </Typography>
+
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mb: 1 }}
+        >
+          <Chip
+            label={DUE_STATUS_LABEL[book.dueStatus]}
+            color={STATUS_COLOR[book.dueStatus]}
+            size="small"
+            variant="filled"
+          />
+          {book.renewCount > 0 && (
+            <Chip
+              label={`연장 ${book.renewCount}회`}
+              color="primary"
+              size="small"
+              variant="outlined"
+            />
+          )}
+          <Chip
+            label={`D${book.daysLeft >= 0 ? '-' : '+'}${Math.abs(book.daysLeft)}`}
+            size="small"
+            variant="outlined"
+          />
+        </Stack>
+
+        <Stack spacing={0.5} sx={{ mt: 'auto' }}>
+          <Typography variant="caption" color="text.secondary" display="block">
+            대출 {formatDate(book.chargeDate)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            반납 {formatDate(book.dueDate)}
+          </Typography>
+        </Stack>
+
+        <Box
+          sx={{
+            mt: 2,
+            pt: 2,
+            borderTop: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Box>
+            <Typography variant="subtitle2" fontWeight="bold">
+              노트 {book.noteCount}개
+            </Typography>
+            {shouldShowPlannedLabel(book.noteCount) && (
+              <Typography variant="caption" color="text.secondary">
+                (작성 예정)
+              </Typography>
+            )}
+          </Box>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => onNoteClick(book)}
+            startIcon={<NoteIcon />}
+            color="secondary"
+          >
+            {book.noteCount > 0 ? '보기' : '작성'}
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="empty">
-      <p>책장이 비어 있어요. 새로 대출된 책이 여기에 나타납니다.</p>
-    </div>
+    <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
+      <Typography>
+        책장이 비어 있어요. 새로 대출된 책이 여기에 나타납니다.
+      </Typography>
+    </Box>
   );
 }
 
 // Confirm Dialog Component
 interface ConfirmDialogProps {
+  open: boolean;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onCancel();
-    }
-  };
-
+function ConfirmDialog({
+  open,
+  message,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
   return (
-    <div
-      className="confirm-backdrop"
-      onClick={onCancel}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-message"
-      tabIndex={-1}
-    >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: Inner dialog container needs to stop event propagation */}
-      <div
-        className="confirm-dialog"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-      >
-        <p id="confirm-message" className="confirm-message">
-          {message}
-        </p>
-        <div className="confirm-actions">
-          <button type="button" className="btn-secondary" onClick={onCancel}>
-            취소
-          </button>
-          <button
-            type="button"
-            className="btn-primary btn-danger"
-            onClick={onConfirm}
-          >
-            삭제
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>확인</DialogTitle>
+      <DialogContent>
+        <DialogContentText>{message}</DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel} color="inherit">
+          취소
+        </Button>
+        <Button onClick={onConfirm} color="error" variant="contained" autoFocus>
+          삭제
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -266,7 +350,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [formData, setFormData] = useState({ pageNumber: '', content: '' });
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   // Fetch notes using react-query
   const {
@@ -319,7 +403,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
       queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
       onNotesChanged();
-      setDeleteConfirm(null);
+      setDeleteConfirmId(null);
     },
   });
 
@@ -349,17 +433,17 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
 
   // Handle delete confirmation
   const handleDeleteClick = (noteId: number) => {
-    setDeleteConfirm(noteId);
+    setDeleteConfirmId(noteId);
   };
 
   const handleDeleteConfirm = () => {
-    if (deleteConfirm !== null) {
-      deleteMutation.mutate(deleteConfirm);
+    if (deleteConfirmId !== null) {
+      deleteMutation.mutate(deleteConfirmId);
     }
   };
 
   const handleDeleteCancel = () => {
-    setDeleteConfirm(null);
+    setDeleteConfirmId(null);
   };
 
   // Handle edit
@@ -379,201 +463,214 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
     setFormData({ pageNumber: '', content: '' });
   };
 
-  // Close modal on backdrop click or Escape key
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
-
   const renderEntrySection = () => (
-    <div className="note-entry" key="entry">
+    <Box sx={{ mb: 3 }}>
       {isFormOpen ? (
-        <form className="note-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="pageNumber">페이지</label>
-            <input
-              id="pageNumber"
-              type="number"
-              className="input"
-              min={1}
-              value={formData.pageNumber}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  pageNumber: e.target.value,
-                })
-              }
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="content">내용</label>
-            <textarea
-              id="content"
-              className="input textarea"
-              rows={4}
-              value={formData.content}
-              onChange={(e) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
-              required
-            />
-          </div>
-          <div className="form-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={handleCancel}
-            >
-              취소
-            </button>
-            <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
-            </button>
-          </div>
-        </form>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <form onSubmit={handleSubmit}>
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                label="페이지"
+                type="number"
+                value={formData.pageNumber}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    pageNumber: e.target.value,
+                  })
+                }
+                required
+                size="small"
+                inputProps={{ min: 1 }}
+              />
+              <TextField
+                fullWidth
+                label="내용"
+                multiline
+                rows={4}
+                value={formData.content}
+                onChange={(e) =>
+                  setFormData({ ...formData, content: e.target.value })
+                }
+                required
+              />
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                <Button onClick={handleCancel} color="inherit">
+                  취소
+                </Button>
+                <Button type="submit" variant="contained" disabled={isSaving}>
+                  {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
+                </Button>
+              </Box>
+            </Stack>
+          </form>
+        </Paper>
       ) : (
-        <button
-          type="button"
-          className="btn-add-note"
+        <Button
+          fullWidth
+          variant="outlined"
           onClick={() => setIsFormOpen(true)}
+          sx={{ borderStyle: 'dashed', py: 2 }}
         >
           + 노트 추가
-        </button>
+        </Button>
       )}
-    </div>
+    </Box>
   );
 
   const renderNotesSection = () => {
     if (notes.length === 0) {
       return (
-        <div className="notes-empty" key="empty">
-          <p>아직 작성된 노트가 없습니다.</p>
-        </div>
+        <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+          <Typography>아직 작성된 노트가 없습니다.</Typography>
+        </Box>
       );
     }
 
     return (
-      <div className="notes-list" key="list">
+      <Stack spacing={2}>
         {notes.map((note) => (
-          <div key={note.id} className="note-item">
-            <div className="note-header">
-              <span className="note-page">p. {note.pageNumber}</span>
-              <div className="note-actions">
-                <button
-                  type="button"
-                  className="note-action-btn"
-                  onClick={() => handleEdit(note)}
-                >
-                  수정
-                </button>
-                <button
-                  type="button"
-                  className="note-action-btn note-action-delete"
+          <Paper key={note.id} variant="outlined" sx={{ p: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+              }}
+            >
+              <Chip
+                label={`p. ${note.pageNumber}`}
+                size="small"
+                color="primary"
+              />
+              <Box>
+                <IconButton size="small" onClick={() => handleEdit(note)}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
                   onClick={() => handleDeleteClick(note.id)}
-                  disabled={deleteMutation.isPending}
+                  color="error"
                 >
-                  삭제
-                </button>
-              </div>
-            </div>
-            <blockquote className="note-content">{note.content}</blockquote>
-          </div>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+            <Typography
+              variant="body2"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                pl: 1,
+                borderLeft: 3,
+                borderColor: 'primary.main',
+              }}
+            >
+              {note.content}
+            </Typography>
+          </Paper>
         ))}
-      </div>
+      </Stack>
     );
   };
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: Modal backdrop with click-to-close is a common UI pattern */}
-      <div
-        className="modal-backdrop"
-        onClick={handleBackdropClick}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="modal">
-          <div className="modal-header">
-            <h2 className="modal-title">{book.title}</h2>
-            <button type="button" className="modal-close" onClick={onClose}>
-              &times;
-            </button>
-          </div>
+      <Dialog open={true} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          {book.title}
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error instanceof Error ? error.message : '오류가 발생했습니다.'}
+            </Alert>
+          )}
 
-          <div className="modal-content">
-            {error && (
-              <div className="modal-error">
-                {error instanceof Error
-                  ? error.message
-                  : '오류가 발생했습니다.'}
-              </div>
-            )}
+          {renderEntrySection()}
 
-            {renderEntrySection()}
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            renderNotesSection()
+          )}
+        </DialogContent>
+      </Dialog>
 
-            {isLoading ? (
-              <p className="muted">노트를 불러오는 중...</p>
-            ) : (
-              renderNotesSection()
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Delete confirmation dialog */}
-      {deleteConfirm !== null && (
-        <ConfirmDialog
-          message="이 노트를 삭제하시겠습니까?"
-          onConfirm={handleDeleteConfirm}
-          onCancel={handleDeleteCancel}
-        />
-      )}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        message="이 노트를 삭제하시겠습니까?"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </>
   );
 }
 
 function ShelfStats({ books }: { books: BookItem[] }) {
   const totals = useMemo(() => {
-    const stats = { overdue: 0, dueSoon: 0, ok: 0 } as const;
+    const stats = { overdue: 0, due_soon: 0, ok: 0 } as const;
     const mutable = { ...stats };
     for (const book of books) {
-      if (book.dueStatus === 'due_soon') {
-        mutable.dueSoon += 1;
-      } else {
-        mutable[book.dueStatus] += 1;
-      }
+      mutable[book.dueStatus] += 1;
     }
     return mutable;
   }, [books]);
 
   return (
-    <div className="stats">
-      <div>
-        <span className="stat-label">총 도서</span>
-        <span className="stat-value">{books.length}</span>
-      </div>
-      <div>
-        <span className="stat-label">연체</span>
-        <span className="stat-value">{totals.overdue}</span>
-      </div>
-      <div>
-        <span className="stat-label">임박</span>
-        <span className="stat-value">{totals.dueSoon}</span>
-      </div>
-      <div>
-        <span className="stat-label">여유</span>
-        <span className="stat-value">{totals.ok}</span>
-      </div>
-    </div>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' },
+        gap: 2,
+        mb: 4,
+      }}
+    >
+      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          총 도서
+        </Typography>
+        <Typography variant="h5" fontWeight="bold">
+          {books.length}
+        </Typography>
+      </Paper>
+      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          연체
+        </Typography>
+        <Typography variant="h5" fontWeight="bold" color="error.main">
+          {totals.overdue}
+        </Typography>
+      </Paper>
+      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          임박
+        </Typography>
+        <Typography variant="h5" fontWeight="bold" color="warning.main">
+          {totals.due_soon}
+        </Typography>
+      </Paper>
+      <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+        <Typography variant="caption" color="text.secondary">
+          여유
+        </Typography>
+        <Typography variant="h5" fontWeight="bold" color="success.main">
+          {totals.ok}
+        </Typography>
+      </Paper>
+    </Box>
   );
 }
 
@@ -648,104 +745,126 @@ export default function App() {
     return filterBooks(data.items, filters);
   }, [data, filters]);
 
-  const readStatusMutation = useMutation({
-    mutationFn: ({ bookId, isRead }: { bookId: number; isRead: boolean }) =>
-      updateReadStatus(bookId, isRead),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-    },
-    onError: () => {
-      setNotification({
-        type: 'error',
-        message: '완독 상태 변경에 실패했습니다.',
-      });
-    },
-  });
-
-  const handleReadStatusToggle = (book: BookItem) => {
-    readStatusMutation.mutate({
-      bookId: book.dbId,
-      isRead: !book.isRead,
-    });
-  };
-
   return (
-    <div className="page">
-      <div className="glass">
-        <header className="header">
-          <div>
-            <p className="eyebrow">KNUE BookFlow</p>
-            <h1>Bookshelf</h1>
-            <p className="lede">
-              대출 중인 책을 한눈에 보고, 반납 일정을 놓치지 마세요. Zero
-              Trust로 보호된 전용 책장입니다.
-            </p>
-          </div>
-          <div className="header-actions">
-            <div className="header-buttons">
-              <button
-                type="button"
-                className="sync-button"
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <AppBar position="static" color="transparent" elevation={0}>
+        <Container maxWidth="lg">
+          <Toolbar
+            disableGutters
+            sx={{ justifyContent: 'space-between', py: 2 }}
+          >
+            <Box>
+              <Typography
+                variant="overline"
+                color="secondary"
+                sx={{ letterSpacing: 2, fontWeight: 600 }}
+              >
+                KNUE BookFlow
+              </Typography>
+              <Typography
+                variant="h4"
+                component="h1"
+                fontWeight="bold"
+                sx={{ mt: -1 }}
+              >
+                Bookshelf
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<SyncIcon />}
                 onClick={() => syncMutation.mutate()}
                 disabled={syncMutation.isPending}
+                color="inherit"
               >
-                {syncMutation.isPending ? '동기화 중...' : '동기화'}
-              </button>
-              <button
-                type="button"
-                className="trigger-button"
+                동기화
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PlayArrowIcon />}
                 onClick={() => triggerMutation.mutate()}
                 disabled={triggerMutation.isPending}
+                color="primary"
               >
-                {triggerMutation.isPending ? '실행 중...' : '갱신 실행'}
-              </button>
-              <button
-                type="button"
-                className="refresh-button"
+                갱신 실행
+              </Button>
+              <IconButton
                 onClick={() => refetch()}
                 disabled={isLoading}
+                color="inherit"
               >
-                새로고침
-              </button>
-            </div>
-            {notification && (
-              <span
-                className={
-                  notification.type === 'success'
-                    ? 'trigger-success'
-                    : 'trigger-error'
-                }
-              >
-                {notification.message}
-              </span>
-            )}
-          </div>
-        </header>
+                <RefreshIcon />
+              </IconButton>
+            </Stack>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      <Container maxWidth="lg" sx={{ pb: 8 }}>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          대출 중인 책을 한눈에 보고, 반납 일정을 놓치지 마세요. Zero Trust로
+          보호된 전용 책장입니다.
+        </Typography>
 
         <FilterBar filters={filters} onChange={setFilters} />
 
-        {isLoading && <p className="muted">불러오는 중...</p>}
-        {isError && <p className="muted">목록을 불러오지 못했습니다.</p>}
+        {isLoading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        )}
+
+        {isError && (
+          <Alert severity="error" sx={{ mb: 4 }}>
+            목록을 불러오지 못했습니다.
+          </Alert>
+        )}
 
         {data && <ShelfStats books={data.items} />}
 
         {!isLoading && filtered.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid">
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: '1fr 1fr',
+                md: '1fr 1fr 1fr',
+                lg: '1fr 1fr 1fr 1fr',
+              },
+              gap: 3,
+            }}
+          >
             {filtered.map((book) => (
               <BookCard
                 key={book.id}
                 book={book}
                 onNoteClick={handleNoteClick}
-                onReadStatusToggle={handleReadStatusToggle}
               />
             ))}
-          </div>
+          </Box>
         )}
-      </div>
+      </Container>
 
-      {/* Note Modal */}
+      <Snackbar
+        open={!!notification}
+        autoHideDuration={5000}
+        onClose={() => setNotification(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setNotification(null)}
+          severity={notification?.type}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {notification?.message}
+        </Alert>
+      </Snackbar>
+
       {selectedBook && (
         <NoteModal
           book={selectedBook}
@@ -753,6 +872,6 @@ export default function App() {
           onNotesChanged={handleNotesChanged}
         />
       )}
-    </div>
+    </Box>
   );
 }
