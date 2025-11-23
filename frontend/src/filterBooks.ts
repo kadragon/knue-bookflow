@@ -1,18 +1,27 @@
-// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026
+// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029
 
 export type LoanState = 'on_loan' | 'returned';
+export type StatFilter = 'none' | 'on_loan' | 'incomplete' | 'completed';
 
 export interface BookListItem {
   id: string;
   title: string;
   author: string;
   loanState: LoanState;
+  isRead: boolean;
 }
 
 export interface Filters {
   search: string;
   loanState: 'all' | LoanState;
+  stat: StatFilter;
 }
+
+export const defaultFilters: Filters = {
+  search: '',
+  loanState: 'on_loan',
+  stat: 'none',
+};
 
 export function filterBooks<T extends BookListItem>(
   items: T[],
@@ -31,6 +40,18 @@ export function filterBooks<T extends BookListItem>(
     }
 
     if (filters.loanState !== 'all' && book.loanState !== filters.loanState) {
+      return false;
+    }
+
+    if (filters.stat === 'on_loan' && book.loanState !== 'on_loan') {
+      return false;
+    }
+
+    if (filters.stat === 'incomplete' && book.isRead) {
+      return false;
+    }
+
+    if (filters.stat === 'completed' && !book.isRead) {
       return false;
     }
 
