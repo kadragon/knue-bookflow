@@ -6,6 +6,7 @@
  */
 
 import { handleBooksApi } from './handlers/books-handler';
+import { handleSyncBooks } from './handlers/sync-handler';
 import {
   checkAndRenewBooks,
   createAladinClient,
@@ -53,6 +54,11 @@ export default {
 
     if (url.pathname === '/api/books' && request.method === 'GET') {
       return handleBooksApi(env);
+    }
+
+    // Library-DB sync endpoint
+    if (url.pathname === '/api/books/sync' && request.method === 'POST') {
+      return handleSyncBooks(env);
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)

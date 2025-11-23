@@ -41,3 +41,32 @@ export const triggerWorkflow = async (): Promise<{ message: string }> => {
   }
   return res.json();
 };
+
+// Library-DB sync
+// Trace: spec_id: SPEC-sync-001, task_id: TASK-021
+
+export interface SyncSummary {
+  total_charges: number;
+  added: number;
+  updated: number;
+  unchanged: number;
+}
+
+export interface SyncResponse {
+  message: string;
+  summary: SyncSummary;
+}
+
+export const syncBooks = async (): Promise<SyncResponse> => {
+  const res = await fetch('/api/books/sync', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to sync books');
+  }
+
+  return res.json();
+};

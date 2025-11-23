@@ -1,7 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
-import { type ApiResponse, getBooks, triggerWorkflow } from './api';
+import {
+  type ApiResponse,
+  getBooks,
+  type SyncResponse,
+  syncBooks,
+  triggerWorkflow,
+} from './api';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 
@@ -248,6 +254,7 @@ function ShelfStats({ books }: { books: BookItem[] }) {
 }
 
 export default function App() {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useBooks();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [notification, setNotification] = useState<{
@@ -267,6 +274,24 @@ export default function App() {
       setNotification({
         type: 'error',
         message: '워크플로우 실행에 실패했습니다.',
+      });
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: syncBooks,
+    onSuccess: (result: SyncResponse) => {
+      const { added, updated, unchanged } = result.summary;
+      setNotification({
+        type: 'success',
+        message: `동기화 완료: ${added}개 추가, ${updated}개 업데이트, ${unchanged}개 변경없음`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+    },
+    onError: (error: Error) => {
+      setNotification({
+        type: 'error',
+        message: error.message || '동기화에 실패했습니다.',
       });
     },
   });
@@ -329,6 +354,14 @@ export default function App() {
           </div>
           <div className="header-actions">
             <div className="header-buttons">
+              <button
+                type="button"
+                className="sync-button"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+              >
+                {syncMutation.isPending ? '동기화 중...' : '동기화'}
+              </button>
               <button
                 type="button"
                 className="trigger-button"
