@@ -14,6 +14,8 @@ export interface Env {
   LIBRARY_USER_ID: string;
   LIBRARY_PASSWORD: string;
   ALADIN_API_KEY: string;
+  TELEGRAM_BOT_TOKEN: string;
+  TELEGRAM_CHAT_ID: string;
 
   // Non-secret environment variables
   ENVIRONMENT: string;

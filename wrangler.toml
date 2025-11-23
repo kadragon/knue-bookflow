@@ -17,9 +17,11 @@ binding = "ASSETS"
 mode = "smart"
 # Trace: SPEC-observability-001 / TASK-018
 
-# Cron Trigger - Daily at 7 PM KST (10:00 UTC)
+# Cron Triggers
+# - Renewal workflow: 10:00 UTC (19:00 KST)
+# - Note broadcast: 03:00 UTC (12:00 KST)
 [triggers]
-crons = ["0 10 * * *"]
+crons = ["0 10 * * *", "0 3 * * *"]
 
 # D1 Database binding
 [[d1_databases]]
@@ -41,3 +43,5 @@ traces = { enabled = true, head_sampling_rate = 0.1 }
 # - LIBRARY_USER_ID
 # - LIBRARY_PASSWORD
 # - ALADIN_API_KEY
+# - TELEGRAM_BOT_TOKEN
+# - TELEGRAM_CHAT_ID

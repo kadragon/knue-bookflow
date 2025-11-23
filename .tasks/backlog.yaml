@@ -2,6 +2,23 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-028
+    title: "Send daily Telegram reading note"
+    description: |
+      Add a daily 12:00 KST cron that sends one reading note to Telegram. Pick a
+      random note among those with the lowest send count to avoid repeats, format
+      as "책명 - 작가\np.xx\n내용", and track send counts.
+    priority: 1
+    spec_id: SPEC-notes-telegram-001
+    status: done
+    acceptance_criteria:
+      - New spec SPEC-notes-telegram-001 defines cron, selection, formatting, and telemetry
+      - D1 schema stores per-note send counts and last sent timestamp
+      - Telegram API call uses bot token/chat id secrets; errors handled gracefully
+      - Cron added for 12:00 KST (03:00 UTC) without affecting existing cron
+      - Tests cover selection fairness, formatting, and error handling
+    estimated_complexity: medium
+
   - task_id: TASK-021
     title: "Library-DB sync feature"
     description: |

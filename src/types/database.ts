@@ -45,3 +45,13 @@ export interface NoteRecord {
   created_at?: string;
   updated_at?: string;
 }
+
+/**
+ * Note send statistics for Telegram broadcasts
+ * Trace: spec_id: SPEC-notes-telegram-001, task_id: TASK-028
+ */
+export interface NoteSendStat {
+  note_id: number;
+  send_count: number;
+  last_sent_at?: string | null;
+}

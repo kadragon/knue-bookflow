@@ -854,11 +854,6 @@ export default function App() {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ pb: 8 }}>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          대출 중인 책을 한눈에 보고, 반납 일정을 놓치지 마세요. Zero Trust로
-          보호된 전용 책장입니다.
-        </Typography>
-
         <FilterBar filters={filters} onChange={setFilters} />
 
         {isLoading && (

@@ -17,6 +17,7 @@ import {
 } from './handlers/notes-handler';
 import { handleSyncBooks } from './handlers/sync-handler';
 import {
+  broadcastDailyNote,
   checkAndRenewBooks,
   createAladinClient,
   createBookRecord,
@@ -24,9 +25,12 @@ import {
   createLibraryClient,
   fetchNewBooksInfo,
   identifyNewBooks,
+  NOTE_BROADCAST_CRON,
   type RenewalResult,
 } from './services';
 import type { CreateNoteRequest, Env, UpdateNoteRequest } from './types';
+
+const RENEWAL_CRON = '0 10 * * *';
 
 export default {
   /**
@@ -38,7 +42,17 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
-    ctx.waitUntil(handleScheduledTask(env, event));
+    if (event.cron === NOTE_BROADCAST_CRON) {
+      ctx.waitUntil(handleNoteBroadcast(env));
+    } else {
+      if (event.cron && event.cron !== RENEWAL_CRON) {
+        console.warn(
+          `[BookFlow] Unknown cron '${event.cron}', running renewal workflow by default`,
+        );
+      }
+      // Handles renewal cron, manual triggers, and unknown crons as a fallback.
+      ctx.waitUntil(handleScheduledTask(env, event));
+    }
   },
 
   /**
@@ -265,5 +279,28 @@ async function handleScheduledTask(
     });
 
     throw error;
+  }
+}
+
+/**
+ * Daily note broadcast handler (Telegram)
+ */
+async function handleNoteBroadcast(env: Env): Promise<void> {
+  console.log(
+    `[NoteBroadcast] Starting daily note broadcast at ${new Date().toISOString()}`,
+  );
+
+  try {
+    const sent = await broadcastDailyNote(env);
+    if (sent) {
+      console.log('[NoteBroadcast] Sent one note to Telegram');
+    } else {
+      console.log(
+        '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
+      );
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
   }
 }

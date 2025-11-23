@@ -150,3 +150,11 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
     - Uses dialogContentRef with smooth scroll animation
 - All 68 tests passing
 - Branch: feature/frontend-ui-improvements
+
+### Session 2025-11-23 (Telegram note broadcast)
+- Completed TASK-028 (SPEC-notes-telegram-001): Daily Telegram reading note broadcast at 12:00 KST
+  - Added note_send_stats table (0004_note_send_stats.sql) to track per-note send_count/last_sent_at
+  - Implemented note-broadcast service with selection from lowest send_count, message format "title - author\np.xx\ncontent"
+  - Added TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to env types/config; new cron 0 3 * * * in wrangler
+  - Scheduled handler branches on event.cron between renewal (0 10) and note broadcast (0 3)
+  - Tests: selection fairness, formatting, skip when no notes, Telegram failure handling; `npm test` passing (73 tests)
