@@ -15,21 +15,30 @@ vi.stubGlobal('fetch', mockFetch);
 function createMockCharge(chargeDate: string, id = 1): Charge {
   return {
     id,
-    renewCnt: 0,
+    barcode: '123',
+    biblio: {
+      id: 1,
+      titleStatement: 'Test Book',
+      isbn: '9781234567890',
+      thumbnail: null,
+    },
+    branch: {
+      id: 1,
+      name: 'Test Library',
+      alias: 'Test',
+      libraryCode: '123456',
+      sortOrder: 1,
+    },
+    callNo: '000',
     chargeDate,
     dueDate: '2025-01-15',
-    volume: {
-      id: 1,
-      barcode: '123',
-      shelfLocCode: 'A1',
-      callNo: '000',
-      bib: {
-        id: 1,
-        title: 'Test Book',
-        author: 'Author',
-        isbn: '9781234567890',
-      },
-    },
+    overdueDays: 0,
+    renewCnt: 0,
+    holdCnt: 0,
+    isMediaCharge: false,
+    supplementNote: null,
+    isRenewed: false,
+    isRenewable: true,
   };
 }
 

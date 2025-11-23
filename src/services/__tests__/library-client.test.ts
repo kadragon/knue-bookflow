@@ -111,21 +111,30 @@ describe('LibraryClient', () => {
             list: [
               {
                 id: 1,
-                renewCnt: 0,
+                barcode: '123',
+                biblio: {
+                  id: 1,
+                  titleStatement: 'Test Book',
+                  isbn: '1234567890',
+                  thumbnail: null,
+                },
+                branch: {
+                  id: 1,
+                  name: 'Test Library',
+                  alias: 'Test',
+                  libraryCode: '123456',
+                  sortOrder: 1,
+                },
+                callNo: '000',
                 chargeDate: '2025-01-01',
                 dueDate: '2025-01-15',
-                volume: {
-                  id: 1,
-                  barcode: '123',
-                  shelfLocCode: 'A1',
-                  callNo: '000',
-                  bib: {
-                    id: 1,
-                    title: 'Test Book',
-                    author: 'Author',
-                    isbn: '1234567890',
-                  },
-                },
+                overdueDays: 0,
+                renewCnt: 0,
+                holdCnt: 0,
+                isMediaCharge: false,
+                supplementNote: null,
+                isRenewed: false,
+                isRenewable: true,
               },
             ],
             totalCount: 1,
@@ -136,7 +145,7 @@ describe('LibraryClient', () => {
       const charges = await client.getCharges();
 
       expect(charges).toHaveLength(1);
-      expect(charges[0].volume.bib.title).toBe('Test Book');
+      expect(charges[0].biblio.titleStatement).toBe('Test Book');
       expect(mockFetch).toHaveBeenCalledWith(
         'https://lib.knue.ac.kr/pyxis-api/8/api/charges?max=20&offset=0',
         expect.objectContaining({
@@ -176,16 +185,30 @@ describe('LibraryClient', () => {
             list: [
               {
                 id: 1,
-                renewCnt: 0,
+                barcode: '123',
+                biblio: {
+                  id: 1,
+                  titleStatement: 'Book 1',
+                  isbn: '111',
+                  thumbnail: null,
+                },
+                branch: {
+                  id: 1,
+                  name: 'Test',
+                  alias: 'T',
+                  libraryCode: '123',
+                  sortOrder: 1,
+                },
+                callNo: '000',
                 chargeDate: '2025-01-01',
                 dueDate: '2025-01-15',
-                volume: {
-                  id: 1,
-                  barcode: '123',
-                  shelfLocCode: 'A1',
-                  callNo: '000',
-                  bib: { id: 1, title: 'Book 1', author: 'A', isbn: '111' },
-                },
+                overdueDays: 0,
+                renewCnt: 0,
+                holdCnt: 0,
+                isMediaCharge: false,
+                supplementNote: null,
+                isRenewed: false,
+                isRenewable: true,
               },
             ],
             totalCount: 2,
@@ -202,16 +225,30 @@ describe('LibraryClient', () => {
             list: [
               {
                 id: 2,
-                renewCnt: 0,
+                barcode: '124',
+                biblio: {
+                  id: 2,
+                  titleStatement: 'Book 2',
+                  isbn: '222',
+                  thumbnail: null,
+                },
+                branch: {
+                  id: 1,
+                  name: 'Test',
+                  alias: 'T',
+                  libraryCode: '123',
+                  sortOrder: 1,
+                },
+                callNo: '000',
                 chargeDate: '2025-01-02',
                 dueDate: '2025-01-16',
-                volume: {
-                  id: 2,
-                  barcode: '124',
-                  shelfLocCode: 'A1',
-                  callNo: '000',
-                  bib: { id: 2, title: 'Book 2', author: 'B', isbn: '222' },
-                },
+                overdueDays: 0,
+                renewCnt: 0,
+                holdCnt: 0,
+                isMediaCharge: false,
+                supplementNote: null,
+                isRenewed: false,
+                isRenewable: true,
               },
             ],
             totalCount: 2,

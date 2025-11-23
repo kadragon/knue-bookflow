@@ -24,21 +24,30 @@ function createMockCharge(
 ): Charge {
   return {
     id: overrides.id ?? 1,
-    renewCnt: overrides.renewCnt ?? 0,
+    barcode: '123456',
+    biblio: {
+      id: 1,
+      titleStatement: overrides.title ?? 'Test Book',
+      isbn: '9781234567890',
+      thumbnail: null,
+    },
+    branch: {
+      id: 1,
+      name: 'Test Library',
+      alias: 'Test',
+      libraryCode: '123456',
+      sortOrder: 1,
+    },
+    callNo: '000.00',
     chargeDate: overrides.chargeDate ?? '2025-01-01',
     dueDate: overrides.dueDate ?? '2025-01-15',
-    volume: {
-      id: 1,
-      barcode: '123456',
-      shelfLocCode: 'A1',
-      callNo: '000.00',
-      bib: {
-        id: 1,
-        title: overrides.title ?? 'Test Book',
-        author: 'Test Author',
-        isbn: '9781234567890',
-      },
-    },
+    overdueDays: 0,
+    renewCnt: overrides.renewCnt ?? 0,
+    holdCnt: 0,
+    isMediaCharge: false,
+    supplementNote: null,
+    isRenewed: false,
+    isRenewable: true,
   };
 }
 

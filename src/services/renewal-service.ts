@@ -71,7 +71,7 @@ export async function processRenewals(
 
   for (const candidate of candidates) {
     const { charge } = candidate;
-    const title = charge.volume.bib.title;
+    const title = charge.biblio.titleStatement;
 
     try {
       const response = await client.renewCharge(charge.id);

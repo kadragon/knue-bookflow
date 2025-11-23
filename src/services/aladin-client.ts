@@ -114,7 +114,7 @@ export async function fetchNewBooksInfo(
   const results: ChargeWithBookInfo[] = [];
 
   for (const charge of charges) {
-    const isbn = charge.volume.bib.isbn;
+    const isbn = charge.biblio.isbn;
     const bookInfo = await client.lookupByIsbn(isbn);
 
     results.push({ charge, bookInfo });
