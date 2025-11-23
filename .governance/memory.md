@@ -183,3 +183,6 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
     - Shared NoteItem type between App and BookDetailPage
     - React Query cache invalidation for books and book detail queries
     - dbId (database ID) used for routing and API calls
+
+### Session 2025-11-23 (Notes layout)
+- Completed TASK-031 (SPEC-book-detail-001): Removed inner scrollbar from book detail notes list so long notes expand page height; added NOTES_LIST_SX constant and layout test to prevent reintroducing fixed-height overflow.

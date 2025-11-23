@@ -294,3 +294,17 @@ completed_tasks: []
     - "Shared defaultFilters constant keeps UI defaults testable and aligned with acceptance."
     - "Stat filters should set loanState to all when showing aggregate groups to avoid accidental narrowing."
     - "Clickable stat cards benefit from simple role/button styling for accessibility without extra components."
+
+- task_id: TASK-031
+  title: "Allow notes to expand book detail page height (no inner scroll)"
+  completed_at: "2025-11-23T21:06:00Z"
+  outcome: success
+  spec_id: SPEC-book-detail-001
+  summary: |
+    Removed the fixed-height/overflow styling from the book detail notes list so a long set
+    of notes extends the overall page height instead of creating its own scrollbar. Extracted
+    a shared NOTES_LIST_SX style hook and added a layout test to guard against reintroducing
+    inner scrolling.
+  learnings:
+    - "Avoiding nested scroll areas on detail pages keeps keyboard and touch navigation intuitive."
+    - "Lightweight style constants make layout intent testable without pulling in extra UI test deps."

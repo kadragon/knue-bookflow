@@ -2,6 +2,23 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-031
+    title: "Allow notes to expand book detail page height (no inner scroll)"
+    description: |
+      On the book detail page, when many reading notes exist, the notes panel shows
+      its own scrollbar and the overall page height stays fixed. Change the layout
+      so the notes list grows the overall page height (standard page scrolling)
+      instead of trapping scroll inside the notes area. Keep the layout responsive.
+    priority: 1
+    spec_id: SPEC-book-detail-001
+    status: done
+    acceptance_criteria:
+      - Notes panel does not create its own scrolling container on desktop or mobile
+      - Long notes list increases full page height; browser scrollbar reflects total content
+      - Layout remains responsive (two columns desktop, stacked mobile)
+      - Existing note CRUD interactions remain functional
+    estimated_complexity: low
+
   - task_id: TASK-028
     title: "Send daily Telegram reading note"
     description: |
