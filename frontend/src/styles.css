@@ -619,10 +619,15 @@ body {
 }
 
 /* Note form */
+.note-entry {
+  margin-bottom: 16px;
+}
+
 .note-form {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 0 0 16px;
+  padding: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .form-group {
@@ -698,7 +703,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  margin-top: 16px;
+  margin: 0 0 16px;
 }
 
 .btn-add-note:hover {

@@ -14,7 +14,7 @@ given_when_then:
     when: "The frontend requests /api/books"
     then: "The API responds with normalized book items including derived status (overdue, due_soon, ok), days_left, and loan metadata"
 
-  - given: "A user enters a search term or selects filters (author, due status, renew count range, loan state)"
+  - given: "A user enters a search term or selects a loan-state filter"
     when: "The UI filter bar is used"
     then: "The list updates client-side without reloading, showing only matching books"
 
@@ -34,7 +34,7 @@ acceptance_tests:
   - id: TEST-frontend-003
     desc: "Frontend renders grid of cards with cover, title, author, due badge, renewal count"
   - id: TEST-frontend-004
-    desc: "Search and filter controls (author, due status, renew count, loan state) update the visible list client-side"
+    desc: "Search and loan-state controls update the visible list client-side"
   - id: TEST-frontend-005
     desc: "Worker serves SPA assets from configured assets directory with index fallback for non-API routes"
 

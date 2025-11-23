@@ -86,6 +86,10 @@ acceptance_tests:
     desc: "Edit note pre-fills form with existing values"
   - id: TEST-notes-ui-005
     desc: "Delete note shows confirmation before removing"
+  - id: TEST-notes-ui-006
+    desc: "Note creation control appears before the note list so new entries are reachable without scrolling"
+  - id: TEST-notes-ui-007
+    desc: "Book card note CTA hides the '(작성 예정)' placeholder when no notes exist"
 
 technical_notes:
   database_schema: |

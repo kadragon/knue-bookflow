@@ -209,3 +209,39 @@ completed_tasks: []
     with weekly interval.
   learnings:
     - "Dependabot can monitor GitHub Actions workflow files for action version updates."
+
+- task_id: TASK-024
+  title: "Place note input at top of modal"
+  completed_at: "2025-11-23T13:35:00Z"
+  outcome: success
+  spec_id: SPEC-notes-002
+  summary: |
+    Reordered the NoteModal so the add/edit note control sits at the top, ensuring users
+    can start writing without scrolling past long histories. Added a small layout helper
+    with a unit test (TEST-notes-ui-006) and tweaked styles to keep spacing consistent.
+  learnings:
+    - "Keep primary input affordances at the top of modals to minimize scroll friction."
+    - "A tiny ordering helper plus test locks in UX expectations without heavy UI harnesses."
+
+- task_id: TASK-025
+  title: "Remove '(작성 예정)' label when no notes"
+  completed_at: "2025-11-23T13:37:30Z"
+  outcome: success
+  spec_id: SPEC-notes-002
+  summary: |
+    Hid the placeholder "(작성 예정)" copy on book cards when noteCount is zero. Added a
+    guard helper with unit tests (TEST-notes-ui-007) to keep the label from reappearing.
+  learnings:
+    - "Small text changes benefit from a dedicated helper + test to prevent regressions."
+
+- task_id: TASK-026
+  title: "Simplify filters: remove author/minRenew/dueStatus"
+  completed_at: "2025-11-23T13:44:30Z"
+  outcome: success
+  spec_id: SPEC-frontend-001
+  summary: |
+    Removed author, due-status, and minimum-renew filters from the bookshelf UI and logic,
+    leaving search and loan-state filters only. Updated spec (TEST-frontend-004) and added a
+    filterBooks helper with unit tests to lock the new behavior.
+  learnings:
+    - "Extracting filtering into a helper makes UX changes safer to iterate." 
