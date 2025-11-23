@@ -187,6 +187,16 @@ export async function processCharge(
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
 
     const record = createBookRecord(charge, bookInfo || undefined);
+
+    // Preserve existing metadata when Aladin lookup was not attempted or failed
+    if (!bookInfo) {
+      record.publisher = existing.publisher;
+      record.cover_url = existing.cover_url;
+      record.description = existing.description;
+      record.isbn13 = existing.isbn13;
+      record.pub_date = existing.pub_date;
+    }
+
     await bookRepository.saveBook(record);
     return 'updated';
   }

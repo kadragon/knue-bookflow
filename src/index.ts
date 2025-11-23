@@ -16,12 +16,11 @@ import {
   handleGetNotes,
   handleUpdateNote,
 } from './handlers/notes-handler';
-import { handleSyncBooks } from './handlers/sync-handler';
+import { handleSyncBooks, processCharge } from './handlers/sync-handler';
 import {
   broadcastDailyNote,
   checkAndRenewBooks,
   createAladinClient,
-  createBookRecord,
   createBookRepository,
   createLibraryClient,
   NOTE_BROADCAST_CRON,
@@ -222,70 +221,15 @@ async function handleScheduledTask(
 
     // Step 5: Sync all books with database
     console.log('[BookFlow] Step 5: Syncing books with database...');
-    let addedCount = 0;
-    let updatedCount = 0;
 
-    for (const charge of charges) {
-      const existing = await bookRepository.findByChargeId(String(charge.id));
+    const syncStatuses = await Promise.all(
+      charges.map((charge) =>
+        processCharge(charge, bookRepository, aladinClient),
+      ),
+    );
 
-      if (!existing) {
-        // New book - fetch from Aladin and save
-        let bookInfo = null;
-        if (charge.biblio.isbn) {
-          try {
-            bookInfo = await aladinClient.lookupByIsbn(charge.biblio.isbn);
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : 'Unknown error';
-            console.error(
-              `[BookFlow] Aladin lookup failed for ${charge.biblio.isbn}: ${message}`,
-            );
-          }
-        }
-        const record = createBookRecord(charge, bookInfo);
-        await bookRepository.saveBook(record);
-        addedCount++;
-        continue;
-      }
-
-      // Existing book - check if update needed
-      const needsMetadataRefresh = existing.cover_url === null;
-      const needsChargeUpdate =
-        existing.due_date !== charge.dueDate ||
-        existing.renew_count !== charge.renewCnt;
-
-      if (needsMetadataRefresh || needsChargeUpdate) {
-        let bookInfo = null;
-
-        // Fetch from Aladin if metadata is missing
-        if (needsMetadataRefresh && charge.biblio.isbn) {
-          console.log(
-            `[BookFlow] Refreshing metadata for: ${charge.biblio.titleStatement}`,
-          );
-          try {
-            bookInfo = await aladinClient.lookupByIsbn(charge.biblio.isbn);
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : 'Unknown error';
-            console.error(
-              `[BookFlow] Aladin lookup failed for ${charge.biblio.isbn}: ${message}`,
-            );
-          }
-        }
-
-        const record = createBookRecord(charge, bookInfo);
-
-        // Preserve existing metadata when Aladin lookup was not attempted or failed
-        if (!bookInfo) {
-          record.publisher = existing.publisher;
-          record.cover_url = existing.cover_url;
-          record.description = existing.description;
-        }
-
-        await bookRepository.saveBook(record);
-        updatedCount++;
-      }
-    }
+    const addedCount = syncStatuses.filter((s) => s === 'added').length;
+    const updatedCount = syncStatuses.filter((s) => s === 'updated').length;
 
     // Step 6: Log summary
     const duration = Date.now() - startTime;
