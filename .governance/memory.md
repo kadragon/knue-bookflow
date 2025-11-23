@@ -120,3 +120,8 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 ### Next Steps
 - Deploy migration: `wrangler d1 migrations apply knue-bookflow-db`
 - Test note creation/editing in production
+
+### Session 2025-11-23 (UI tweak)
+- Completed TASK-024 (SPEC-notes-002): moved note creation control to the top of NoteModal, added ordering helper with unit test (TEST-notes-ui-006), and adjusted spacing so users can start writing without scrolling past long histories.
+- Completed TASK-025 (SPEC-notes-002): removed the '(작성 예정)' placeholder on book cards when no notes exist, added helper + test (TEST-notes-ui-007) to keep the copy hidden.
+- Completed TASK-026 (SPEC-frontend-001): simplified filters by removing author/due-status/min-renew controls; only search and loan-state remain. Updated spec TEST-frontend-004 and added filterBooks helper + tests.

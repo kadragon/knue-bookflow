@@ -13,6 +13,9 @@ import {
   triggerWorkflow,
   updateNote,
 } from './api';
+import { filterBooks } from './filterBooks';
+import { shouldShowPlannedLabel } from './noteCta';
+import { buildNoteSections } from './noteLayout';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
 
@@ -64,27 +67,19 @@ function useBooks() {
 
 interface FilterState {
   search: string;
-  author: string;
-  dueStatus: 'all' | DueStatus;
   loanState: 'all' | LoanState;
-  minRenew: number;
 }
 
 const defaultFilters: FilterState = {
   search: '',
-  author: 'all',
-  dueStatus: 'all',
   loanState: 'all',
-  minRenew: 0,
 };
 
 function FilterBar({
   filters,
-  authors,
   onChange,
 }: {
   filters: FilterState;
-  authors: string[];
   onChange: (next: FilterState) => void;
 }) {
   return (
@@ -100,58 +95,6 @@ function FilterBar({
           value={filters.search}
           onChange={(e) =>
             onChange({ ...filters, search: e.currentTarget.value })
-          }
-        />
-      </div>
-      <div className="filter-group">
-        <label className="label" htmlFor="author">
-          저자
-        </label>
-        <select
-          id="author"
-          className="input"
-          value={filters.author}
-          onChange={(e) => onChange({ ...filters, author: e.target.value })}
-        >
-          <option value="all">전체</option>
-          {authors.map((author) => (
-            <option key={author} value={author}>
-              {author}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="filter-group filter-group-wide">
-        <fieldset className="segmented" aria-label="반납 상태 필터">
-          <legend className="label">반납 상태</legend>
-          {(['all', 'overdue', 'due_soon', 'ok'] as const).map((status) => (
-            <button
-              type="button"
-              key={status}
-              className={clsx(
-                'chip',
-                filters.dueStatus === status && 'chip-active',
-              )}
-              onClick={() => onChange({ ...filters, dueStatus: status })}
-            >
-              {status === 'all' ? '전체' : DUE_STATUS_LABEL[status]}
-            </button>
-          ))}
-        </fieldset>
-      </div>
-      <div className="filter-group">
-        <label className="label" htmlFor="minRenew">
-          최소 연장 횟수
-        </label>
-        <input
-          id="minRenew"
-          type="number"
-          className="input"
-          min={0}
-          max={10}
-          value={filters.minRenew}
-          onChange={(e) =>
-            onChange({ ...filters, minRenew: Number(e.currentTarget.value) })
           }
         />
       </div>
@@ -220,7 +163,7 @@ function BookCard({
       <div className="note-cta">
         <div>
           <span className="note-count">노트 {book.noteCount}개</span>
-          {book.noteCount === 0 && (
+          {shouldShowPlannedLabel(book.noteCount) && (
             <span className="note-state">(작성 예정)</span>
           )}
         </div>
@@ -432,6 +375,107 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
     }
   };
 
+  const noteSections = buildNoteSections(notes.length > 0);
+
+  const renderEntrySection = () => (
+    <div className="note-entry" key="entry">
+      {isFormOpen ? (
+        <form className="note-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="pageNumber">페이지</label>
+            <input
+              id="pageNumber"
+              type="number"
+              className="input"
+              min={1}
+              value={formData.pageNumber}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  pageNumber: e.target.value,
+                })
+              }
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="content">내용</label>
+            <textarea
+              id="content"
+              className="input textarea"
+              rows={4}
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleCancel}
+            >
+              취소
+            </button>
+            <button type="submit" className="btn-primary" disabled={isSaving}>
+              {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="btn-add-note"
+          onClick={() => setIsFormOpen(true)}
+        >
+          + 노트 추가
+        </button>
+      )}
+    </div>
+  );
+
+  const renderNotesSection = () => {
+    if (notes.length === 0) {
+      return (
+        <div className="notes-empty" key="empty">
+          <p>아직 작성된 노트가 없습니다.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="notes-list" key="list">
+        {notes.map((note) => (
+          <div key={note.id} className="note-item">
+            <div className="note-header">
+              <span className="note-page">p. {note.pageNumber}</span>
+              <div className="note-actions">
+                <button
+                  type="button"
+                  className="note-action-btn"
+                  onClick={() => handleEdit(note)}
+                >
+                  수정
+                </button>
+                <button
+                  type="button"
+                  className="note-action-btn note-action-delete"
+                  onClick={() => handleDeleteClick(note.id)}
+                  disabled={deleteMutation.isPending}
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+            <blockquote className="note-content">{note.content}</blockquote>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* biome-ignore lint/a11y/useSemanticElements: Modal backdrop with click-to-close is a common UI pattern */}
@@ -459,113 +503,16 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
               </div>
             )}
 
+            {renderEntrySection()}
+
             {isLoading ? (
               <p className="muted">노트를 불러오는 중...</p>
+            ) : noteSections[1] === 'list' ? (
+              renderNotesSection()
             ) : (
-              <>
-                {/* Note list */}
-                {notes.length === 0 ? (
-                  <div className="notes-empty">
-                    <p>아직 작성된 노트가 없습니다.</p>
-                  </div>
-                ) : (
-                  <div className="notes-list">
-                    {notes.map((note) => (
-                      <div key={note.id} className="note-item">
-                        <div className="note-header">
-                          <span className="note-page">
-                            p. {note.pageNumber}
-                          </span>
-                          <div className="note-actions">
-                            <button
-                              type="button"
-                              className="note-action-btn"
-                              onClick={() => handleEdit(note)}
-                            >
-                              수정
-                            </button>
-                            <button
-                              type="button"
-                              className="note-action-btn note-action-delete"
-                              onClick={() => handleDeleteClick(note.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </div>
-                        <blockquote className="note-content">
-                          {note.content}
-                        </blockquote>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add/Edit form */}
-                {isFormOpen ? (
-                  <form className="note-form" onSubmit={handleSubmit}>
-                    <div className="form-group">
-                      <label htmlFor="pageNumber">페이지</label>
-                      <input
-                        id="pageNumber"
-                        type="number"
-                        className="input"
-                        min={1}
-                        value={formData.pageNumber}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pageNumber: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="content">내용</label>
-                      <textarea
-                        id="content"
-                        className="input textarea"
-                        rows={4}
-                        value={formData.content}
-                        onChange={(e) =>
-                          setFormData({ ...formData, content: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="form-actions">
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={handleCancel}
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn-primary"
-                        disabled={isSaving}
-                      >
-                        {isSaving
-                          ? '저장 중...'
-                          : editingNote
-                            ? '수정'
-                            : '추가'}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-add-note"
-                    onClick={() => setIsFormOpen(true)}
-                  >
-                    + 노트 추가
-                  </button>
-                )}
-              </>
+              <div className="notes-empty">
+                <p>아직 작성된 노트가 없습니다.</p>
+              </div>
             )}
           </div>
         </div>
@@ -681,38 +628,9 @@ export default function App() {
     }
   }, [notification]);
 
-  const authors = useMemo(() => {
-    const set = new Set<string>();
-    data?.items.forEach((b) => {
-      set.add(b.author);
-    });
-    return Array.from(set).sort();
-  }, [data]);
-
   const filtered = useMemo(() => {
     if (!data?.items) return [];
-    const searchLower = filters.search.toLowerCase();
-
-    return data.items.filter((book) => {
-      if (
-        searchLower &&
-        !book.title.toLowerCase().includes(searchLower) &&
-        !book.author.toLowerCase().includes(searchLower) &&
-        !book.id.toLowerCase().includes(searchLower)
-      ) {
-        return false;
-      }
-
-      if (filters.author !== 'all' && book.author !== filters.author)
-        return false;
-      if (filters.dueStatus !== 'all' && book.dueStatus !== filters.dueStatus)
-        return false;
-      if (filters.loanState !== 'all' && book.loanState !== filters.loanState)
-        return false;
-      if (book.renewCount < filters.minRenew) return false;
-
-      return true;
-    });
+    return filterBooks(data.items, filters);
   }, [data, filters]);
 
   return (
@@ -768,7 +686,7 @@ export default function App() {
           </div>
         </header>
 
-        <FilterBar filters={filters} authors={authors} onChange={setFilters} />
+        <FilterBar filters={filters} onChange={setFilters} />
 
         {isLoading && <p className="muted">불러오는 중...</p>}
         {isError && <p className="muted">목록을 불러오지 못했습니다.</p>}
