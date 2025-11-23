@@ -244,4 +244,21 @@ completed_tasks: []
     leaving search and loan-state filters only. Updated spec (TEST-frontend-004) and added a
     filterBooks helper with unit tests to lock the new behavior.
   learnings:
-    - "Extracting filtering into a helper makes UX changes safer to iterate." 
+    - "Extracting filtering into a helper makes UX changes safer to iterate."
+
+- task_id: TASK-027
+  title: "Frontend UI improvements: pastel theme, read status, stats, note edit"
+  completed_at: "2025-11-23T15:52:00Z"
+  outcome: success
+  spec_id: SPEC-frontend-001
+  summary: |
+    Implemented 4 UI improvements to the bookshelf frontend:
+    1. Established pastel color design system (primary: #7EB8DA, secondary: #A8D5BA, etc.)
+    2. Added completion status (완독) toggle UI with API integration
+    3. Updated main page statistics to show 대여중/독서중/완료/총
+    4. Fixed note edit button by adding scroll-to-top behavior when form opens
+  learnings:
+    - "Pastel tones with good contrast text colors maintain readability while softening the UI."
+    - "Book stats should reflect reading progress (대여중/독서중/완료) not just due dates."
+    - "When opening forms in scrollable modals, auto-scroll to form improves UX."
+    - "Integrating existing backend APIs (read status) into frontend requires minimal changes."
