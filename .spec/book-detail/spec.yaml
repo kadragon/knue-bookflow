@@ -1,0 +1,105 @@
+spec_id: SPEC-book-detail-001
+title: "Book Detail Page - View book info and manage reading notes"
+description: |
+  A dedicated page for viewing detailed book information collected from Aladin
+  and managing reading notes with full CRUD operations.
+
+given_when_then:
+  - given: "User is on the bookshelf page"
+    when: "User clicks on a book cover or title"
+    then: "Navigate to the book detail page for that book"
+
+  - given: "User is on the book detail page"
+    when: "Page loads"
+    then: "Display book info on the left and notes on the right in two-column layout"
+
+  - given: "User is on the book detail page"
+    when: "Viewing the left panel"
+    then: "See all Aladin-collected info: cover, title, author, publisher, description, charge date, due date, status"
+
+  - given: "User is on the book detail page"
+    when: "Viewing the right panel"
+    then: "See all reading notes sorted by page number with add/edit/delete capabilities"
+
+  - given: "User is on the book detail page"
+    when: "User clicks the add note button"
+    then: "Show form to enter page number and content"
+
+  - given: "User is on the book detail page"
+    when: "User clicks edit on a note"
+    then: "Show form pre-filled with note data for editing"
+
+  - given: "User is on the book detail page"
+    when: "User clicks delete on a note"
+    then: "Show confirmation dialog and delete on confirm"
+
+  - given: "User is on the book detail page"
+    when: "User clicks the completion toggle"
+    then: "Toggle the isRead status and update UI accordingly"
+
+  - given: "User is on the book detail page"
+    when: "User clicks the back button"
+    then: "Navigate back to the bookshelf page"
+
+acceptance_tests:
+  - id: TEST-book-detail-001
+    desc: "Clicking book cover navigates to /books/:id"
+
+  - id: TEST-book-detail-002
+    desc: "Clicking book title navigates to /books/:id"
+
+  - id: TEST-book-detail-003
+    desc: "Book detail page shows two-column layout on desktop"
+
+  - id: TEST-book-detail-004
+    desc: "Left panel displays all book metadata from Aladin"
+
+  - id: TEST-book-detail-005
+    desc: "Right panel displays notes sorted by page number"
+
+  - id: TEST-book-detail-006
+    desc: "Can add a new note from detail page"
+
+  - id: TEST-book-detail-007
+    desc: "Can edit existing note from detail page"
+
+  - id: TEST-book-detail-008
+    desc: "Can delete note with confirmation from detail page"
+
+  - id: TEST-book-detail-009
+    desc: "Completion toggle updates isRead status"
+
+  - id: TEST-book-detail-010
+    desc: "Back button returns to bookshelf"
+
+  - id: TEST-book-detail-011
+    desc: "GET /api/books/:id returns single book with notes"
+
+  - id: TEST-book-detail-012
+    desc: "Responsive layout: stacked on mobile, side-by-side on desktop"
+
+dependencies:
+  - spec: SPEC-notes-002
+  - spec: SPEC-frontend-001
+
+linked_tasks:
+  - TASK-030
+
+ui_components:
+  - name: BookDetailPage
+    location: frontend/src/pages/BookDetailPage.tsx
+    description: Main page component with routing
+
+  - name: BookInfoPanel
+    location: frontend/src/components/BookInfoPanel.tsx
+    description: Left panel showing book metadata
+
+  - name: NotesPanel
+    location: frontend/src/components/NotesPanel.tsx
+    description: Right panel with notes list and CRUD
+
+api_endpoints:
+  - method: GET
+    path: /api/books/:id
+    description: Get single book with full details and notes
+    response: BookDetailViewModel

@@ -7,6 +7,7 @@
 
 import {
   handleBooksApi,
+  handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
 import {
@@ -82,6 +83,14 @@ export default {
     // Library-DB sync endpoint
     if (url.pathname === '/api/books/sync' && request.method === 'POST') {
       return handleSyncBooks(env);
+    }
+
+    // Get single book endpoint
+    // Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+    const singleBookMatch = url.pathname.match(/^\/api\/books\/(\d+)$/);
+    if (singleBookMatch && request.method === 'GET') {
+      const bookId = parseInt(singleBookMatch[1], 10);
+      return handleGetBook(env, bookId);
     }
 
     // Update read status endpoint

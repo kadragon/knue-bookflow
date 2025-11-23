@@ -39,6 +39,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Route, Routes, useNavigate } from 'react-router-dom';
 import {
   type ApiResponse,
   createNote,
@@ -58,6 +59,7 @@ import {
   filterBooks,
   type StatFilter,
 } from './filterBooks';
+import BookDetailPage from './pages/BookDetailPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
 
@@ -159,10 +161,12 @@ function BookCard({
   book,
   onNoteClick,
   onReadStatusChange,
+  onBookClick,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
   onReadStatusChange: (book: BookItem, isRead: boolean) => void;
+  onBookClick: (book: BookItem) => void;
 }) {
   return (
     <Card
@@ -177,7 +181,10 @@ function BookCard({
           display: 'flex',
           justifyContent: 'center',
           bgcolor: 'background.paper',
+          cursor: 'pointer',
+          '&:hover': { opacity: 0.8 },
         }}
+        onClick={() => onBookClick(book)}
       >
         {book.coverUrl ? (
           <CardMedia
@@ -215,7 +222,14 @@ function BookCard({
         <Typography
           variant="h6"
           component="h3"
-          sx={{ fontSize: '1rem', fontWeight: 600, lineHeight: 1.3 }}
+          sx={{
+            fontSize: '1rem',
+            fontWeight: 600,
+            lineHeight: 1.3,
+            cursor: 'pointer',
+            '&:hover': { color: 'primary.main' },
+          }}
+          onClick={() => onBookClick(book)}
         >
           {book.title}
         </Typography>
@@ -757,7 +771,8 @@ function ShelfStats({
   );
 }
 
-export default function App() {
+function BookshelfPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useBooks();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
@@ -777,6 +792,10 @@ export default function App() {
 
   const handleNotesChanged = () => {
     queryClient.invalidateQueries({ queryKey: ['books'] });
+  };
+
+  const handleBookClick = (book: BookItem) => {
+    navigate(`/books/${book.dbId}`);
   };
 
   const handleStatSelect = (stat: StatFilter) => {
@@ -960,6 +979,7 @@ export default function App() {
                 book={book}
                 onNoteClick={handleNoteClick}
                 onReadStatusChange={handleReadStatusChange}
+                onBookClick={handleBookClick}
               />
             ))}
           </Box>
@@ -990,5 +1010,15 @@ export default function App() {
         />
       )}
     </Box>
+  );
+}
+
+// Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<BookshelfPage />} />
+      <Route path="/books/:id" element={<BookDetailPage />} />
+    </Routes>
   );
 }
