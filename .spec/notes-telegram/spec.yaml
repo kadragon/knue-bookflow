@@ -1,0 +1,44 @@
+spec_id: SPEC-notes-telegram-001
+title: "Daily Telegram delivery of reading notes"
+description: |
+  Send one reading note to Telegram every day at 12:00 KST (03:00 UTC). The
+  note is chosen randomly among those with the lowest send count to avoid
+  repeats. Message format: "{title} - {author}\np.{page_number}\n{content}".
+
+given_when_then:
+  - given: "The scheduled cron at 03:00 UTC runs and there are notes saved"
+    when: "A Telegram bot token and chat id are configured"
+    then: "One note is sent with the expected format and send count is incremented"
+
+  - given: "Multiple notes exist with different send counts"
+    when: "Selecting a note to send"
+    then: "A note is chosen uniformly at random from those with the lowest send_count"
+
+  - given: "All notes share the same send_count"
+    when: "Selecting a note to send"
+    then: "Any note may be chosen at random, and the chosen note's send_count increases by 1"
+
+  - given: "No notes exist in the database"
+    when: "The cron runs"
+    then: "No Telegram request is made and a skip is logged"
+
+  - given: "Telegram API responds with a non-200 status"
+    when: "Sending the message"
+    then: "An error is logged and the failure is recorded without crashing the worker"
+
+acceptance_tests:
+  - id: TEST-telegram-001
+    desc: "Selects from the lowest send_count and increments after send"
+  - id: TEST-telegram-002
+    desc: "Formats message as 'title - author\\np.{page}\\ncontent'"
+  - id: TEST-telegram-003
+    desc: "Skips sending when there are zero notes"
+  - id: TEST-telegram-004
+    desc: "Handles Telegram API failure without throwing"
+
+dependencies:
+  - SPEC-notes-002
+  - SPEC-storage-001
+
+linked_tasks:
+  - TASK-028

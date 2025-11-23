@@ -262,3 +262,19 @@ completed_tasks: []
     - "Book stats should reflect reading progress (대여중/독서중/완료) not just due dates."
     - "When opening forms in scrollable modals, auto-scroll to form improves UX."
     - "Integrating existing backend APIs (read status) into frontend requires minimal changes."
+
+- task_id: TASK-028
+  title: "Send daily Telegram reading note"
+  completed_at: "2025-11-23T16:13:00Z"
+  outcome: success
+  spec_id: SPEC-notes-telegram-001
+  summary: |
+    Added a 12:00 KST cron that sends one reading note to Telegram using the lowest
+    send_count selection strategy. Introduced note_send_stats table, repository for
+    aggregated note/book data, Telegram sender, and message formatting ("title - author\np.xx\ncontent").
+    Added TELEGRAM_* secrets to env, wrangler cron, and tests for selection fairness,
+    formatting, skip/no-notes, and error handling.
+  learnings:
+    - "Tracking send_count per note prevents over-sending the same quote while staying deterministic."
+    - "D1 upsert with ON CONFLICT keeps send counters lightweight without extra reads."
+    - "Cron branching via event.cron cleanly separates renewal and broadcast workflows."

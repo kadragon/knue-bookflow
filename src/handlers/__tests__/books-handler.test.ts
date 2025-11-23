@@ -138,6 +138,8 @@ describe('handleBooksApi', () => {
       LIBRARY_USER_ID: '',
       LIBRARY_PASSWORD: '',
       ALADIN_API_KEY: '',
+      TELEGRAM_BOT_TOKEN: '',
+      TELEGRAM_CHAT_ID: '',
       ENVIRONMENT: 'test',
     };
 
@@ -187,6 +189,8 @@ describe('handleBooksApi', () => {
       LIBRARY_USER_ID: '',
       LIBRARY_PASSWORD: '',
       ALADIN_API_KEY: '',
+      TELEGRAM_BOT_TOKEN: '',
+      TELEGRAM_CHAT_ID: '',
       ENVIRONMENT: 'test',
     };
 
