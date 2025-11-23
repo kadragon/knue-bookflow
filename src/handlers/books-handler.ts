@@ -160,7 +160,7 @@ type FullBookRepo = Pick<
 >;
 type FullNoteRepo = Pick<
   ReturnType<typeof createNoteRepository>,
-  'countNotesForBookIds' | 'findByBookId'
+  'findByBookId'
 >;
 
 export async function handleGetBook(
@@ -179,10 +179,6 @@ export async function handleGetBook(
       });
     }
 
-    // Get note count
-    const noteCounts = await noteRepo.countNotesForBookIds([bookId]);
-    const noteCount = noteCounts.get(bookId) || 0;
-
     // Get notes
     const notes = await noteRepo.findByBookId(bookId);
     const notesView = notes.map((note) => ({
@@ -194,7 +190,7 @@ export async function handleGetBook(
       updatedAt: note.updated_at ?? '',
     }));
 
-    const bookView = deriveBookViewModel(record, noteCount);
+    const bookView = deriveBookViewModel(record, notes.length);
 
     return new Response(
       JSON.stringify({

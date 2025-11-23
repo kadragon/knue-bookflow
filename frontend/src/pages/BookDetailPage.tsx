@@ -266,14 +266,19 @@ function NotesPanel({
   const [formData, setFormData] = useState({ pageNumber: '', content: '' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
+  // Shared query invalidation logic
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['book', bookId] });
+    queryClient.invalidateQueries({ queryKey: ['books'] });
+    onNotesChanged();
+  };
+
   // Create note mutation
   const createMutation = useMutation({
     mutationFn: (data: { page_number: number; content: string }) =>
       createNote(bookId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      onNotesChanged();
+      invalidateQueries();
       setFormData({ pageNumber: '', content: '' });
       setIsFormOpen(false);
     },
@@ -289,9 +294,7 @@ function NotesPanel({
       data: { page_number: number; content: string };
     }) => updateNote(noteId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      onNotesChanged();
+      invalidateQueries();
       setFormData({ pageNumber: '', content: '' });
       setIsFormOpen(false);
       setEditingNote(null);
@@ -302,9 +305,7 @@ function NotesPanel({
   const deleteMutation = useMutation({
     mutationFn: (noteId: number) => deleteNote(noteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-      onNotesChanged();
+      invalidateQueries();
       setDeleteConfirmId(null);
     },
   });
