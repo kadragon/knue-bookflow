@@ -553,6 +553,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
                   size="small"
                   onClick={() => handleDeleteClick(note.id)}
                   color="error"
+                  disabled={deleteMutation.isPending}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
