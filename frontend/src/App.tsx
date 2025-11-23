@@ -205,6 +205,15 @@ function BookCard({ book }: { book: BookItem }) {
         <span>대출 {formatDate(book.chargeDate)}</span>
         <span>반납 {formatDate(book.dueDate)}</span>
       </div>
+      <div className="note-cta">
+        <div>
+          <span className="note-count">노트 {book.noteCount}개</span>
+          <span className="note-state">(작성 예정)</span>
+        </div>
+        <button className="note-button" type="button">
+          노트 남기기
+        </button>
+      </div>
     </article>
   );
 }
