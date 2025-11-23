@@ -152,4 +152,38 @@ describe('broadcastDailyNote', () => {
     expect(repository.incrementSendCount).not.toHaveBeenCalled();
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
+
+  it('sends note and increments send count on success', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+    });
+
+    const candidate = createCandidate({
+      note: { id: 42, book_id: 1, page_number: 100, content: 'Test content' },
+      book: { title: 'Test Book', author: 'Test Author' } as BookRecord,
+    });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+    });
+
+    expect(sent).toBe(true);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.telegram.org/bottoken/sendMessage',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('Test Book - Test Author'),
+      }),
+    );
+    expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
+  });
 });

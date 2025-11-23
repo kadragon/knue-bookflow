@@ -44,19 +44,15 @@ export default {
   ): Promise<void> {
     if (event.cron === NOTE_BROADCAST_CRON) {
       ctx.waitUntil(handleNoteBroadcast(env));
-      return;
-    }
-
-    // Renewal cron (default path) or manual trigger without cron field
-    if (!event.cron || event.cron === RENEWAL_CRON) {
+    } else {
+      if (event.cron && event.cron !== RENEWAL_CRON) {
+        console.warn(
+          `[BookFlow] Unknown cron '${event.cron}', running renewal workflow by default`,
+        );
+      }
+      // Handles renewal cron, manual triggers, and unknown crons as a fallback.
       ctx.waitUntil(handleScheduledTask(env, event));
-      return;
     }
-
-    console.warn(
-      `[BookFlow] Unknown cron '${event.cron}', running renewal workflow by default`,
-    );
-    ctx.waitUntil(handleScheduledTask(env, event));
   },
 
   /**

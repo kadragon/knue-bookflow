@@ -66,7 +66,6 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
           n.content,
           n.created_at AS note_created_at,
           n.updated_at AS note_updated_at,
-          b.id AS book_id,
           b.charge_id,
           b.isbn,
           b.title,
@@ -141,12 +140,13 @@ export function selectNoteCandidate(
     return null;
   }
 
-  const sorted = [...candidates].sort((a, b) => a.sendCount - b.sendCount);
-  const lowest = sorted.filter((c) => c.sendCount === sorted[0].sendCount);
-  const idx = Math.min(
-    lowest.length - 1,
-    Math.floor(randomFn() * lowest.length),
+  const minSendCount = candidates.reduce(
+    (min, c) => Math.min(min, c.sendCount),
+    Infinity,
   );
+
+  const lowest = candidates.filter((c) => c.sendCount === minSendCount);
+  const idx = Math.floor(randomFn() * lowest.length);
   return lowest[idx] ?? null;
 }
 
@@ -172,7 +172,7 @@ async function sendTelegramMessage(
   });
 
   if (!response.ok) {
-    const details = response.text ? await response.text() : '';
+    const details = await response.text().catch(() => '');
     console.error(
       `[NoteBroadcast] Telegram send failed: ${response.status} ${response.statusText} ${details}`,
     );
@@ -216,6 +216,8 @@ export async function broadcastDailyNote(
     return false;
   }
 
-  await repository.incrementSendCount(candidate.note.id!);
+  if (candidate.note.id) {
+    await repository.incrementSendCount(candidate.note.id);
+  }
   return true;
 }
