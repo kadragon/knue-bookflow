@@ -2,6 +2,7 @@
 
 interface BookItem {
   id: string;
+  dbId: number;
   title: string;
   author: string;
   publisher: string | null;
@@ -14,7 +15,7 @@ interface BookItem {
   dueStatus: 'overdue' | 'due_soon' | 'ok';
   loanState: 'on_loan' | 'returned';
   noteCount: number;
-  noteState: 'not_started';
+  noteState: 'not_started' | 'in_progress' | 'completed';
 }
 
 export interface ApiResponse {
@@ -68,5 +69,88 @@ export const syncBooks = async (): Promise<SyncResponse> => {
     throw new Error(error.error || 'Failed to sync books');
   }
 
+  return res.json();
+};
+
+// Notes API
+// Trace: spec_id: SPEC-notes-002, task_id: TASK-023
+
+export interface NoteItem {
+  id: number;
+  bookId: number;
+  pageNumber: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotesResponse {
+  notes: NoteItem[];
+}
+
+export interface NoteResponse {
+  note: NoteItem;
+}
+
+export const getNotes = async (bookId: number): Promise<NotesResponse> => {
+  const res = await fetch(`/api/books/${bookId}/notes`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to load notes');
+  }
+  return res.json();
+};
+
+export const createNote = async (
+  bookId: number,
+  data: { page_number: number; content: string },
+): Promise<NoteResponse> => {
+  const res = await fetch(`/api/books/${bookId}/notes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to create note');
+  }
+  return res.json();
+};
+
+export const updateNote = async (
+  noteId: number,
+  data: { page_number?: number; content?: string },
+): Promise<NoteResponse> => {
+  const res = await fetch(`/api/notes/${noteId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to update note');
+  }
+  return res.json();
+};
+
+export const deleteNote = async (
+  noteId: number,
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/notes/${noteId}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to delete note');
+  }
   return res.json();
 };

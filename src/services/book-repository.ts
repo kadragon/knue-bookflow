@@ -102,6 +102,19 @@ export class BookRepository {
   }
 
   /**
+   * Find a book record by database ID
+   * @param id - Database ID to search for
+   */
+  async findById(id: number): Promise<BookRecord | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM books WHERE id = ?')
+      .bind(id)
+      .first<BookRecord>();
+
+    return result || null;
+  }
+
+  /**
    * Log a renewal action
    * @param log - Renewal log entry
    */

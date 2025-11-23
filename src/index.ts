@@ -2,10 +2,16 @@
  * KNUE BookFlow - Cloudflare Worker Entry Point
  * Automatic book renewal system for Korea National University of Education library
  *
- * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016
+ * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023
  */
 
 import { handleBooksApi } from './handlers/books-handler';
+import {
+  handleCreateNote,
+  handleDeleteNote,
+  handleGetNotes,
+  handleUpdateNote,
+} from './handlers/notes-handler';
 import { handleSyncBooks } from './handlers/sync-handler';
 import {
   checkAndRenewBooks,
@@ -17,7 +23,7 @@ import {
   identifyNewBooks,
   type RenewalResult,
 } from './services';
-import type { Env } from './types';
+import type { CreateNoteRequest, Env, UpdateNoteRequest } from './types';
 
 export default {
   /**
@@ -59,6 +65,39 @@ export default {
     // Library-DB sync endpoint
     if (url.pathname === '/api/books/sync' && request.method === 'POST') {
       return handleSyncBooks(env);
+    }
+
+    // Notes API endpoints
+    // GET /api/books/:id/notes - Get notes for a book
+    // POST /api/books/:id/notes - Create a note
+    const bookNotesMatch = url.pathname.match(/^\/api\/books\/(\d+)\/notes$/);
+    if (bookNotesMatch) {
+      const bookId = parseInt(bookNotesMatch[1], 10);
+
+      if (request.method === 'GET') {
+        return handleGetNotes(env, bookId);
+      }
+
+      if (request.method === 'POST') {
+        const body = (await request.json()) as CreateNoteRequest;
+        return handleCreateNote(env, bookId, body);
+      }
+    }
+
+    // PUT /api/notes/:id - Update a note
+    // DELETE /api/notes/:id - Delete a note
+    const noteMatch = url.pathname.match(/^\/api\/notes\/(\d+)$/);
+    if (noteMatch) {
+      const noteId = parseInt(noteMatch[1], 10);
+
+      if (request.method === 'PUT') {
+        const body = (await request.json()) as UpdateNoteRequest;
+        return handleUpdateNote(env, noteId, body);
+      }
+
+      if (request.method === 'DELETE') {
+        return handleDeleteNote(env, noteId);
+      }
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)

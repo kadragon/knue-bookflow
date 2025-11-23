@@ -3,13 +3,18 @@ import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import {
   type ApiResponse,
+  createNote,
+  deleteNote,
   getBooks,
+  getNotes,
+  type NoteItem,
   type SyncResponse,
   syncBooks,
   triggerWorkflow,
+  updateNote,
 } from './api';
 
-// Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
+// Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
 
@@ -17,6 +22,7 @@ type LoanState = 'on_loan' | 'returned';
 
 interface BookItem {
   id: string;
+  dbId: number;
   title: string;
   author: string;
   publisher: string | null;
@@ -29,7 +35,7 @@ interface BookItem {
   dueStatus: DueStatus;
   loanState: LoanState;
   noteCount: number;
-  noteState: 'not_started';
+  noteState: 'not_started' | 'in_progress' | 'completed';
 }
 
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
@@ -173,7 +179,13 @@ function FilterBar({
   );
 }
 
-function BookCard({ book }: { book: BookItem }) {
+function BookCard({
+  book,
+  onNoteClick,
+}: {
+  book: BookItem;
+  onNoteClick: (book: BookItem) => void;
+}) {
   return (
     <article className="card card-vertical">
       <div className="cover-frame">
@@ -208,10 +220,16 @@ function BookCard({ book }: { book: BookItem }) {
       <div className="note-cta">
         <div>
           <span className="note-count">노트 {book.noteCount}개</span>
-          <span className="note-state">(작성 예정)</span>
+          {book.noteCount === 0 && (
+            <span className="note-state">(작성 예정)</span>
+          )}
         </div>
-        <button className="note-button" type="button">
-          노트 남기기
+        <button
+          className="note-button"
+          type="button"
+          onClick={() => onNoteClick(book)}
+        >
+          {book.noteCount > 0 ? '노트 보기' : '노트 남기기'}
         </button>
       </div>
     </article>
@@ -223,6 +241,345 @@ function EmptyState() {
     <div className="empty">
       <p>책장이 비어 있어요. 새로 대출된 책이 여기에 나타납니다.</p>
     </div>
+  );
+}
+
+// Confirm Dialog Component
+interface ConfirmDialogProps {
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmDialog({ message, onConfirm, onCancel }: ConfirmDialogProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div
+      className="confirm-backdrop"
+      onClick={onCancel}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-message"
+      tabIndex={-1}
+    >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: Inner dialog container needs to stop event propagation */}
+      <div
+        className="confirm-dialog"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <p id="confirm-message" className="confirm-message">
+          {message}
+        </p>
+        <div className="confirm-actions">
+          <button type="button" className="btn-secondary" onClick={onCancel}>
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn-primary btn-danger"
+            onClick={onConfirm}
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Note Modal Component
+interface NoteModalProps {
+  book: BookItem;
+  onClose: () => void;
+  onNotesChanged: () => void;
+}
+
+function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
+  const queryClient = useQueryClient();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
+  const [formData, setFormData] = useState({ pageNumber: '', content: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  // Fetch notes using react-query
+  const {
+    data: notesData,
+    isLoading,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ['notes', book.dbId],
+    queryFn: () => getNotes(book.dbId),
+  });
+
+  const notes = notesData?.notes || [];
+
+  // Create note mutation
+  const createMutation = useMutation({
+    mutationFn: (data: { page_number: number; content: string }) =>
+      createNote(book.dbId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      onNotesChanged();
+      setFormData({ pageNumber: '', content: '' });
+      setIsFormOpen(false);
+    },
+  });
+
+  // Update note mutation
+  const updateMutation = useMutation({
+    mutationFn: ({
+      noteId,
+      data,
+    }: {
+      noteId: number;
+      data: { page_number: number; content: string };
+    }) => updateNote(noteId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      onNotesChanged();
+      setFormData({ pageNumber: '', content: '' });
+      setIsFormOpen(false);
+      setEditingNote(null);
+    },
+  });
+
+  // Delete note mutation
+  const deleteMutation = useMutation({
+    mutationFn: (noteId: number) => deleteNote(noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes', book.dbId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      onNotesChanged();
+      setDeleteConfirm(null);
+    },
+  });
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const error =
+    fetchError ||
+    createMutation.error ||
+    updateMutation.error ||
+    deleteMutation.error;
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.pageNumber || !formData.content.trim()) return;
+
+    const data = {
+      page_number: parseInt(formData.pageNumber, 10),
+      content: formData.content.trim(),
+    };
+
+    if (editingNote) {
+      updateMutation.mutate({ noteId: editingNote.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  // Handle delete confirmation
+  const handleDeleteClick = (noteId: number) => {
+    setDeleteConfirm(noteId);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteConfirm !== null) {
+      deleteMutation.mutate(deleteConfirm);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
+  };
+
+  // Handle edit
+  const handleEdit = (note: NoteItem) => {
+    setEditingNote(note);
+    setFormData({
+      pageNumber: String(note.pageNumber),
+      content: note.content,
+    });
+    setIsFormOpen(true);
+  };
+
+  // Cancel form
+  const handleCancel = () => {
+    setIsFormOpen(false);
+    setEditingNote(null);
+    setFormData({ pageNumber: '', content: '' });
+  };
+
+  // Close modal on backdrop click or Escape key
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
+  return (
+    <>
+      {/* biome-ignore lint/a11y/useSemanticElements: Modal backdrop with click-to-close is a common UI pattern */}
+      <div
+        className="modal-backdrop"
+        onClick={handleBackdropClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+      >
+        <div className="modal">
+          <div className="modal-header">
+            <h2 className="modal-title">{book.title}</h2>
+            <button type="button" className="modal-close" onClick={onClose}>
+              &times;
+            </button>
+          </div>
+
+          <div className="modal-content">
+            {error && (
+              <div className="modal-error">
+                {error instanceof Error
+                  ? error.message
+                  : '오류가 발생했습니다.'}
+              </div>
+            )}
+
+            {isLoading ? (
+              <p className="muted">노트를 불러오는 중...</p>
+            ) : (
+              <>
+                {/* Note list */}
+                {notes.length === 0 ? (
+                  <div className="notes-empty">
+                    <p>아직 작성된 노트가 없습니다.</p>
+                  </div>
+                ) : (
+                  <div className="notes-list">
+                    {notes.map((note) => (
+                      <div key={note.id} className="note-item">
+                        <div className="note-header">
+                          <span className="note-page">
+                            p. {note.pageNumber}
+                          </span>
+                          <div className="note-actions">
+                            <button
+                              type="button"
+                              className="note-action-btn"
+                              onClick={() => handleEdit(note)}
+                            >
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              className="note-action-btn note-action-delete"
+                              onClick={() => handleDeleteClick(note.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </div>
+                        <blockquote className="note-content">
+                          {note.content}
+                        </blockquote>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add/Edit form */}
+                {isFormOpen ? (
+                  <form className="note-form" onSubmit={handleSubmit}>
+                    <div className="form-group">
+                      <label htmlFor="pageNumber">페이지</label>
+                      <input
+                        id="pageNumber"
+                        type="number"
+                        className="input"
+                        min={1}
+                        value={formData.pageNumber}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pageNumber: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="content">내용</label>
+                      <textarea
+                        id="content"
+                        className="input textarea"
+                        rows={4}
+                        value={formData.content}
+                        onChange={(e) =>
+                          setFormData({ ...formData, content: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={handleCancel}
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={isSaving}
+                      >
+                        {isSaving
+                          ? '저장 중...'
+                          : editingNote
+                            ? '수정'
+                            : '추가'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-add-note"
+                    onClick={() => setIsFormOpen(true)}
+                  >
+                    + 노트 추가
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirm !== null && (
+        <ConfirmDialog
+          message="이 노트를 삭제하시겠습니까?"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+        />
+      )}
+    </>
   );
 }
 
@@ -266,6 +623,19 @@ export default function App() {
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+  const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
+
+  const handleNoteClick = (book: BookItem) => {
+    setSelectedBook(book);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedBook(null);
+  };
+
+  const handleNotesChanged = () => {
+    queryClient.invalidateQueries({ queryKey: ['books'] });
+  };
 
   const triggerMutation = useMutation({
     mutationFn: triggerWorkflow,
@@ -410,11 +780,24 @@ export default function App() {
         ) : (
           <div className="grid">
             {filtered.map((book) => (
-              <BookCard key={book.id} book={book} />
+              <BookCard
+                key={book.id}
+                book={book}
+                onNoteClick={handleNoteClick}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Note Modal */}
+      {selectedBook && (
+        <NoteModal
+          book={selectedBook}
+          onClose={handleCloseModal}
+          onNotesChanged={handleNotesChanged}
+        />
+      )}
     </div>
   );
 }

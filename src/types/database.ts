@@ -31,3 +31,16 @@ export interface RenewalLog {
   message: string;
   created_at?: string;
 }
+
+/**
+ * Note record for book annotations
+ * Trace: spec_id: SPEC-notes-002, task_id: TASK-023
+ */
+export interface NoteRecord {
+  id?: number;
+  book_id: number;
+  page_number: number;
+  content: string;
+  created_at?: string;
+  updated_at?: string;
+}
