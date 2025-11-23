@@ -76,6 +76,41 @@ export interface ChargesResponse {
   };
 }
 
+export interface ChargeHistory {
+  id: number;
+  barcode: string;
+  biblio: {
+    id: number;
+    titleStatement: string;
+    isbn: string;
+    thumbnail: string | null;
+  };
+  chargeDate: string;
+  dueDate: string;
+  dischargeDate: string;
+  renewCnt?: number;
+  chargeType: {
+    id: number;
+    name: string;
+  };
+  dischargeType: {
+    id: number;
+    name: string;
+    code: string;
+  };
+  supplementNote: string | null;
+}
+
+export interface ChargeHistoriesResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    list: ChargeHistory[];
+    totalCount: number;
+  };
+}
+
 export interface RenewalRequest {
   circulationMethodCode: string;
 }

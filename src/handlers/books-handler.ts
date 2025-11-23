@@ -45,13 +45,18 @@ export function deriveBookViewModel(
   now = new Date(),
   offsetMinutes = KST_OFFSET_MINUTES,
 ): BookViewModel {
-  const daysLeft = computeDaysLeft(record.due_date, now, offsetMinutes);
+  const isReturned = Boolean(record.discharge_date);
+  const daysLeft = isReturned
+    ? 0
+    : computeDaysLeft(record.due_date, now, offsetMinutes);
 
   let dueStatus: DueStatus = 'ok';
-  if (daysLeft < 0) {
-    dueStatus = 'overdue';
-  } else if (daysLeft <= DUE_SOON_DAYS) {
-    dueStatus = 'due_soon';
+  if (!isReturned) {
+    if (daysLeft < 0) {
+      dueStatus = 'overdue';
+    } else if (daysLeft <= DUE_SOON_DAYS) {
+      dueStatus = 'due_soon';
+    }
   }
 
   // Determine note state based on count
@@ -72,10 +77,11 @@ export function deriveBookViewModel(
     pubDate: record.pub_date,
     chargeDate: record.charge_date,
     dueDate: record.due_date,
+    dischargeDate: record.discharge_date ?? null,
     renewCount: record.renew_count,
     daysLeft,
     dueStatus,
-    loanState: 'on_loan',
+    loanState: isReturned ? 'returned' : 'on_loan',
     noteCount,
     noteState,
     isRead: Boolean(record.is_read ?? 0),

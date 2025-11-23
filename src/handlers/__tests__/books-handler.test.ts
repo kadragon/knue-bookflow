@@ -54,6 +54,25 @@ describe('deriveBookViewModel', () => {
     const view = deriveBookViewModel(base, 0);
     expect(view.dbId).toBe(1);
   });
+
+  it('marks loanState as returned and daysLeft zero when discharge_date exists', () => {
+    const returned: BookRecord = {
+      ...base,
+      discharge_date: '2025-11-22 00:00:00',
+      due_date: '2025-11-25 00:00:00',
+    };
+
+    const view = deriveBookViewModel(
+      returned,
+      0,
+      new Date('2025-11-24T00:00:00Z'),
+    );
+
+    expect(view.loanState).toBe('returned');
+    expect(view.daysLeft).toBe(0);
+    expect(view.dueStatus).toBe('ok');
+    expect(view.dischargeDate).toBe('2025-11-22 00:00:00');
+  });
 });
 
 describe('sortBooks', () => {

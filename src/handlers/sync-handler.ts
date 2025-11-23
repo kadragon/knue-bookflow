@@ -2,7 +2,7 @@
  * Library-DB Sync Handler
  * Synchronizes all currently borrowed books from library with D1 database
  *
- * Trace: spec_id: SPEC-sync-001, task_id: TASK-021
+ * Trace: spec_id: SPEC-sync-001, SPEC-return-001, task_id: TASK-021, TASK-034
  */
 
 import {
@@ -13,9 +13,9 @@ import {
 } from '../services';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
-import type { BookInfo, Charge, Env } from '../types';
+import type { BookInfo, Charge, ChargeHistory, Env } from '../types';
 
-type SyncStatus = 'added' | 'updated' | 'unchanged';
+type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
 
 /**
  * Sync summary response
@@ -25,6 +25,7 @@ export interface SyncSummary {
   added: number;
   updated: number;
   unchanged: number;
+  returned: number;
 }
 
 export interface SyncResponse {
@@ -45,6 +46,7 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
     added: 0,
     updated: 0,
     unchanged: 0,
+    returned: 0,
   };
 
   try {
@@ -88,11 +90,33 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
       summary[status]++;
     }
 
+    // Step 4: Fetch charge histories to mark returned books
+    console.log('[SyncHandler] Fetching charge histories...');
+    const histories = await libraryClient.getChargeHistories();
+
+    if (histories.length > 0) {
+      console.log(
+        `[SyncHandler] Processing ${histories.length} charge histories...`,
+      );
+      const historyResults = await Promise.all(
+        histories.map((history) =>
+          processChargeHistory(history, bookRepository),
+        ),
+      );
+
+      for (const status of historyResults) {
+        if (status === 'returned') {
+          summary.returned++;
+        }
+      }
+    }
+
     console.log('[SyncHandler] === Sync Summary ===');
     console.log(`[SyncHandler] Total charges: ${summary.total_charges}`);
     console.log(`[SyncHandler] Added: ${summary.added}`);
     console.log(`[SyncHandler] Updated: ${summary.updated}`);
     console.log(`[SyncHandler] Unchanged: ${summary.unchanged}`);
+    console.log(`[SyncHandler] Marked returned: ${summary.returned}`);
 
     const response: SyncResponse = {
       message: 'Sync completed successfully',
@@ -202,4 +226,60 @@ export async function processCharge(
   }
 
   return 'unchanged';
+}
+
+export async function processChargeHistory(
+  history: ChargeHistory,
+  bookRepository: BookRepository,
+): Promise<SyncStatus> {
+  const chargeId = String(history.id);
+  const dischargeDate = history.dischargeDate;
+
+  if (!dischargeDate) {
+    return 'unchanged';
+  }
+
+  let existing = await bookRepository.findByChargeId(chargeId);
+
+  // ISBN fallback with chargeDate comparison for data consistency
+  if (!existing && history.biblio.isbn) {
+    const matches = await bookRepository.findByIsbn(history.biblio.isbn);
+    // Find exact match by chargeDate to avoid matching different loan cycles
+    existing =
+      matches.find((m) => m.charge_date === history.chargeDate) ?? null;
+    if (existing) {
+      console.log(
+        `[SyncHandler] Matched return ${chargeId} via ISBN fallback: ${history.biblio.isbn}`,
+      );
+    }
+  }
+
+  if (!existing) {
+    console.log(
+      `[SyncHandler] Return history ${chargeId} has no matching book; skipping`,
+    );
+    return 'unchanged';
+  }
+
+  if (existing.discharge_date) {
+    return 'unchanged';
+  }
+
+  const recordToUpdate = {
+    ...existing,
+    discharge_date: dischargeDate,
+    due_date: history.dueDate,
+    renew_count: existing.renew_count ?? history.renewCnt ?? 0,
+  };
+
+  try {
+    await bookRepository.saveBook(recordToUpdate);
+    return 'returned';
+  } catch (error) {
+    console.error(
+      `[SyncHandler] Failed to mark ${chargeId} as returned:`,
+      error,
+    );
+    return 'unchanged';
+  }
 }

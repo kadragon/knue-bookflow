@@ -323,3 +323,19 @@ completed_tasks: []
     - "Aladin supports cover size selection via the Cover query param (Big/Mid/Small/Mini)."
     - "Small client tweaks stay safe when guarded by a dedicated request-parameter test."
     - "Missing covers can be recovered by nulling cover_url and rerunning sync; repository must update cover_url on existing rows."
+
+- task_id: TASK-034
+  title: "Mark returned books using charge histories"
+  completed_at: "2025-11-23T14:30:00Z"
+  outcome: success
+  spec_id: SPEC-return-001
+  summary: |
+    Added return detection to sync by fetching paginated charge histories, matching records by
+    charge_id with ISBN fallback, and writing discharge_date to D1. Books with discharge_date now
+    surface as loanState=returned in /api/books, default filters hide them from the active loan list,
+    and sync summary reports how many books were marked returned. Introduced migration 0006 to add the
+    discharge_date column.
+  learnings:
+    - "Charge history id aligns with charge_id, but ISBN fallback protects against mismatches."
+    - "Marking returned books requires coalescing discharge_date updates so existing data isn't wiped by nulls."
+    - "Returned items should report daysLeft=0 and dueStatus=ok to avoid misleading urgency indicators."

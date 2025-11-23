@@ -12,6 +12,7 @@ interface BookItem {
   pubDate: string | null;
   chargeDate: string;
   dueDate: string;
+  dischargeDate: string | null;
   renewCount: number;
   daysLeft: number;
   dueStatus: 'overdue' | 'due_soon' | 'ok';
@@ -93,6 +94,7 @@ export interface SyncSummary {
   added: number;
   updated: number;
   unchanged: number;
+  returned: number;
 }
 
 export interface SyncResponse {

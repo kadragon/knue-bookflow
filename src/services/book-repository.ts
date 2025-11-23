@@ -2,10 +2,16 @@
  * Book Repository
  * Data access layer for D1 database operations
  *
- * Trace: spec_id: SPEC-storage-001, task_id: TASK-006
+ * Trace: spec_id: SPEC-storage-001, SPEC-return-001, task_id: TASK-006, TASK-034
  */
 
-import type { BookInfo, BookRecord, Charge, RenewalLog } from '../types';
+import type {
+  BookInfo,
+  BookRecord,
+  Charge,
+  ChargeHistory,
+  RenewalLog,
+} from '../types';
 
 export class BookRepository {
   constructor(private db: D1Database) {}
@@ -26,6 +32,7 @@ export class BookRepository {
         .prepare(
           `UPDATE books SET
             due_date = ?,
+            discharge_date = COALESCE(?, discharge_date),
             renew_count = ?,
             is_read = COALESCE(?, is_read),
             cover_url = COALESCE(?, cover_url),
@@ -35,10 +42,11 @@ export class BookRepository {
         )
         .bind(
           record.due_date,
+          record.discharge_date ?? null,
           record.renew_count,
-          record.is_read,
-          record.cover_url,
-          record.description,
+          record.is_read ?? null,
+          record.cover_url ?? null,
+          record.description ?? null,
           now,
           record.charge_id,
         )
@@ -52,8 +60,8 @@ export class BookRepository {
           `INSERT INTO books (
             charge_id, isbn, isbn13, title, author, publisher,
             cover_url, description, pub_date, charge_date, due_date,
-            renew_count, is_read, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            discharge_date, renew_count, is_read, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           record.charge_id,
@@ -67,6 +75,7 @@ export class BookRepository {
           record.pub_date,
           record.charge_date,
           record.due_date,
+          record.discharge_date ?? null,
           record.renew_count,
           record.is_read ?? 0,
           now,
@@ -193,7 +202,7 @@ export class BookRepository {
  * @param bookInfo - Optional Aladin book info
  */
 export function createBookRecord(
-  charge: Charge,
+  charge: Charge | ChargeHistory,
   bookInfo?: BookInfo | null,
 ): BookRecord {
   return {
@@ -208,7 +217,9 @@ export function createBookRecord(
     pub_date: bookInfo?.pubDate || null,
     charge_date: charge.chargeDate,
     due_date: charge.dueDate,
-    renew_count: charge.renewCnt,
+    discharge_date:
+      'dischargeDate' in charge ? (charge.dischargeDate ?? null) : null,
+    renew_count: charge.renewCnt ?? 0,
   };
 }
 

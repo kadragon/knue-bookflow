@@ -2,12 +2,14 @@
  * KNUE Library Pyxis API Client
  * Handles authentication, charges retrieval, and renewals
  *
- * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, SPEC-renewal-001
- *        task_id: TASK-002, TASK-003, TASK-004
+ * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, SPEC-renewal-001, SPEC-return-001
+ *        task_id: TASK-002, TASK-003, TASK-004, TASK-034
  */
 
 import type {
   Charge,
+  ChargeHistoriesResponse,
+  ChargeHistory,
   ChargesResponse,
   FetchOptions,
   LoginRequest,
@@ -116,6 +118,46 @@ export class LibraryClient {
       `[LibraryClient] Retrieved ${allCharges.length} charges (paginated)`,
     );
     return allCharges;
+  }
+
+  /**
+   * Get list of recent charge histories (returned books)
+   * @returns Array of charge history records (max 20)
+   */
+  async getChargeHistories(): Promise<ChargeHistory[]> {
+    this.ensureAuthenticated();
+
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/api/charge-histories?max=20&offset=0`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to fetch charge histories with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: ChargeHistoriesResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to fetch charge histories: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    const histories = data.data.list;
+
+    console.log(
+      `[LibraryClient] Retrieved ${histories.length} charge histories`,
+    );
+    return histories;
   }
 
   /**
