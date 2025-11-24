@@ -512,7 +512,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
                 }
                 required
                 size="small"
-                inputProps={{ min: 1 }}
+                slotProps={{ htmlInput: { min: 1 } }}
               />
               <TextField
                 fullWidth
