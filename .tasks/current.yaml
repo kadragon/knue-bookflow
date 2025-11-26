@@ -1,8 +1,9 @@
 # Current Task
 
 current_task:
-  task_id: null
-  title: null
-  spec_id: null
-  status: idle
-  started_at: null
+  task_id: TASK-037
+  title: "Tidy MarkdownV2 broadcast edge cases"
+  spec_id: SPEC-notes-telegram-002
+  status: done
+  started_at: "2025-11-26T06:46:53Z"
+  completed_at: "2025-11-26T06:47:29Z"

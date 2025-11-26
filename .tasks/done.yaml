@@ -339,3 +339,46 @@ completed_tasks: []
     - "Charge history id aligns with charge_id, but ISBN fallback protects against mismatches."
     - "Marking returned books requires coalescing discharge_date updates so existing data isn't wiped by nulls."
     - "Returned items should report daysLeft=0 and dueStatus=ok to avoid misleading urgency indicators."
+
+- task_id: TASK-036
+  title: "Refine MarkdownV2 broadcast formatting"
+  completed_at: "2025-11-26T06:44:43Z"
+  outcome: success
+  spec_id: SPEC-notes-telegram-002
+  summary: |
+    Extracted the MarkdownV2 escape regex into a shared constant, avoided blank author lines by
+    defaulting to "Unknown Author", ensured page lines tolerate missing page numbers, and kept
+    multiline content fully quoted. Updated Telegram payload assertions and added multiline/page
+    placeholder tests to guard behavior.
+  learnings:
+    - "Centralizing the escape regex reduces drift and makes formatting tweaks safer to test."
+    - "Providing a sensible author fallback keeps visual structure without stray underscores."
+    - "Quote-first then escape keeps multiline content rendering predictable across notes."
+
+- task_id: TASK-037
+  title: "Tidy MarkdownV2 broadcast edge cases"
+  completed_at: "2025-11-26T06:47:29Z"
+  outcome: success
+  spec_id: SPEC-notes-telegram-002
+  summary: |
+    Removed redundant nullish coalescing on author, skipped content section when notes are empty to
+    avoid blank blockquotes, and kept page/author handling intact. Added regression test to ensure
+    empty content yields no stray quote lines. All targeted tests passing.
+  learnings:
+    - "When content can be empty, conditionally render sections to avoid Markdown artifacts."
+    - "Type info (non-null fields) can simplify formatting code by removing unnecessary fallbacks."
+
+- task_id: TASK-035
+  title: "Format Telegram note broadcast with MarkdownV2"
+  completed_at: "2025-11-26T05:54:45Z"
+  outcome: success
+  spec_id: SPEC-notes-telegram-002
+  summary: |
+    Updated the daily Telegram note broadcast to output MarkdownV2 with bold title, italic author,
+    escaped page line, and blockquoted content. Added escaping for all MarkdownV2 reserved characters
+    and set Telegram payload to use parse_mode=MarkdownV2 with link previews disabled. Extended unit
+    tests to cover formatting, escaping, and payload fields.
+  learnings:
+    - "Escaping MarkdownV2 must include backslash, dot, and dash to avoid unexpected formatting."
+    - "Quoting multiline content stays consistent by prefixing each line after escaping."
+    - "Telegram requests should disable previews to keep reading snippets compact."
