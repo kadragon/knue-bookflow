@@ -1,8 +1,9 @@
 # Current Task
 
 current_task:
-  task_id: null
-  title: null
-  spec_id: null
-  status: idle
-  started_at: null
+  task_id: TASK-035
+  title: "Format Telegram note broadcast with MarkdownV2"
+  spec_id: SPEC-notes-telegram-002
+  status: done
+  started_at: "2025-11-26T05:51:29Z"
+  completed_at: "2025-11-26T05:54:45Z"

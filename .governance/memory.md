@@ -195,3 +195,6 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-11-23 (Return sync)
 - Completed TASK-034 (SPEC-return-001): Added discharge_date column via migration 0006, fetched paginated charge histories, matched returns by charge_id with ISBN fallback, and updated sync summary to report marked-returned count. Returned books now emit loanState=returned with daysLeft=0 and dueStatus=ok so they drop from the active loan view while remaining queryable.
+
+### Session 2025-11-26
+- Completed TASK-035 (SPEC-notes-telegram-002): Telegram note broadcast now uses MarkdownV2 formatting (bold title, italic author, escaped page line, blockquoted content), escapes all reserved characters including backslash/dot/dash, and sends requests with parse_mode=MarkdownV2 and link previews disabled. Added tests for formatting, escaping, and payload fields; `npm test -- --run src/services/__tests__/note-broadcast.test.ts` passing.

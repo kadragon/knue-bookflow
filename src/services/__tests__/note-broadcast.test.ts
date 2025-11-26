@@ -1,6 +1,6 @@
 /**
  * Note broadcast tests
- * Trace: spec_id: SPEC-notes-telegram-001, task_id: TASK-028
+ * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-035
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -80,7 +80,7 @@ describe('selectNoteCandidate', () => {
 });
 
 describe('formatNoteMessage', () => {
-  it("formats as 'title - author\\np.xx\\ncontent'", () => {
+  it('formats with MarkdownV2, bold title, italic author, page, and quote', () => {
     const candidate = createCandidate({
       book: { title: 'Clean Code', author: 'Robert C. Martin' } as BookRecord,
       note: {
@@ -92,7 +92,23 @@ describe('formatNoteMessage', () => {
     const message = formatNoteMessage(candidate);
 
     expect(message).toBe(
-      'Clean Code - Robert C. Martin\np.42\nMeaningful names matter.',
+      '📚 *Clean Code*\n_Robert C\\. Martin_\np\\.42\n\n> Meaningful names matter\\.',
+    );
+  });
+
+  it('escapes MarkdownV2 reserved characters in fields', () => {
+    const candidate = createCandidate({
+      book: { title: 'A_B (C)', author: 'D-E.F' } as BookRecord,
+      note: {
+        page_number: 7,
+        content: 'G+H#I|J!K',
+      } as NoteRecord,
+    });
+
+    const message = formatNoteMessage(candidate);
+
+    expect(message).toBe(
+      '📚 *A\\_B \\(C\\)*\n_D\\-E\\.F_\np\\.7\n\n> G\\+H\\#I\\|J\\!K',
     );
   });
 });
@@ -153,7 +169,7 @@ describe('broadcastDailyNote', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('sends note and increments send count on success', async () => {
+  it('sends note with MarkdownV2 payload and increments send count on success', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -177,13 +193,12 @@ describe('broadcastDailyNote', () => {
 
     expect(sent).toBe(true);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.telegram.org/bottoken/sendMessage',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('Test Book - Test Author'),
-      }),
-    );
+    const [, options] = mockFetch.mock.calls[0];
+    const body = JSON.parse(options.body as string);
+
+    expect(body.parse_mode).toBe('MarkdownV2');
+    expect(body.disable_web_page_preview).toBe(true);
+    expect(body.text).toBe(formatNoteMessage(candidate));
     expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
   });
 });

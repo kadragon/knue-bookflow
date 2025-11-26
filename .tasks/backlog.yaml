@@ -2,6 +2,26 @@
 # Priority: 1 (highest) to 5 (lowest)
 
 tasks:
+  - task_id: TASK-035
+    title: "Format Telegram note broadcast with MarkdownV2"
+    description: |
+      Improve the daily Telegram reading note broadcast to use MarkdownV2 formatting
+      with bold title, italic author, quoted content, and proper escaping of reserved
+      characters. Ensure Telegram requests set parse_mode=MarkdownV2 and disable link
+      previews.
+    priority: 1
+    spec_id: SPEC-notes-telegram-002
+    status: done
+    test_refs:
+      - TEST-telegram-md-001
+      - TEST-telegram-md-002
+      - TEST-telegram-md-003
+    acceptance_criteria:
+      - Message uses MarkdownV2 with bold title, italic author, page line, and blockquote content
+      - All MarkdownV2 reserved characters are escaped in title/author/content
+      - Telegram request includes parse_mode=MarkdownV2 and disable_web_page_preview=true
+    estimated_complexity: low
+
   - task_id: TASK-034
     title: "Mark returned books using charge histories"
     description: |

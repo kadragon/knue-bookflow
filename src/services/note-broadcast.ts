@@ -1,6 +1,6 @@
 /**
  * Daily Telegram note broadcast service
- * Trace: spec_id: SPEC-notes-telegram-001, task_id: TASK-028
+ * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-035
  */
 
 import type { BookRecord, Env, NoteRecord } from '../types';
@@ -158,7 +158,21 @@ export function selectNoteCandidate(
 
 export function formatNoteMessage(candidate: NoteCandidate): string {
   const { book, note } = candidate;
-  return `${book.title} - ${book.author}\np.${note.page_number}\n${note.content}`;
+  const escapeMarkdownV2 = (value: string): string =>
+    value.replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+
+  const quoteLines = (value: string): string =>
+    value
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
+
+  const title = escapeMarkdownV2(book.title);
+  const author = escapeMarkdownV2(book.author ?? '');
+  const page = escapeMarkdownV2(`p.${note.page_number}`);
+  const content = quoteLines(escapeMarkdownV2(note.content));
+
+  return `📚 *${title}*\n_${author}_\n${page}\n\n${content}`;
 }
 
 async function sendTelegramMessage(
@@ -174,7 +188,12 @@ async function sendTelegramMessage(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'MarkdownV2',
+      disable_web_page_preview: true,
+    }),
   });
 
   if (!response.ok) {
