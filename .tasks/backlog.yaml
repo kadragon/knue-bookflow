@@ -48,6 +48,23 @@ tasks:
       - TEST-telegram-md-004
       - TEST-telegram-md-005
 
+  - task_id: TASK-037
+    title: "Tidy MarkdownV2 broadcast edge cases"
+    description: |
+      Incorporate review feedback: remove redundant nullish coalescing on author, and avoid emitting
+      empty blockquotes when note content is empty by skipping the quoted section. Add regression test
+      to ensure empty content produces no stray quote lines.
+    priority: 2
+    spec_id: SPEC-notes-telegram-002
+    status: done
+    acceptance_criteria:
+      - author formatting does not rely on redundant nullish coalescing
+      - Empty note content does not render an empty blockquote
+      - Test covers empty-content formatting behavior
+    estimated_complexity: low
+    test_refs:
+      - TEST-telegram-md-006
+
   - task_id: TASK-034
     title: "Mark returned books using charge histories"
     description: |

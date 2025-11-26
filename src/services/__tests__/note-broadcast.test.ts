@@ -1,6 +1,6 @@
 /**
  * Note broadcast tests
- * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-036
+ * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-037
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -139,6 +139,21 @@ describe('formatNoteMessage', () => {
     const message = formatNoteMessage(candidate);
 
     expect(message).toContain('p\\.?');
+  });
+
+  it('omits content section when note content is empty', () => {
+    const candidate = createCandidate({
+      book: { title: 'Empty Content', author: 'Author' } as BookRecord,
+      note: {
+        page_number: 5,
+        content: '',
+      } as NoteRecord,
+    });
+
+    const message = formatNoteMessage(candidate);
+
+    expect(message).not.toContain('> ');
+    expect(message).toBe('📚 *Empty Content*\n_Author_\np\\.5');
   });
 });
 

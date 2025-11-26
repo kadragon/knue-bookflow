@@ -175,9 +175,13 @@ export function formatNoteMessage(candidate: NoteCandidate): string {
     : '_(Unknown Author)_\n';
   const pageValue = note.page_number ?? '?';
   const page = escapeMarkdownV2(`p.${pageValue}`);
-  const content = quoteLines(escapeMarkdownV2(note.content));
+  const content = note.content
+    ? quoteLines(escapeMarkdownV2(note.content))
+    : '';
 
-  return `📚 *${title}*\n${authorLine}${page}\n\n${content}`;
+  const contentSection = content ? `\n\n${content}` : '';
+
+  return `📚 *${title}*\n${authorLine}${page}${contentSection}`;
 }
 
 async function sendTelegramMessage(

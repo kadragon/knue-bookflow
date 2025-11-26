@@ -29,6 +29,8 @@ acceptance_tests:
     desc: "Quotes multi-line content line-by-line in the message"
   - id: TEST-telegram-md-005
     desc: "Handles missing author or page numbers without malformed formatting"
+  - id: TEST-telegram-md-006
+    desc: "Skips content block when note content is empty to avoid empty blockquotes"
 
 dependencies:
   - SPEC-notes-telegram-001
