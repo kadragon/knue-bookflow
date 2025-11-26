@@ -21,6 +21,32 @@ tasks:
       - All MarkdownV2 reserved characters are escaped in title/author/content
       - Telegram request includes parse_mode=MarkdownV2 and disable_web_page_preview=true
     estimated_complexity: low
+    status: done
+    test_refs:
+      - TEST-telegram-md-001
+      - TEST-telegram-md-002
+      - TEST-telegram-md-003
+
+  - task_id: TASK-036
+    title: "Refine MarkdownV2 broadcast formatting"
+    description: |
+      Address review feedback: extract MarkdownV2 escape regex constant, avoid blank author
+      lines by omitting or defaulting author label, handle multi-line content quoting, and ensure
+      page line handles missing page numbers gracefully. Expand tests for multi-line content and
+      payload assertions.
+    priority: 1
+    spec_id: SPEC-notes-telegram-002
+    status: done
+    acceptance_criteria:
+      - Escape regex extracted to reusable constant
+      - Author line omitted or defaults without leaving stray underscores when author missing
+      - Multi-line note content quoted line-by-line in output
+      - Page line handles missing/empty page numbers without crash
+      - Tests cover multi-line content and payload assertions
+    estimated_complexity: low
+    test_refs:
+      - TEST-telegram-md-004
+      - TEST-telegram-md-005
 
   - task_id: TASK-034
     title: "Mark returned books using charge histories"

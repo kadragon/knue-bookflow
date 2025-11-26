@@ -1,9 +1,9 @@
 # Current Task
 
 current_task:
-  task_id: TASK-035
-  title: "Format Telegram note broadcast with MarkdownV2"
+  task_id: TASK-036
+  title: "Refine MarkdownV2 broadcast formatting"
   spec_id: SPEC-notes-telegram-002
   status: done
-  started_at: "2025-11-26T05:51:29Z"
-  completed_at: "2025-11-26T05:54:45Z"
+  started_at: "2025-11-26T06:43:08Z"
+  completed_at: "2025-11-26T06:44:43Z"

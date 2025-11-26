@@ -1,9 +1,11 @@
 /**
  * Daily Telegram note broadcast service
- * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-035
+ * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-036
  */
 
 import type { BookRecord, Env, NoteRecord } from '../types';
+
+const MARKDOWN_V2_SPECIAL_CHARS = /([_*[\]()~`>#+\-=|{}.!\\])/g;
 
 export const NOTE_BROADCAST_CRON = '0 3 * * *';
 
@@ -159,7 +161,7 @@ export function selectNoteCandidate(
 export function formatNoteMessage(candidate: NoteCandidate): string {
   const { book, note } = candidate;
   const escapeMarkdownV2 = (value: string): string =>
-    value.replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+    value.replace(MARKDOWN_V2_SPECIAL_CHARS, '\\$1');
 
   const quoteLines = (value: string): string =>
     value
@@ -168,11 +170,14 @@ export function formatNoteMessage(candidate: NoteCandidate): string {
       .join('\n');
 
   const title = escapeMarkdownV2(book.title);
-  const author = escapeMarkdownV2(book.author ?? '');
-  const page = escapeMarkdownV2(`p.${note.page_number}`);
+  const authorLine = book.author
+    ? `_${escapeMarkdownV2(book.author)}_\n`
+    : '_(Unknown Author)_\n';
+  const pageValue = note.page_number ?? '?';
+  const page = escapeMarkdownV2(`p.${pageValue}`);
   const content = quoteLines(escapeMarkdownV2(note.content));
 
-  return `📚 *${title}*\n_${author}_\n${page}\n\n${content}`;
+  return `📚 *${title}*\n${authorLine}${page}\n\n${content}`;
 }
 
 async function sendTelegramMessage(

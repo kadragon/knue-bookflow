@@ -1,6 +1,6 @@
 /**
  * Note broadcast tests
- * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-035
+ * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-036
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -111,6 +111,35 @@ describe('formatNoteMessage', () => {
       '📚 *A\\_B \\(C\\)*\n_D\\-E\\.F_\np\\.7\n\n> G\\+H\\#I\\|J\\!K',
     );
   });
+
+  it('quotes multi-line content correctly', () => {
+    const candidate = createCandidate({
+      book: { title: 'Book', author: 'Author' } as BookRecord,
+      note: {
+        page_number: 1,
+        content: 'Line 1\nLine 2\nLine 3',
+      } as NoteRecord,
+    });
+
+    const message = formatNoteMessage(candidate);
+
+    expect(message).toContain('> Line 1\n> Line 2\n> Line 3');
+  });
+
+  it('handles missing page numbers with placeholder', () => {
+    const candidate = createCandidate({
+      book: { title: 'Missing Page', author: 'Author' } as BookRecord,
+      note: {
+        // Simulate nullable page_number edge case
+        page_number: undefined as unknown as number,
+        content: 'Content',
+      } as NoteRecord,
+    });
+
+    const message = formatNoteMessage(candidate);
+
+    expect(message).toContain('p\\.?');
+  });
 });
 
 describe('broadcastDailyNote', () => {
@@ -199,6 +228,8 @@ describe('broadcastDailyNote', () => {
     expect(body.parse_mode).toBe('MarkdownV2');
     expect(body.disable_web_page_preview).toBe(true);
     expect(body.text).toBe(formatNoteMessage(candidate));
+    expect(body.text).toContain('📚 *Test Book*');
+    expect(body.text).toContain('_Test Author_');
     expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
   });
 });

@@ -25,6 +25,10 @@ acceptance_tests:
     desc: "Escapes MarkdownV2 reserved characters in title/author/content"
   - id: TEST-telegram-md-003
     desc: "Sends Telegram request with parse_mode=MarkdownV2 and disable_web_page_preview=true"
+  - id: TEST-telegram-md-004
+    desc: "Quotes multi-line content line-by-line in the message"
+  - id: TEST-telegram-md-005
+    desc: "Handles missing author or page numbers without malformed formatting"
 
 dependencies:
   - SPEC-notes-telegram-001
