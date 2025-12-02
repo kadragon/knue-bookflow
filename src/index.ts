@@ -16,7 +16,11 @@ import {
   handleGetNotes,
   handleUpdateNote,
 } from './handlers/notes-handler';
-import { handleSyncBooks, processCharge } from './handlers/sync-handler';
+import {
+  fetchAndProcessReturns,
+  handleSyncBooks,
+  processCharge,
+} from './handlers/sync-handler';
 import {
   broadcastDailyNote,
   checkAndRenewBooks,
@@ -231,7 +235,17 @@ async function handleScheduledTask(
     const addedCount = syncStatuses.filter((s) => s === 'added').length;
     const updatedCount = syncStatuses.filter((s) => s === 'updated').length;
 
-    // Step 6: Log summary
+    // Step 6: Fetch charge histories to mark returned books
+    console.log('[BookFlow] Step 6: Fetching charge histories...');
+    const returnedCount = await fetchAndProcessReturns(
+      libraryClient,
+      bookRepository,
+    );
+    if (returnedCount > 0) {
+      console.log(`[BookFlow] Marked ${returnedCount} books as returned`);
+    }
+
+    // Step 7: Log summary
     const duration = Date.now() - startTime;
     const successCount = renewalResults.filter((r) => r.success).length;
     const failCount = renewalResults.filter((r) => !r.success).length;
@@ -240,6 +254,7 @@ async function handleScheduledTask(
     console.log(`[BookFlow] Total charges: ${charges.length}`);
     console.log(`[BookFlow] Books added: ${addedCount}`);
     console.log(`[BookFlow] Books updated: ${updatedCount}`);
+    console.log(`[BookFlow] Marked returned: ${returnedCount}`);
     console.log(`[BookFlow] Renewals attempted: ${renewalResults.length}`);
     console.log(`[BookFlow] Renewals succeeded: ${successCount}`);
     console.log(`[BookFlow] Renewals failed: ${failCount}`);
