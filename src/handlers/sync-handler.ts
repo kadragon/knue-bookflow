@@ -13,6 +13,7 @@ import {
 } from '../services';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
+import type { LibraryClient } from '../services/library-client';
 import type { BookInfo, Charge, ChargeHistory, Env } from '../types';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
@@ -92,23 +93,12 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
 
     // Step 4: Fetch charge histories to mark returned books
     console.log('[SyncHandler] Fetching charge histories...');
-    const histories = await libraryClient.getChargeHistories();
-
-    if (histories.length > 0) {
-      console.log(
-        `[SyncHandler] Processing ${histories.length} charge histories...`,
-      );
-      const historyResults = await Promise.all(
-        histories.map((history) =>
-          processChargeHistory(history, bookRepository),
-        ),
-      );
-
-      for (const status of historyResults) {
-        if (status === 'returned') {
-          summary.returned++;
-        }
-      }
+    summary.returned = await fetchAndProcessReturns(
+      libraryClient,
+      bookRepository,
+    );
+    if (summary.returned > 0) {
+      console.log(`[SyncHandler] Marked ${summary.returned} books as returned`);
     }
 
     console.log('[SyncHandler] === Sync Summary ===');
@@ -226,6 +216,31 @@ export async function processCharge(
   }
 
   return 'unchanged';
+}
+
+/**
+ * Fetches charge histories and processes returns
+ * Consolidates the return processing logic used in both scheduled tasks and manual sync
+ *
+ * @param libraryClient - Authenticated library client
+ * @param bookRepository - Database repository for books
+ * @returns Number of books marked as returned
+ */
+export async function fetchAndProcessReturns(
+  libraryClient: LibraryClient,
+  bookRepository: BookRepository,
+): Promise<number> {
+  const histories = await libraryClient.getChargeHistories();
+
+  if (histories.length === 0) {
+    return 0;
+  }
+
+  const results = await Promise.all(
+    histories.map((history) => processChargeHistory(history, bookRepository)),
+  );
+
+  return results.filter((status) => status === 'returned').length;
 }
 
 export async function processChargeHistory(

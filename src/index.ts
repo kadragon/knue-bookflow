@@ -17,9 +17,9 @@ import {
   handleUpdateNote,
 } from './handlers/notes-handler';
 import {
+  fetchAndProcessReturns,
   handleSyncBooks,
   processCharge,
-  processChargeHistory,
 } from './handlers/sync-handler';
 import {
   broadcastDailyNote,
@@ -237,20 +237,12 @@ async function handleScheduledTask(
 
     // Step 6: Fetch charge histories to mark returned books
     console.log('[BookFlow] Step 6: Fetching charge histories...');
-    const histories = await libraryClient.getChargeHistories();
-
-    let returnedCount = 0;
-    if (histories.length > 0) {
-      console.log(
-        `[BookFlow] Processing ${histories.length} charge histories...`,
-      );
-      const historyResults = await Promise.all(
-        histories.map((history) =>
-          processChargeHistory(history, bookRepository),
-        ),
-      );
-
-      returnedCount = historyResults.filter((s) => s === 'returned').length;
+    const returnedCount = await fetchAndProcessReturns(
+      libraryClient,
+      bookRepository,
+    );
+    if (returnedCount > 0) {
+      console.log(`[BookFlow] Marked ${returnedCount} books as returned`);
     }
 
     // Step 7: Log summary
