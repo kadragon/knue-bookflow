@@ -109,9 +109,12 @@ function truncateTitle(title: string, maxLength: number = 15): string {
 
 // Format author display: show max 3 authors, rest as '외 N명'
 function formatAuthors(authorStr: string): string {
-  const authors = authorStr.split(',').map((a) => a.trim());
+  const authors = authorStr
+    .split(',')
+    .map((a) => a.trim())
+    .filter(Boolean);
   if (authors.length <= 3) {
-    return authorStr;
+    return authors.join(', ');
   }
   const displayAuthors = authors.slice(0, 3).join(', ');
   const remaining = authors.length - 3;
