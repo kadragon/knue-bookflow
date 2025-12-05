@@ -99,6 +99,25 @@ function formatDate(dateStr: string): string {
   return dateStr.split(' ')[0];
 }
 
+// Truncate title to max 15 characters
+function truncateTitle(title: string, maxLength: number = 15): string {
+  if (title.length <= maxLength) {
+    return title;
+  }
+  return title.slice(0, maxLength) + '...';
+}
+
+// Format author display: show max 3 authors, rest as '외 N명'
+function formatAuthors(authorStr: string): string {
+  const authors = authorStr.split(',').map((a) => a.trim());
+  if (authors.length <= 3) {
+    return authorStr;
+  }
+  const displayAuthors = authors.slice(0, 3).join(', ');
+  const remaining = authors.length - 3;
+  return `${displayAuthors} 외 ${remaining}명`;
+}
+
 function useBooks() {
   return useQuery<ApiResponse>({
     queryKey: ['books'],
@@ -115,41 +134,17 @@ function FilterBar({
 }) {
   return (
     <Box sx={{ mb: 3, mt: 3 }}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-        <Box sx={{ flexGrow: 1 }}>
-          <TextField
-            fullWidth
-            label="검색"
-            placeholder="제목, 저자, ISBN"
-            value={filters.search}
-            onChange={(e) =>
-              onChange({ ...filters, search: e.currentTarget.value })
-            }
-            variant="outlined"
-            size="small"
-          />
-        </Box>
-        <Box sx={{ minWidth: 200 }}>
-          <FormControl fullWidth size="small">
-            <InputLabel id="loan-state-label">대출 상태</InputLabel>
-            <Select
-              labelId="loan-state-label"
-              value={filters.loanState}
-              label="대출 상태"
-              onChange={(e) =>
-                onChange({
-                  ...filters,
-                  loanState: e.target.value as FilterState['loanState'],
-                })
-              }
-            >
-              <MenuItem value="all">전체</MenuItem>
-              <MenuItem value="on_loan">대출 중</MenuItem>
-              <MenuItem value="returned">반납됨</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-      </Stack>
+      <TextField
+        fullWidth
+        label="검색"
+        placeholder="제목, 저자, ISBN"
+        value={filters.search}
+        onChange={(e) =>
+          onChange({ ...filters, search: e.currentTarget.value })
+        }
+        variant="outlined"
+        size="small"
+      />
     </Box>
   );
 }
@@ -228,10 +223,10 @@ function BookCard({
           }}
           onClick={() => onBookClick(book)}
         >
-          {book.title}
+          {truncateTitle(book.title)}
         </Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>
-          {book.author}
+          {formatAuthors(book.author)}
         </Typography>
 
         <Stack
