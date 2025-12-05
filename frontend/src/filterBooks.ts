@@ -19,7 +19,7 @@ export interface Filters {
 
 export const defaultFilters: Filters = {
   search: '',
-  loanState: 'on_loan',
+  loanState: 'all',
   stat: 'none',
 };
 

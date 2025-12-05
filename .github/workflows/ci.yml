@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  ci:
+  CI:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run build:frontend
-      - run: npm run test:run
       - run: npm run typecheck
+      - run: npm run test:run
+      - run: npm run build
+      - run: npm run build:frontend
