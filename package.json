@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:run": "mkdir -p frontend/dist && vitest run",
     "ci:prepare": "npm run build:frontend",
+    "build": "wrangler build",
     "build:frontend": "vite build --config frontend/vite.config.mts",
     "cf-typegen": "wrangler types",
     "typecheck": "tsc --noEmit",
