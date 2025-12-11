@@ -17,7 +17,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,ts,jsx,tsx,json,css}": [
+    "*.{js,ts,jsx,tsx,json,css,mts,cts,mjs,cjs}": [
       "biome check --write --no-errors-on-unmatched"
     ]
   },
