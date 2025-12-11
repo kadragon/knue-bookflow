@@ -7,7 +7,11 @@
  */
 
 import { createLibraryClient } from '../services';
-import type { SearchBook } from '../types';
+import type {
+  LibraryItem,
+  PlannedLoanAvailability,
+  SearchBook,
+} from '../types';
 import { normalizeBranchVolumes } from '../utils';
 
 /**
@@ -48,9 +52,109 @@ export function parsePublication(publication: string): {
 }
 
 /**
+ * Summarize availability for a biblio's items
+ * Rules:
+ * - Available if at least one item is not charged
+ * - Loaned out if all items are charged, with earliest due date
+ */
+function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
+  const totalItems = items.length;
+  const availableItems = items.filter((item) => {
+    const code = item.circulationState?.code;
+    const isCharged = item.circulationState?.isCharged;
+    // Primary check: use isCharged boolean when present
+    if (isCharged === false) return true;
+    if (isCharged === true) return false;
+    // Fallback: check status codes when isCharged is undefined
+    return code === 'READY' || code === 'ON_SHELF' || code === 'AVAILABLE';
+  }).length;
+
+  const dueDates = items
+    .filter((item) => {
+      const code = item.circulationState?.code;
+      const isCharged = item.circulationState?.isCharged;
+      return (
+        isCharged === true ||
+        code === 'LOAN' ||
+        code === 'CHARGED' ||
+        code === 'CHARGE'
+      );
+    })
+    .map((item) => item.dueDate)
+    .filter((date): date is string => Boolean(date))
+    .map((date) => date.substring(0, 10)) // Extract YYYY-MM-DD
+    .sort();
+
+  const earliestDueDate = availableItems > 0 ? null : (dueDates[0] ?? null);
+
+  return {
+    status: availableItems > 0 ? 'available' : 'loaned_out',
+    totalItems,
+    availableItems,
+    earliestDueDate,
+  };
+}
+
+const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 500;
+
+// Module-level cache for availability data
+const availabilityCache = new Map<
+  number,
+  { value: PlannedLoanAvailability | null; expiresAt: number }
+>();
+
+type AvailabilityFetcher = (
+  libraryId: number,
+) => Promise<PlannedLoanAvailability | null>;
+
+function createAvailabilityFetcher(): AvailabilityFetcher {
+  const client = createLibraryClient();
+
+  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
+    const now = Date.now();
+    const cached = availabilityCache.get(libraryId);
+
+    // Return cached value if still valid
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+
+    try {
+      // Fetch fresh value
+      const items = await client.getBiblioItems(libraryId);
+      const value = summarizeAvailability(items);
+
+      // Implement simple LRU: remove oldest entry if cache is full
+      if (availabilityCache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = availabilityCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          availabilityCache.delete(oldestKey);
+        }
+      }
+
+      availabilityCache.set(libraryId, {
+        value,
+        expiresAt: now + AVAILABILITY_TTL_MS,
+      });
+      return value;
+    } catch (error) {
+      console.error(
+        `[SearchHandler] Failed to fetch availability for ${libraryId}:`,
+        error,
+      );
+      return null;
+    }
+  };
+}
+
+/**
  * Transform SearchBook to simplified frontend format
  */
-function transformSearchBook(book: SearchBook) {
+function transformSearchBook(
+  book: SearchBook,
+  availability: PlannedLoanAvailability | null = null,
+) {
   const { publisher, year } = parsePublication(book.publication);
 
   return {
@@ -64,6 +168,7 @@ function transformSearchBook(book: SearchBook) {
     materialType: book.biblioType?.name || null,
     publication: book.publication,
     branchVolumes: normalizeBranchVolumes(book.branchVolumes),
+    availability,
   };
 }
 
@@ -127,6 +232,7 @@ export async function handleSearchBooksApi(
 
   try {
     const libraryClient = createLibraryClient();
+    const fetchAvailability = createAvailabilityFetcher();
 
     const searchResult = await libraryClient.searchBooks(
       query.trim(),
@@ -134,13 +240,27 @@ export async function handleSearchBooksApi(
       offset,
     );
 
-    const items = searchResult.data.list.map(transformSearchBook);
+    // Fetch availability for all search results in parallel
+    const itemsWithAvailability = await Promise.all(
+      searchResult.data.list.map(async (book) => {
+        try {
+          const availability = await fetchAvailability(book.id);
+          return transformSearchBook(book, availability);
+        } catch (error) {
+          console.error(
+            `[SearchHandler] Failed to fetch availability for book ${book.id}:`,
+            error,
+          );
+          return transformSearchBook(book, null);
+        }
+      }),
+    );
 
     return new Response(
       JSON.stringify({
-        items,
+        items: itemsWithAvailability,
         meta: {
-          count: items.length,
+          count: itemsWithAvailability.length,
           totalCount: searchResult.data.totalCount,
           offset,
           max,
