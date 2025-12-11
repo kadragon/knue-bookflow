@@ -115,8 +115,10 @@ function createAvailabilityFetcher(): AvailabilityFetcher {
     const now = Date.now();
     const cached = availabilityCache.get(libraryId);
 
-    // Return cached value if still valid
+    // Return cached value if still valid (LRU: move to end)
     if (cached && cached.expiresAt > now) {
+      availabilityCache.delete(libraryId);
+      availabilityCache.set(libraryId, cached);
       return cached.value;
     }
 

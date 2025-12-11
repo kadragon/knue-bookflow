@@ -50,10 +50,13 @@ function SearchBookCard({
           .join(', ') || '소장 정보 없음'
       : '소장 정보 없음';
 
-  const callNumbersDisplay = book.branchVolumes
-    .filter((bv) => bv.callNumber)
-    .map((bv) => bv.callNumber)
-    .join(', ');
+  const callNumbersDisplay = [
+    ...new Set(
+      book.branchVolumes
+        .filter((bv) => bv.callNumber)
+        .map((bv) => bv.callNumber as string),
+    ),
+  ].join(', ');
 
   /**
    * Format due date for display
