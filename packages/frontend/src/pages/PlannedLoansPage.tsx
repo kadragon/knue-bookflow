@@ -98,8 +98,8 @@ function PlannedLoanCard({
     >
       <Box
         sx={{
-          width: 80,
-          height: 110,
+          width: 120,
+          height: 160,
           borderRadius: 1,
           bgcolor: 'background.paper',
           display: 'flex',
@@ -107,6 +107,21 @@ function PlannedLoanCard({
           justifyContent: 'center',
           overflow: 'hidden',
           flexShrink: 0,
+          cursor: item.isbn ? 'pointer' : 'default',
+          transition: 'transform 0.2s',
+          '&:hover': item.isbn
+            ? {
+                transform: 'scale(1.05)',
+              }
+            : {},
+        }}
+        onClick={() => {
+          if (item.isbn) {
+            window.open(
+              `https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=Book&KeyWord=${item.isbn}`,
+              '_blank',
+            );
+          }
         }}
       >
         {item.coverUrl ? (
@@ -146,7 +161,7 @@ function PlannedLoanCard({
         {(() => {
           const callNumbersDisplay = item.branchVolumes
             .filter((b) => b.callNumber)
-            .map((b) => `${b.branchName}(${b.callNumber})`)
+            .map((b) => b.callNumber)
             .join(', ');
           return callNumbersDisplay ? (
             <Typography
