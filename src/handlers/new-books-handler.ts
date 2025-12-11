@@ -18,7 +18,9 @@ function formatDate(date: Date): string {
 
 /**
  * Parse publication string to extract publisher and year
- * Example: "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
+ * Examples:
+ *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
+ *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
  */
 function parsePublication(publication: string): {
   publisher: string | null;
@@ -28,12 +30,23 @@ function parsePublication(publication: string): {
     return { publisher: null, year: null };
   }
 
-  // Match pattern: location :publisher,year or location: publisher, year
-  const match = publication.match(/[^:]+:\s*([^,]+),?\s*(\d{4})?/);
+  // Match pattern: location :publisher,year
+  // Use lazy quantifier (.+?) to capture publisher (may contain commas)
+  // Anchor year at end of string to handle commas in publisher names
+  const match = publication.match(/[^:]+:\s*(.+?),\s*(\d{4})\s*$/);
   if (match) {
     return {
       publisher: match[1]?.trim() || null,
       year: match[2] || null,
+    };
+  }
+
+  // Fallback: try to extract just the publisher without year
+  const publisherOnlyMatch = publication.match(/[^:]+:\s*(.+)$/);
+  if (publisherOnlyMatch) {
+    return {
+      publisher: publisherOnlyMatch[1]?.trim() || null,
+      year: null,
     };
   }
 

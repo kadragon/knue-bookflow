@@ -187,7 +187,7 @@ export default function NewBooksPage() {
         book.author.toLowerCase().includes(searchLower) ||
         (book.publisher &&
           book.publisher.toLowerCase().includes(searchLower)) ||
-        (book.isbn && book.isbn.includes(search)),
+        (book.isbn && book.isbn.toLowerCase().includes(searchLower)),
     );
   }, [data, search]);
 
