@@ -19,21 +19,17 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Snackbar,
   Stack,
   TextField,
   Toolbar,
   Typography,
 } from '@mui/material';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  createPlannedLoan,
-  getNewBooks,
-  type NewBookItem,
-  type NewBooksResponse,
-} from '../api';
+import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
+import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-new-books-001, SPEC-loan-plan-001, task_id: TASK-new-books, TASK-043
@@ -202,31 +198,12 @@ export default function NewBooksPage() {
   const [days, setDays] = useState(90);
   const [search, setSearch] = useState('');
   const { data, isLoading, isError, refetch } = useNewBooks(days, 100);
-
-  const [planFeedback, setPlanFeedback] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error',
-  });
-
-  const planMutation = useMutation({
-    mutationFn: createPlannedLoan,
-    onSuccess: () => {
-      setPlanFeedback({
-        open: true,
-        message: '대출 예정에 추가했어요.',
-        severity: 'success',
-      });
-    },
-    onError: (error) => {
-      const raw =
-        error instanceof Error ? error.message : '등록에 실패했습니다.';
-      const message = /already exists/i.test(raw)
-        ? '이미 대출 예정에 있습니다.'
-        : raw;
-      setPlanFeedback({ open: true, message, severity: 'error' });
-    },
-  });
+  const {
+    mutate: planMutate,
+    isPending: isPlanPending,
+    feedback,
+    closeFeedback,
+  } = usePlannedLoanMutation();
 
   const filteredBooks = useMemo(() => {
     if (!data?.items) return [];
@@ -243,7 +220,7 @@ export default function NewBooksPage() {
   }, [data, search]);
 
   const handlePlan = (book: NewBookItem) => {
-    planMutation.mutate(buildFromNewBook(book));
+    planMutate(buildFromNewBook(book));
   };
 
   return (
@@ -368,28 +345,14 @@ export default function NewBooksPage() {
                 key={book.id}
                 book={book}
                 onPlan={handlePlan}
-                isSaving={planMutation.isPending}
+                isSaving={isPlanPending}
               />
             ))}
           </Box>
         )}
       </Container>
 
-      <Snackbar
-        open={planFeedback.open}
-        autoHideDuration={4000}
-        onClose={() => setPlanFeedback((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setPlanFeedback((prev) => ({ ...prev, open: false }))}
-          severity={planFeedback.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {planFeedback.message}
-        </Alert>
-      </Snackbar>
+      <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
     </Box>
   );
 }

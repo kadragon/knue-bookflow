@@ -13,7 +13,6 @@ import {
   CircularProgress,
   Container,
   IconButton,
-  Snackbar,
   Stack,
   Toolbar,
   Typography,
@@ -26,6 +25,7 @@ import {
   getPlannedLoans,
   type PlannedLoanItem,
 } from '../api';
+import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { summarizeBranches } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
@@ -241,21 +241,10 @@ export default function PlannedLoansPage() {
         )}
       </Container>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
+      <FeedbackSnackbar
+        feedback={snackbar}
         onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 }

@@ -15,17 +15,18 @@ import {
   Container,
   InputAdornment,
   Pagination,
-  Snackbar,
   Stack,
   TextField,
   Toolbar,
   Typography,
 } from '@mui/material';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
-import { createPlannedLoan, searchBooks } from '../api';
+import { searchBooks } from '../api';
+import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromSearch } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-search-001, SPEC-loan-plan-001, task_id: TASK-042, TASK-043
@@ -179,30 +180,12 @@ export default function SearchBooksPage() {
     placeholderData: keepPreviousData,
   });
 
-  const [planFeedback, setPlanFeedback] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error',
-  });
-
-  const planMutation = useMutation({
-    mutationFn: createPlannedLoan,
-    onSuccess: () => {
-      setPlanFeedback({
-        open: true,
-        message: '대출 예정에 추가했어요.',
-        severity: 'success',
-      });
-    },
-    onError: (error) => {
-      const raw =
-        error instanceof Error ? error.message : '등록에 실패했습니다.';
-      const message = /already exists/i.test(raw)
-        ? '이미 대출 예정에 있습니다.'
-        : raw;
-      setPlanFeedback({ open: true, message, severity: 'error' });
-    },
-  });
+  const {
+    mutate: planMutate,
+    isPending: isPlanPending,
+    feedback,
+    closeFeedback,
+  } = usePlannedLoanMutation();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +203,7 @@ export default function SearchBooksPage() {
   };
 
   const handlePlan = (book: SearchBookItem) => {
-    planMutation.mutate(buildFromSearch(book));
+    planMutate(buildFromSearch(book));
   };
 
   const totalPages = data?.meta.totalCount
@@ -341,7 +324,7 @@ export default function SearchBooksPage() {
                       key={book.id}
                       book={book}
                       onPlan={handlePlan}
-                      isSaving={planMutation.isPending}
+                      isSaving={isPlanPending}
                     />
                   ))}
                 </Stack>
@@ -367,21 +350,7 @@ export default function SearchBooksPage() {
         )}
       </Container>
 
-      <Snackbar
-        open={planFeedback.open}
-        autoHideDuration={4000}
-        onClose={() => setPlanFeedback((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setPlanFeedback((prev) => ({ ...prev, open: false }))}
-          severity={planFeedback.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {planFeedback.message}
-        </Alert>
-      </Snackbar>
+      <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
     </Box>
   );
 }
