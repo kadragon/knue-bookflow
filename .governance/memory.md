@@ -10,6 +10,8 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - **External APIs**:
   - KNUE Library Pyxis API (login, charges, renewals)
   - Aladin Open API (book metadata)
+- **Frontend**: React SPA (Vite) hosted via Worker Assets
+- **Testing**: Vitest Workspaces (separating Workers/Node and Frontend/jsdom)
 
 ## Key Learnings
 - Session initialized: 2025-01-22
@@ -27,6 +29,7 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Repository Pattern: D1 database access through BookRepository
 - Result Type Pattern: RenewalResult for success/failure tracking
 - Service Composition: Separate services for library, aladin, renewal, storage
+- **Hybrid Testing**: Vitest workspaces allow running node-compatible Worker tests and jsdom-based React tests in the same repo without conflict.
 
 ## Known Issues
 - Vitest compatibility issue with nodejs_compat after 2025-09-21 (using 2024-11-01 compat date)
@@ -203,3 +206,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-12-03
 - Completed TASK-038 (SPEC-maintenance-001): Added `wrangler build` to `.github/workflows/ci.yml` to ensure the Cloudflare Worker build process is validated during continuous integration.
+
+### Session 2025-12-11
+- Completed TASK-039 (SPEC-ci-002): Introduced React component smoke tests to CI.
+  - Problem: CI wasn't catching React/ReactDOM version mismatches (runtime error) because only logic unit tests were running.
+  - Solution: Installed `@testing-library/react` and `jsdom`. Configured Vitest Workspaces to separate Worker (Node) and Frontend (jsdom) environments.
+  - Outcome: `npm test` now runs both worker logic tests and a frontend `App` smoke test.

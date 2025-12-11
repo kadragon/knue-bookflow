@@ -1,9 +1,7 @@
-# Current Task
-
 current_task:
-  task_id: TASK-037
-  title: "Tidy MarkdownV2 broadcast edge cases"
-  spec_id: SPEC-notes-telegram-002
+  task_id: TASK-039
+  title: "Add React component rendering tests"
+  spec_id: SPEC-ci-002
   status: done
-  started_at: "2025-11-26T06:46:53Z"
-  completed_at: "2025-11-26T06:47:29Z"
+  started_at: "2025-12-11T13:20:00Z"
+  completed_at: "2025-12-11T13:25:00Z"
