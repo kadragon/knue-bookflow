@@ -143,19 +143,21 @@ function PlannedLoanCard({
             ISBN: {item.isbn}
           </Typography>
         )}
-        {item.branchVolumes.some((b) => b.callNumber) && (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', mt: 0.5 }}
-          >
-            청구기호:{' '}
-            {item.branchVolumes
-              .filter((b) => b.callNumber)
-              .map((b) => `${b.branchName}(${b.callNumber})`)
-              .join(', ')}
-          </Typography>
-        )}
+        {(() => {
+          const callNumbersDisplay = item.branchVolumes
+            .filter((b) => b.callNumber)
+            .map((b) => `${b.branchName}(${b.callNumber})`)
+            .join(', ');
+          return callNumbersDisplay ? (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mt: 0.5 }}
+            >
+              청구기호: {callNumbersDisplay}
+            </Typography>
+          ) : null;
+        })()}
         <Typography
           variant="caption"
           color="text.secondary"
