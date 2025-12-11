@@ -15,7 +15,7 @@ import type { SearchBook } from '../types';
  *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
  *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
  */
-function parsePublication(publication: string): {
+export function parsePublication(publication: string): {
   publisher: string | null;
   year: string | null;
 } {

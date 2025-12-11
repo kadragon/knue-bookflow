@@ -212,3 +212,25 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   - Problem: CI wasn't catching React/ReactDOM version mismatches (runtime error) because only logic unit tests were running.
   - Solution: Installed `@testing-library/react` and `jsdom`. Configured Vitest Workspaces to separate Worker (Node) and Frontend (jsdom) environments.
   - Outcome: `npm test` now runs both worker logic tests and a frontend `App` smoke test.
+
+### Session 2025-12-11 (governance tidy)
+- Completed TASK-040 (SPEC-governance-001): Compacted task/governance registries.
+  - Cleared backlog to only pending tasks (now empty), normalized done.yaml into a single completed_tasks list, and reset current.yaml to null.
+  - Added SPEC-governance-001 to codify maintenance/compaction behaviors.
+  - Ensured historical tasks 001-007 recorded with explicit "unknown" timestamps to avoid loss of traceability.
+
+### Session 2025-12-11 (library search tests)
+- Completed TASK-041 (SPEC-search-001): Added comprehensive integration tests for search handler.
+  - Created SPEC-search-001 with GWT acceptance tests for library book search API
+  - Added 18 integration tests in search-handler.test.ts:
+    - Parameter validation (query, max, offset) with edge cases (empty, NaN, boundaries)
+    - Error handling for API failures (500 responses)
+    - Response format verification (metadata, transformed fields)
+    - Cache headers (Cache-Control: public, max-age=300)
+    - Optional field handling (null author, missing ISBN)
+  - All 122 tests passing across project (73 worker tests, 49 frontend tests)
+  - Key patterns:
+    - Use async beforeEach for proper vi.mock module import isolation
+    - Test edge cases: empty strings, NaN values, boundary conditions
+    - Verify HTTP response headers in API integration tests
+    - Mock LibraryClient.searchBooks with vi.fn() and createLibraryClient factory

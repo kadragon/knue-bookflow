@@ -1,397 +1,424 @@
 # Completed Tasks
 # Tasks are moved here after completion with results and learnings
 
-completed_tasks: []
+completed_tasks:
+  - task_id: TASK-001
+    title: "Initialize Cloudflare Workers project"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: null
+    summary: "Completed prior to detailed tracking; project scaffold and Wrangler/TypeScript setup established."
+    learnings:
+      - "Initial setup finished before current records; see early repo history for specifics."
 
-# Example of completed task:
-# - task_id: TASK-001
-#   title: "Initialize Cloudflare Workers project"
-#   completed_at: "2025-01-22T12:00:00Z"
-#   outcome: success
-#   summary: "Project initialized with all configurations"
-#   learnings:
-#     - "D1 binding requires specific wrangler.toml format"
+  - task_id: TASK-002
+    title: "Implement library authentication module"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-auth-001
+    summary: "Authentication workflow implemented prior to current tracking; handles Pyxis login/session."
+    learnings:
+      - "Original auth implementation predates current notes; covered by later resilience upgrades."
 
-- task_id: TASK-011
-  title: "Post-build code audit and hardening recommendations"
-  completed_at: "2025-11-22T06:28:59Z"
-  outcome: success
-  spec_id: SPEC-maintenance-001
-  summary: |
-    Completed a repository-wide audit after the first build. Identified stale
-    renewal persistence, unsecured manual trigger endpoint, lack of retries and
-    pagination in library client, timezone-sensitive date logic, and HTTP usage
-    for Aladin API requests.
-  learnings:
-    - "Renewal workflow fetches charges twice and fails to persist renewed due dates/renewCnt."
-    - "Manual /trigger endpoint is unauthenticated, enabling arbitrary runs."
-    - "Library API calls need retries, timeouts, and pagination to avoid silent data loss."
-    - "Date utilities assume local timezone; should be KST-aware."
-    - "Aladin client should use HTTPS to avoid MITM and mixed-content issues."
+  - task_id: TASK-003
+    title: "Implement charges retrieval service"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-charges-001
+    summary: "Charges retrieval delivered before detailed notes; forms basis for sync/renewal flows."
+    learnings:
+      - "Pagination/retry behavior later improved under TASK-014."
 
-- task_id: TASK-012
-  title: "Persist renewed due dates and avoid duplicate charge fetch"
-  completed_at: "2025-11-22T06:32:40Z"
-  outcome: success
-  spec_id: SPEC-renewal-001
-  summary: |
-    Avoided duplicate charges fetch by letting renewal reuse pre-fetched data and mutated
-    charges in-memory to reflect renewed due dates/renew counts before persistence. Updated
-    workflow to call checkAndRenewBooks with existing charges; added tests to verify no extra
-    fetch and that charge objects are updated.
-  learnings:
-    - "Mutating the shared charges array after renewals keeps downstream persistence accurate."
-    - "Passing charges into renewal function prevents redundant API calls."
+  - task_id: TASK-004
+    title: "Implement book renewal logic"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-renewal-001
+    summary: "Initial renewal logic shipped earlier; later corrected for persistence and timezone."
+    learnings:
+      - "Subsequent tasks addressed renewal data freshness and KST handling."
 
-- task_id: TASK-013
-  title: "Secure manual /trigger endpoint"
-  completed_at: "2025-11-22T06:34:32Z"
-  outcome: success
-  spec_id: SPEC-scheduler-001-sec
-  summary: |
-    Protected the manual /trigger endpoint with Bearer secret, added tests for missing/invalid/valid
-    secrets, and documented TRIGGER_SECRET in env/types and wrangler vars. Workflow only starts when
-    Authorization matches.
-  learnings:
-    - "Using a simple shared secret is the fastest guard; could swap to HMAC or SignedURL later."
-    - "Tests must stub waitUntil to assert the job is enqueued without running network calls."
+  - task_id: TASK-005
+    title: "Implement Aladin API integration"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-bookinfo-001
+    summary: "Initial Aladin integration completed before current logs; later enhanced for cover sizing."
+    learnings:
+      - "Cover size and refresh behavior refined in TASK-032."
 
-- task_id: TASK-014
-  title: "Add retries, timeouts, and pagination to library client"
-  completed_at: "2025-11-22T06:38:42Z"
-  outcome: success
-  spec_id: SPEC-auth-001
-  summary: |
-    Added resilience to library client: fetchWithResilience with timeouts/backoff, login retries,
-    paginated charges retrieval, and retryable renewals. Tests cover pagination and 5xx retry.
-  learnings:
-    - "Retry loops must cap attempts precisely to avoid exhausting fetch mocks."
-    - "Pagination combined with totalCount guards against silent truncation."
+  - task_id: TASK-006
+    title: "Set up D1 database and repository"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-storage-001
+    summary: "Base D1 schema and repository were delivered before detailed tracking began."
+    learnings:
+      - "Later tasks expanded schema with notes, send stats, and return tracking."
 
-- task_id: TASK-015
-  title: "Make date calculations timezone-safe (KST)"
-  completed_at: "2025-11-22T06:41:34Z"
-  outcome: success
-  spec_id: SPEC-renewal-001
-  summary: |
-    Date utilities now use a timezone-aware day calculation (default KST, overrideable),
-    renewal/new-book logic accepts offset, and tests cover KST day rollovers. This prevents
-    off-by-one around UTC/KST midnights.
-  learnings:
-    - "Shifting by offset before day-flooring keeps logic independent of host timezone."
-    - "Simple offset-shifted ISO splitting is a robust way to get date strings."
+  - task_id: TASK-007
+    title: "Implement scheduled workflow handler"
+    completed_at: "unknown"
+    outcome: success
+    spec_id: SPEC-scheduler-001
+    summary: "Cron orchestration built prior to current notes; later secured and branched for new crons."
+    learnings:
+      - "Security shifted to Zero Trust in TASK-016."
 
-- task_id: TASK-016
-  title: "Adjust /trigger to rely on Zero Trust (remove TRIGGER_SECRET)"
-  completed_at: "2025-11-22T06:46:00Z"
-  outcome: success
-  spec_id: SPEC-scheduler-001-zt
-  summary: |
-    Removed in-worker Bearer secret requirement for /trigger; security will be enforced via
-    Cloudflare Zero Trust/Access. Cleaned up env typings, wrangler vars, and secret tests.
-  learnings:
-    - "When Zero Trust guards the route, duplicate in-worker secrets add maintenance overhead."
-    - "Manual trigger tests should focus on behavior, not auth, when auth is delegated."
+  - task_id: TASK-008
+    title: "Add TypeScript type definitions"
+    completed_at: "2025-11-22T20:20:00Z"
+    outcome: success
+    spec_id: null
+    summary: |
+      Consolidated and enhanced TypeScript type definitions across the codebase. Created renewal.ts and api.ts,
+      extracted inline types from services, and ensured all services import centralized types. 39 tests passed.
+    learnings:
+      - "Extracting inline interface definitions to dedicated files improves reuse."
+      - "Re-exporting types keeps backward compatibility while centralizing definitions."
+      - "API response types belong near related domain types."
 
-- task_id: TASK-017
-  title: "Add custom domain book.kadragon.work to worker routes"
-  completed_at: "2025-11-22T00:30:00Z"
-  outcome: success
-  spec_id: SPEC-deploy-001
-  summary: |
-    Added a custom domain route for book.kadragon.work in wrangler.toml with traceability
-    comments so deployments map the Worker to the requested hostname.
-  learnings:
-    - "Routes array with zone_name is sufficient when account has the zone; no code changes needed."
-    - "Trace comments in config aid future auditing of domain mappings."
+  - task_id: TASK-009
+    title: "Write unit tests for all modules"
+    completed_at: "2025-11-22T20:35:00Z"
+    outcome: success
+    spec_id: null
+    summary: |
+      Completed comprehensive unit test coverage with mocked external APIs. Added book-repository.test.ts (17 tests)
+      and raised total test count to 56. Coverage spans auth, charges, renewal, Aladin, storage, handlers, and utils.
+    learnings:
+      - "D1 mocks need careful setup; .all() may be called without .bind()."
+      - "Factory helpers prevent mock state leakage."
+      - "Per-test mock recreation avoids shared state issues."
 
-- task_id: TASK-018
-  title: "Enable observability and Smart Placement"
-  completed_at: "2025-11-22T00:55:00Z"
-  outcome: success
-  spec_id: SPEC-observability-001
-  summary: |
-    Enabled Smart Placement and configured observability with 100% log sampling and 10% trace sampling
-    via wrangler.toml, with trace annotations for auditing.
-  learnings:
-    - "wrangler observability supports separate head_sampling_rate for logs and traces."
-    - "Placement block with mode=smart lowers latency without code changes."
+  - task_id: TASK-010
+    title: "Deploy and configure production environment"
+    completed_at: "2025-11-22T20:40:00Z"
+    outcome: success
+    spec_id: null
+    summary: |
+      Verified production deployment on Cloudflare Workers with D1 database, secrets configured, cron set to 10:00 UTC,
+      custom domain routing, Smart Placement, and observability enabled.
+    learnings:
+      - "Use wrangler d1 migrations list --remote to check prod schema."
+      - "Cron verification via wrangler deployments list is essential."
+      - "Secrets must be set before first scheduled run."
 
-- task_id: TASK-019
-  title: "Build bookshelf frontend and expose books API"
-  completed_at: "2025-11-22T17:10:00Z"
-  outcome: success
-  spec_id: SPEC-frontend-001
-  summary: |
-    Added a bookshelf SPA served directly from the Worker assets binding, exposed /api/books with
-    derived due status/daysLeft, implemented SPA fallback, and built a React-based grid UI with search
-    and filters for author, due status, renew count, and loan state.
-  learnings:
-    - "Returning derived fields (dueStatus, daysLeft) keeps the frontend simple and predictable."
-    - "Assets fallback via env.ASSETS.fetch plus index.html avoids html_handling quirks in wrangler."
-    - "Using a single package.json still supports Vite builds when config is ESM (.mts)."
+  - task_id: TASK-011
+    title: "Post-build code audit and hardening recommendations"
+    completed_at: "2025-11-22T06:28:59Z"
+    outcome: success
+    spec_id: SPEC-maintenance-001
+    summary: |
+      Completed repository audit identifying stale renewal persistence, unsecured manual trigger, missing retries/pagination,
+      timezone issues, and HTTP usage for Aladin API.
+    learnings:
+      - "Renewal workflow fetched charges twice and missed persistence."
+      - "Manual /trigger lacked authentication."
+      - "Library client needed retries/timeouts/pagination."
+      - "Date utilities needed KST awareness."
+      - "Aladin client should use HTTPS."
 
-- task_id: TASK-020
-  title: "Expose note metadata and UI CTA (stub)"
-  completed_at: "2025-11-22T17:13:30Z"
-  outcome: success
-  spec_id: SPEC-notes-001
-  summary: |
-    Exposed noteCount/noteState fields from /api/books and surfaced a note CTA on cards to pave the way
-    for future note persistence without DB changes yet. Kept values stubbed (0/not_started) pending persistence design.
-  learnings:
-    - "Including note metadata in the API now avoids a future contract change when persistence arrives."
-    - "CTA can be present without functionality as long as semantics are explicit (not_started)."
+  - task_id: TASK-012
+    title: "Persist renewed due dates and avoid duplicate charge fetch"
+    completed_at: "2025-11-22T06:32:40Z"
+    outcome: success
+    spec_id: SPEC-renewal-001
+    summary: |
+      Renewal workflow now reuses a single charges fetch and mutates charges with renewed due dates/counts before
+      persistence. Tests ensure no duplicate fetches and accurate updates.
+    learnings:
+      - "Mutating shared charges keeps persistence accurate."
+      - "Passing charges into renewal prevents redundant calls."
 
-- task_id: TASK-008
-  title: "Add TypeScript type definitions"
-  completed_at: "2025-11-22T20:20:00Z"
-  outcome: success
-  spec_id: null
-  summary: |
-    Consolidated and enhanced TypeScript type definitions across the codebase. Created new type files
-    for renewal types (renewal.ts) and API response types (api.ts). Extracted inline types from services
-    into dedicated type modules and ensured all services import from centralized types. All 39 tests pass.
-  learnings:
-    - "Extracting inline interface definitions to dedicated type files improves discoverability and reuse."
-    - "Re-exporting types from services maintains backward compatibility while centralizing definitions."
-    - "API response types (BookViewModel, DueStatus) belong with related types rather than in handlers."
+  - task_id: TASK-013
+    title: "Secure manual /trigger endpoint"
+    completed_at: "2025-11-22T06:34:32Z"
+    outcome: success
+    spec_id: SPEC-scheduler-001-sec
+    summary: |
+      Protected /trigger with Bearer secret, added tests for auth scenarios, and documented TRIGGER_SECRET in env/types.
+    learnings:
+      - "Shared secret is simplest immediate guard."
+      - "waitUntil should be stubbed in tests to assert job enqueue."
 
-- task_id: TASK-009
-  title: "Write unit tests for all modules"
-  completed_at: "2025-11-22T20:35:00Z"
-  outcome: success
-  spec_id: null
-  summary: |
-    Completed comprehensive unit test coverage for all modules. Created book-repository.test.ts with
-    17 tests for D1 database operations (saveBook, findByChargeId, findByIsbn, findAll, logRenewal,
-    getRenewalLogs, createBookRecord). Total test count increased from 39 to 56 tests, all passing.
-    Coverage includes auth, charges, renewal, Aladin, storage, handlers, and utils modules.
-  learnings:
-    - "D1 database operations require careful mock setup; .all() may be called directly without .bind()."
-    - "Using type-safe mock factories (createMockCharge, createMockBookInfo) improves test maintainability."
-    - "Re-creating mocks per test with mockReturnValue avoids state leakage between tests."
+  - task_id: TASK-014
+    title: "Add retries, timeouts, and pagination to library client"
+    completed_at: "2025-11-22T06:38:42Z"
+    outcome: success
+    spec_id: SPEC-auth-001
+    summary: |
+      Introduced fetchWithResilience with timeouts/backoff, login retries, paginated charges retrieval, and retryable
+      renewals. Tests cover pagination and 5xx retry paths.
+    learnings:
+      - "Retry loops must cap attempts precisely."
+      - "totalCount guards against silent truncation."
 
-- task_id: TASK-010
-  title: "Deploy and configure production environment"
-  completed_at: "2025-11-22T20:40:00Z"
-  outcome: success
-  spec_id: null
-  summary: |
-    Verified production deployment on Cloudflare Workers. D1 database (knue-bookflow-db) provisioned
-    with migrations applied (books, renewal_logs tables). All three secrets configured (LIBRARY_USER_ID,
-    LIBRARY_PASSWORD, ALADIN_API_KEY). Cron trigger set for 10:00 UTC daily. Custom domain
-    book.kadragon.work routed. Smart Placement and observability (100% logs, 10% traces) enabled.
-  learnings:
-    - "wrangler d1 migrations list shows local status; use --remote for production state."
-    - "D1 tables include internal _cf_KV and d1_migrations for Cloudflare management."
-    - "Verify deployment with wrangler deployments list and d1 execute for table checks."
+  - task_id: TASK-015
+    title: "Make date calculations timezone-safe (KST)"
+    completed_at: "2025-11-22T06:41:34Z"
+    outcome: success
+    spec_id: SPEC-renewal-001
+    summary: |
+      Date utilities now use timezone-aware day calculation (default KST), renewal/new-book logic accepts offset,
+      and tests cover KST rollovers to prevent off-by-one errors.
+    learnings:
+      - "Shift by offset before day-flooring for host-independence."
+      - "Offset ISO splitting is a robust date-string method."
 
-- task_id: TASK-021
-  title: "Create and apply project favicon"
-  completed_at: "2025-11-22T21:10:00Z"
-  outcome: success
-  spec_id: SPEC-frontend-001
-  summary: |
-    Designed and added a custom SVG favicon representing an open book with the project's
-    gradient theme. Updated index.html to serve it.
-  learnings:
-    - "SVG favicons are lightweight and scale well."
-    - "Vite automatically copies files from public/ to dist/ during build."
+  - task_id: TASK-016
+    title: "Adjust /trigger to rely on Zero Trust (remove TRIGGER_SECRET)"
+    completed_at: "2025-11-22T06:46:00Z"
+    outcome: success
+    spec_id: SPEC-scheduler-001-zt
+    summary: |
+      Removed in-worker secret enforcement; manual trigger now trusts Cloudflare Zero Trust. Cleaned env typings, wrangler
+      vars, and tests accordingly.
+    learnings:
+      - "Delegate auth to Zero Trust to cut maintenance."
+      - "Tests should focus on behavior when auth is external."
 
-- task_id: TASK-022
-  title: "Enable Dependabot for GitHub Actions"
-  completed_at: "2025-11-22T21:20:00Z"
-  outcome: success
-  spec_id: SPEC-ci-001
-  summary: |
-    Updated .github/dependabot.yml to include the "github-actions" package ecosystem
-    with weekly interval.
-  learnings:
-    - "Dependabot can monitor GitHub Actions workflow files for action version updates."
+  - task_id: TASK-017
+    title: "Add custom domain book.kadragon.work to worker routes"
+    completed_at: "2025-11-22T00:30:00Z"
+    outcome: success
+    spec_id: SPEC-deploy-001
+    summary: |
+      Added custom domain route in wrangler.toml with trace comments linking to deployment needs.
+    learnings:
+      - "Routes array plus zone_name is sufficient when zone owned."
+      - "Trace comments aid future audits."
 
-- task_id: TASK-024
-  title: "Place note input at top of modal"
-  completed_at: "2025-11-23T13:35:00Z"
-  outcome: success
-  spec_id: SPEC-notes-002
-  summary: |
-    Reordered the NoteModal so the add/edit note control sits at the top, ensuring users
-    can start writing without scrolling past long histories. Added a small layout helper
-    with a unit test (TEST-notes-ui-006) and tweaked styles to keep spacing consistent.
-  learnings:
-    - "Keep primary input affordances at the top of modals to minimize scroll friction."
-    - "A tiny ordering helper plus test locks in UX expectations without heavy UI harnesses."
+  - task_id: TASK-018
+    title: "Enable observability and Smart Placement"
+    completed_at: "2025-11-22T00:55:00Z"
+    outcome: success
+    spec_id: SPEC-observability-001
+    summary: |
+      Enabled Smart Placement and configured log/trace sampling (logs 100%, traces 10%) in wrangler.toml with annotations.
+    learnings:
+      - "Observability supports separate head_sampling_rate for logs/traces."
+      - "Smart placement reduces latency without code changes."
 
-- task_id: TASK-025
-  title: "Remove '(작성 예정)' label when no notes"
-  completed_at: "2025-11-23T13:37:30Z"
-  outcome: success
-  spec_id: SPEC-notes-002
-  summary: |
-    Hid the placeholder "(작성 예정)" copy on book cards when noteCount is zero. Added a
-    guard helper with unit tests (TEST-notes-ui-007) to keep the label from reappearing.
-  learnings:
-    - "Small text changes benefit from a dedicated helper + test to prevent regressions."
+  - task_id: TASK-019
+    title: "Build bookshelf frontend and expose books API"
+    completed_at: "2025-11-22T17:10:00Z"
+    outcome: success
+    spec_id: SPEC-frontend-001
+    summary: |
+      Added bookshelf SPA served from Worker assets, /api/books with derived due status/daysLeft, SPA fallback, and React grid UI with search/filters.
+    learnings:
+      - "Derived fields simplify frontend."
+      - "env.ASSETS.fetch + index fallback avoids html_handling quirks."
+      - "Single package.json works with ESM Vite config."
 
-- task_id: TASK-026
-  title: "Simplify filters: remove author/minRenew/dueStatus"
-  completed_at: "2025-11-23T13:44:30Z"
-  outcome: success
-  spec_id: SPEC-frontend-001
-  summary: |
-    Removed author, due-status, and minimum-renew filters from the bookshelf UI and logic,
-    leaving search and loan-state filters only. Updated spec (TEST-frontend-004) and added a
-    filterBooks helper with unit tests to lock the new behavior.
-  learnings:
-    - "Extracting filtering into a helper makes UX changes safer to iterate."
+  - task_id: TASK-020
+    title: "Expose note metadata and UI CTA (stub)"
+    completed_at: "2025-11-22T17:13:30Z"
+    outcome: success
+    spec_id: SPEC-notes-001
+    summary: |
+      Exposed noteCount/noteState fields in /api/books and surfaced a note CTA on cards, paving the way for persistence without DB changes yet.
+    learnings:
+      - "Include future-facing metadata early to avoid contract churn."
+      - "CTA can exist without functionality if semantics are explicit."
 
-- task_id: TASK-027
-  title: "Frontend UI improvements: pastel theme, read status, stats, note edit"
-  completed_at: "2025-11-23T15:52:00Z"
-  outcome: success
-  spec_id: SPEC-frontend-001
-  summary: |
-    Implemented 4 UI improvements to the bookshelf frontend:
-    1. Established pastel color design system (primary: #7EB8DA, secondary: #A8D5BA, etc.)
-    2. Added completion status (완독) toggle UI with API integration
-    3. Updated main page statistics to show 대여중/독서중/완료/총
-    4. Fixed note edit button by adding scroll-to-top behavior when form opens
-  learnings:
-    - "Pastel tones with good contrast text colors maintain readability while softening the UI."
-    - "Book stats should reflect reading progress (대여중/독서중/완료) not just due dates."
-    - "When opening forms in scrollable modals, auto-scroll to form improves UX."
-    - "Integrating existing backend APIs (read status) into frontend requires minimal changes."
+  - task_id: TASK-021
+    title: "Create and apply project favicon"
+    completed_at: "2025-11-22T21:10:00Z"
+    outcome: success
+    spec_id: SPEC-frontend-001
+    summary: "Designed and added a custom SVG favicon (open book gradient) and wired index.html."
+    learnings:
+      - "SVG favicons scale well and stay light."
+      - "Vite copies public/ assets into dist automatically."
 
-- task_id: TASK-028
-  title: "Send daily Telegram reading note"
-  completed_at: "2025-11-23T16:13:00Z"
-  outcome: success
-  spec_id: SPEC-notes-telegram-001
-  summary: |
-    Added a 12:00 KST cron that sends one reading note to Telegram using the lowest
-    send_count selection strategy. Introduced note_send_stats table, repository for
-    aggregated note/book data, Telegram sender, and message formatting ("title - author\np.xx\ncontent").
-    Added TELEGRAM_* secrets to env, wrangler cron, and tests for selection fairness,
-    formatting, skip/no-notes, and error handling.
-  learnings:
-    - "Tracking send_count per note prevents over-sending the same quote while staying deterministic."
-    - "D1 upsert with ON CONFLICT keeps send counters lightweight without extra reads."
-    - "Cron branching via event.cron cleanly separates renewal and broadcast workflows."
+  - task_id: TASK-022
+    title: "Enable Dependabot for GitHub Actions"
+    completed_at: "2025-11-22T21:20:00Z"
+    outcome: success
+    spec_id: SPEC-ci-001
+    summary: "Updated .github/dependabot.yml to monitor github-actions ecosystem weekly."
+    learnings:
+      - "Dependabot can track workflow action versions."
 
-- task_id: TASK-029
-  title: "Frontend stats filters + default loan-state"
-  completed_at: "2025-11-23T16:36:45Z"
-  outcome: success
-  spec_id: SPEC-frontend-001
-  summary: |
-    Updated the top stats to 대여중/미완료/완료/총 with clickable cards that filter the list,
-    added stat-based filtering logic, and set the initial loan-state filter to '대출 중'
-    via shared defaultFilters. Implemented stat filtering in filterBooks, wired ShelfStats
-    to toggle filters, and ensured totals card resets to all books. Added tests for stat
-    filters and the default loan-state preset.
-  learnings:
-    - "Shared defaultFilters constant keeps UI defaults testable and aligned with acceptance."
-    - "Stat filters should set loanState to all when showing aggregate groups to avoid accidental narrowing."
-    - "Clickable stat cards benefit from simple role/button styling for accessibility without extra components."
+  - task_id: TASK-023
+    title: "Implement full note-taking feature"
+    completed_at: "2025-11-23T12:50:00Z"
+    outcome: success
+    spec_id: SPEC-notes-002
+    summary: |
+      Added notes table/migration, repository, CRUD API endpoints, and NoteModal UI with list/add/edit/delete, including accessibility/backdrop close and page ordering.
+    learnings:
+      - "Use DB ids for note routing/API calls to avoid charge_id coupling."
+      - "Sort notes by page_number ascending for consistent reading flow."
 
-- task_id: TASK-031
-  title: "Allow notes to expand book detail page height (no inner scroll)"
-  completed_at: "2025-11-23T21:06:00Z"
-  outcome: success
-  spec_id: SPEC-book-detail-001
-  summary: |
-    Removed the fixed-height/overflow styling from the book detail notes list so a long set
-    of notes extends the overall page height instead of creating its own scrollbar. Extracted
-    a shared NOTES_LIST_SX style hook and added a layout test to guard against reintroducing
-    inner scrolling.
-  learnings:
-    - "Avoiding nested scroll areas on detail pages keeps keyboard and touch navigation intuitive."
-    - "Lightweight style constants make layout intent testable without pulling in extra UI test deps."
+  - task_id: TASK-024
+    title: "Place note input at top of modal"
+    completed_at: "2025-11-23T13:35:00Z"
+    outcome: success
+    spec_id: SPEC-notes-002
+    summary: "Moved note creation control to the top of NoteModal; added layout helper and test (TEST-notes-ui-006)."
+    learnings:
+      - "Primary input should appear before history to cut scroll friction."
 
-- task_id: TASK-032
-  title: "Use largest Aladin cover image"
-  completed_at: "2025-11-23T21:33:00Z"
-  outcome: success
-  spec_id: SPEC-bookinfo-001
-  summary: |
-    Updated the Aladin ItemLookUp request to include `Cover=Big` so returned cover images use the
-    largest available size. Refreshed sync logic to re-fetch Aladin metadata when a stored book is
-    missing cover_url, and allowed BookRepository updates to coalesce new cover/description values.
-    Added unit tests for the request parameter, cover refresh, and update bindings.
-  learnings:
-    - "Aladin supports cover size selection via the Cover query param (Big/Mid/Small/Mini)."
-    - "Small client tweaks stay safe when guarded by a dedicated request-parameter test."
-    - "Missing covers can be recovered by nulling cover_url and rerunning sync; repository must update cover_url on existing rows."
+  - task_id: TASK-025
+    title: "Remove '(작성 예정)' label when no notes"
+    completed_at: "2025-11-23T13:37:30Z"
+    outcome: success
+    spec_id: SPEC-notes-002
+    summary: "Hid placeholder label on cards when noteCount is zero; added guard helper and tests (TEST-notes-ui-007)."
+    learnings:
+      - "Tiny UX copies warrant regression tests for stability."
 
-- task_id: TASK-034
-  title: "Mark returned books using charge histories"
-  completed_at: "2025-11-23T14:30:00Z"
-  outcome: success
-  spec_id: SPEC-return-001
-  summary: |
-    Added return detection to sync by fetching paginated charge histories, matching records by
-    charge_id with ISBN fallback, and writing discharge_date to D1. Books with discharge_date now
-    surface as loanState=returned in /api/books, default filters hide them from the active loan list,
-    and sync summary reports how many books were marked returned. Introduced migration 0006 to add the
-    discharge_date column.
-  learnings:
-    - "Charge history id aligns with charge_id, but ISBN fallback protects against mismatches."
-    - "Marking returned books requires coalescing discharge_date updates so existing data isn't wiped by nulls."
-    - "Returned items should report daysLeft=0 and dueStatus=ok to avoid misleading urgency indicators."
+  - task_id: TASK-026
+    title: "Simplify filters: remove author/minRenew/dueStatus"
+    completed_at: "2025-11-23T13:44:30Z"
+    outcome: success
+    spec_id: SPEC-frontend-001
+    summary: "Reduced bookshelf filters to search + loan-state; updated spec test and filterBooks helper with unit tests."
+    learnings:
+      - "Extract filtering logic into helpers to evolve UX safely."
 
-- task_id: TASK-036
-  title: "Refine MarkdownV2 broadcast formatting"
-  completed_at: "2025-11-26T06:44:43Z"
-  outcome: success
-  spec_id: SPEC-notes-telegram-002
-  summary: |
-    Extracted the MarkdownV2 escape regex into a shared constant, avoided blank author lines by
-    defaulting to "Unknown Author", ensured page lines tolerate missing page numbers, and kept
-    multiline content fully quoted. Updated Telegram payload assertions and added multiline/page
-    placeholder tests to guard behavior.
-  learnings:
-    - "Centralizing the escape regex reduces drift and makes formatting tweaks safer to test."
-    - "Providing a sensible author fallback keeps visual structure without stray underscores."
-    - "Quote-first then escape keeps multiline content rendering predictable across notes."
+  - task_id: TASK-027
+    title: "Frontend UI improvements: pastel theme, read status, stats, note edit"
+    completed_at: "2025-11-23T15:52:00Z"
+    outcome: success
+    spec_id: SPEC-frontend-001
+    summary: |
+      Added pastel design system, completion toggle UI, updated stats (대여중/독서중/완료/총), and fixed note edit scroll-to-top behavior.
+    learnings:
+      - "Pastel palette with contrast maintains readability."
+      - "Progress-based stats better reflect reading state."
 
-- task_id: TASK-037
-  title: "Tidy MarkdownV2 broadcast edge cases"
-  completed_at: "2025-11-26T06:47:29Z"
-  outcome: success
-  spec_id: SPEC-notes-telegram-002
-  summary: |
-    Removed redundant nullish coalescing on author, skipped content section when notes are empty to
-    avoid blank blockquotes, and kept page/author handling intact. Added regression test to ensure
-    empty content yields no stray quote lines. All targeted tests passing.
-  learnings:
-    - "When content can be empty, conditionally render sections to avoid Markdown artifacts."
-    - "Type info (non-null fields) can simplify formatting code by removing unnecessary fallbacks."
+  - task_id: TASK-028
+    title: "Send daily Telegram reading note"
+    completed_at: "2025-11-23T16:13:00Z"
+    outcome: success
+    spec_id: SPEC-notes-telegram-001
+    summary: |
+      Added 12:00 KST cron to broadcast a reading note with lowest send_count selection, D1 send stats table, Telegram sender, secrets, and tests for selection/formatting/errors.
+    learnings:
+      - "Track send_count to avoid repeats."
+      - "Cron branching via event.cron keeps workflows separate."
 
-- task_id: TASK-035
-  title: "Format Telegram note broadcast with MarkdownV2"
-  completed_at: "2025-11-26T05:54:45Z"
-  outcome: success
-  spec_id: SPEC-notes-telegram-002
-  summary: |
-    Updated the daily Telegram note broadcast to output MarkdownV2 with bold title, italic author,
-    escaped page line, and blockquoted content. Added escaping for all MarkdownV2 reserved characters
-    and set Telegram payload to use parse_mode=MarkdownV2 with link previews disabled. Extended unit
-    tests to cover formatting, escaping, and payload fields.
-  learnings:
-    - "Escaping MarkdownV2 must include backslash, dot, and dash to avoid unexpected formatting."
-    - "Quoting multiline content stays consistent by prefixing each line after escaping."
-    - "Telegram requests should disable previews to keep reading snippets compact."
+  - task_id: TASK-029
+    title: "Frontend stats filters + default loan-state"
+    completed_at: "2025-11-23T16:36:45Z"
+    outcome: success
+    spec_id: SPEC-frontend-001
+    summary: |
+      Stats now filter the grid (대여중/미완료/완료/총) with clickable cards; default loan-state preset set to '대출 중'. Tests added for stat filters and defaults.
+    learnings:
+      - "Shared defaults keep UI and tests aligned."
 
-- task_id: TASK-039
-  title: "Add React component rendering tests"
-  completed_at: "2025-12-11T13:25:00Z"
-  outcome: success
-  spec_id: SPEC-ci-002
-  summary: |
-    Integrated basic React component testing into the CI pipeline. Installed @testing-library/react and jsdom,
-    configured a separate frontend Vitest environment via workspace setup, and added a smoke test for the App
-    component. This ensures runtime compatibility (e.g., React version mismatches) is caught during tests.
-  learnings:
-    - "Vitest Workspaces cleanly separate Cloudflare Worker (Node-compat) and Frontend (jsdom) test environments."
-    - "Worker tests must explicitly exclude frontend sources to avoid jsdom/document errors in non-DOM environments."
+  - task_id: TASK-030
+    title: "Create dedicated book detail page"
+    completed_at: "2025-11-23T20:10:00Z"
+    outcome: success
+    spec_id: SPEC-book-detail-001
+    summary: |
+      Built BookDetailPage with two-column layout, GET /api/books/:id endpoint, React Router, full note CRUD, completion toggle, and responsive design. Added React Query cache invalidation.
+    learnings:
+      - "Use dbId for routing/API to avoid charge_id coupling."
+      - "Responsive single/two-column layouts need shared style constants."
+
+  - task_id: TASK-031
+    title: "Allow notes to expand book detail page height (no inner scroll)"
+    completed_at: "2025-11-23T21:06:00Z"
+    outcome: success
+    spec_id: SPEC-book-detail-001
+    summary: "Removed inner scrollbar from notes list; long notes now extend page height. Added NOTES_LIST_SX constant and layout test."
+    learnings:
+      - "Avoid nested scroll areas for better keyboard/touch UX."
+
+  - task_id: TASK-032
+    title: "Use largest Aladin cover image"
+    completed_at: "2025-11-23T21:33:00Z"
+    outcome: success
+    spec_id: SPEC-bookinfo-001
+    summary: "Added Cover=Big to Aladin ItemLookUp, refreshed cover sync for missing images, and ensured repository updates cover/description."
+    learnings:
+      - "Requesting Cover=Big yields largest image size."
+
+  - task_id: TASK-034
+    title: "Mark returned books using charge histories"
+    completed_at: "2025-11-23T14:30:00Z"
+    outcome: success
+    spec_id: SPEC-return-001
+    summary: |
+      Synced charge histories to mark returned books with discharge_date, matched by charge_id/ISBN, surfaced loanState=returned, and added migration 0006. Sync summary reports marked returns.
+    learnings:
+      - "Use charge_id first, ISBN fallback for robustness."
+      - "Returned items should show daysLeft=0 and dueStatus=ok."
+
+  - task_id: TASK-035
+    title: "Format Telegram note broadcast with MarkdownV2"
+    completed_at: "2025-11-26T05:54:45Z"
+    outcome: success
+    spec_id: SPEC-notes-telegram-002
+    summary: "Telegram broadcast now uses MarkdownV2 with escaping, blockquoted content, parse_mode, and disabled previews; tests cover formatting/payload."
+    learnings:
+      - "Escape backslash, dot, dash for MarkdownV2 safety."
+
+  - task_id: TASK-036
+    title: "Refine MarkdownV2 broadcast formatting"
+    completed_at: "2025-11-26T06:44:43Z"
+    outcome: success
+    spec_id: SPEC-notes-telegram-002
+    summary: "Centralized escape regex, added author fallback, multiline quoting, missing-page handling, and expanded payload tests."
+    learnings:
+      - "Centralized regex reduces drift."
+      - "Quote then escape for stable multiline rendering."
+
+  - task_id: TASK-037
+    title: "Tidy MarkdownV2 broadcast edge cases"
+    completed_at: "2025-11-26T06:47:29Z"
+    outcome: success
+    spec_id: SPEC-notes-telegram-002
+    summary: "Removed redundant author nullish coalescing, skipped empty content blockquotes, and added regression test for empty content."
+    learnings:
+      - "Conditionally render sections when data can be empty."
+
+  - task_id: TASK-038
+    title: "Add wrangler build to CI"
+    completed_at: "2025-12-03T11:00:00Z"
+    outcome: success
+    spec_id: SPEC-maintenance-001
+    summary: "Added wrangler build step to CI workflow to catch Worker build issues early."
+    learnings:
+      - "CI should mirror production build steps to detect compatibility issues."
+
+  - task_id: TASK-039
+    title: "Add React component rendering tests"
+    completed_at: "2025-12-11T13:25:00Z"
+    outcome: success
+    spec_id: SPEC-ci-002
+    summary: "Installed @testing-library/react/jsdom, configured Vitest workspaces, and added App smoke test to catch React/ReactDOM mismatches in CI."
+    learnings:
+      - "Separate worker and frontend test environments avoid DOM errors in Node tests."
+
+  - task_id: TASK-040
+    title: "Compact governance and task registries"
+    completed_at: "2025-12-11T14:15:00Z"
+    outcome: success
+    spec_id: SPEC-governance-001
+    summary: "Compacted .tasks and .governance registries: cleared backlog of completed items, normalized done.yaml, reset current.yaml, and added governance spec for traceability."
+    learnings:
+      - "Keep backlog strictly pending to avoid confusion."
+      - "Normalize YAML structure to preserve machine readability."
+
+  - task_id: TASK-041
+    title: "Add integration tests for search handler"
+    completed_at: "2025-12-11T13:53:30Z"
+    outcome: success
+    spec_id: SPEC-search-001
+    summary: |
+      Added comprehensive integration tests for handleSearchBooksApi covering parameter validation, error handling,
+      API failures, and response formatting. Created SPEC-search-001 with GWT acceptance criteria.
+      All 18 tests passing (122 total across project).
+    learnings:
+      - "Mock vi.fn with async beforeEach for proper module import isolation"
+      - "Test parameter validation edge cases (empty strings, NaN, boundary values)"
+      - "Verify response headers (Content-Type, Cache-Control) in API tests"
+      - "Include tests for optional field handling (null author, missing ISBN)"

@@ -17,9 +17,9 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
 
@@ -124,23 +124,30 @@ function SearchBookCard({ book }: { book: SearchBookItem }) {
 
 export default function SearchBooksPage() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const offset = (currentPage - 1) * MAX_RESULTS_PER_PAGE;
+  const queryParam = searchParams.get('q') || '';
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const [searchInput, setSearchInput] = useState(queryParam);
+
+  // Sync input when URL changes (e.g. back button)
+  useEffect(() => {
+    setSearchInput(queryParam);
+  }, [queryParam]);
+
+  const offset = (pageParam - 1) * MAX_RESULTS_PER_PAGE;
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['search', submittedQuery, offset],
-    queryFn: () => searchBooks(submittedQuery, MAX_RESULTS_PER_PAGE, offset),
-    enabled: submittedQuery.trim() !== '',
+    queryKey: ['search', queryParam, offset],
+    queryFn: () => searchBooks(queryParam, MAX_RESULTS_PER_PAGE, offset),
+    enabled: !!queryParam.trim(),
+    placeholderData: keepPreviousData,
   });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setSubmittedQuery(searchQuery.trim());
-      setCurrentPage(1);
+    if (searchInput.trim()) {
+      setSearchParams({ q: searchInput.trim(), page: '1' });
     }
   };
 
@@ -148,7 +155,7 @@ export default function SearchBooksPage() {
     _event: React.ChangeEvent<unknown>,
     page: number,
   ) => {
-    setCurrentPage(page);
+    setSearchParams({ q: queryParam, page: page.toString() });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -196,10 +203,11 @@ export default function SearchBooksPage() {
         <Box component="form" onSubmit={handleSearch} sx={{ mb: 4, mt: 3 }}>
           <TextField
             fullWidth
+            autoFocus
             label="검색"
             placeholder="제목, 저자, ISBN 등으로 검색"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             variant="outlined"
             size="medium"
             slotProps={{
@@ -214,7 +222,7 @@ export default function SearchBooksPage() {
                     <Button
                       variant="contained"
                       type="submit"
-                      disabled={!searchQuery.trim()}
+                      disabled={!searchInput.trim()}
                       sx={{ minWidth: 80 }}
                     >
                       검색
@@ -226,7 +234,7 @@ export default function SearchBooksPage() {
           />
         </Box>
 
-        {submittedQuery === '' && (
+        {queryParam === '' && (
           <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
             <SearchIcon sx={{ fontSize: 64, opacity: 0.3, mb: 2 }} />
             <Typography variant="h6" gutterBottom>
@@ -254,8 +262,7 @@ export default function SearchBooksPage() {
           <>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                &quot;{submittedQuery}&quot; 검색 결과: 총{' '}
-                {data.meta.totalCount}건
+                &quot;{queryParam}&quot; 검색 결과: 총 {data.meta.totalCount}건
                 {data.meta.isFuzzy && ' (일부 검색어 포함)'}
               </Typography>
             </Box>
@@ -278,7 +285,7 @@ export default function SearchBooksPage() {
                   >
                     <Pagination
                       count={totalPages}
-                      page={currentPage}
+                      page={pageParam}
                       onChange={handlePageChange}
                       color="primary"
                       size="large"
