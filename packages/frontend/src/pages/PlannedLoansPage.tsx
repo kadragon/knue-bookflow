@@ -93,6 +93,7 @@ function PlannedLoanCard({
         gap: 2,
         alignItems: 'center',
         p: 2,
+        height: '100%',
       }}
     >
       <Box
@@ -142,6 +143,21 @@ function PlannedLoanCard({
             ISBN: {item.isbn}
           </Typography>
         )}
+        {(() => {
+          const callNumbersDisplay = item.branchVolumes
+            .filter((b) => b.callNumber)
+            .map((b) => `${b.branchName}(${b.callNumber})`)
+            .join(', ');
+          return callNumbersDisplay ? (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mt: 0.5 }}
+            >
+              청구기호: {callNumbersDisplay}
+            </Typography>
+          ) : null;
+        })()}
         <Typography
           variant="caption"
           color="text.secondary"
@@ -275,7 +291,14 @@ export default function PlannedLoansPage() {
         )}
 
         {!isLoading && items.length > 0 && (
-          <Stack spacing={2} sx={{ mt: 2 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+              gap: 2,
+              mt: 2,
+            }}
+          >
             {items.map((item) => (
               <PlannedLoanCard
                 key={item.id}
@@ -283,7 +306,7 @@ export default function PlannedLoansPage() {
                 onRemove={handleRemove}
               />
             ))}
-          </Stack>
+          </Box>
         )}
       </Container>
 

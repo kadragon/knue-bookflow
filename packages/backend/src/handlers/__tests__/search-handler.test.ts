@@ -338,8 +338,13 @@ describe('Search Handler', () => {
       const data = (await response.json()) as { items: SearchBookItem[] };
 
       expect(data.items[0].branchVolumes).toEqual([
-        { branchId: 10, branchName: 'Main Lib', volumes: 5 },
-        { branchId: 20, branchName: 'Branch Lib', volumes: 3 },
+        { branchId: 10, branchName: 'Main Lib', volumes: 5, callNumber: null },
+        {
+          branchId: 20,
+          branchName: 'Branch Lib',
+          volumes: 3,
+          callNumber: null,
+        },
       ]);
     });
   });

@@ -40,10 +40,22 @@ export function normalizeBranchVolume(
   const volumesRaw = raw.volumes ?? raw.volume;
   const volumes = toNumber(volumesRaw);
 
+  // If volume is a string but not a number, treat it as callNumber
+  let callNumber: string | null = null;
+  if (
+    volumes === null &&
+    volumesRaw &&
+    typeof volumesRaw === 'string' &&
+    volumesRaw.trim()
+  ) {
+    callNumber = volumesRaw.trim();
+  }
+
   return {
     branchId,
     branchName,
     volumes: volumes !== null ? Math.max(0, volumes) : raw.hasItem ? 1 : 0,
+    callNumber,
   };
 }
 

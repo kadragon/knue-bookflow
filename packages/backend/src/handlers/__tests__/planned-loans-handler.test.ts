@@ -185,10 +185,20 @@ describe('handleCreatePlannedLoan', () => {
     expect(response.status).toBe(201);
     const body = (await response.json()) as { item: Record<string, unknown> };
     expect(body.item.branchVolumes).toEqual([
-      { branchId: 1, branchName: '한국교원대학교도서관', volumes: 1 },
+      {
+        branchId: 1,
+        branchName: '한국교원대학교도서관',
+        volumes: 1,
+        callNumber: '616.8526 B847ㅅㄱ',
+      },
     ]);
     expect(JSON.parse(repo.items[0].branch_volumes)).toEqual([
-      { branchId: 1, branchName: '한국교원대학교도서관', volumes: 1 },
+      {
+        branchId: 1,
+        branchName: '한국교원대학교도서관',
+        volumes: 1,
+        callNumber: '616.8526 B847ㅅㄱ',
+      },
     ]);
   });
 });
