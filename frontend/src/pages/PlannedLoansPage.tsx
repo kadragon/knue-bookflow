@@ -126,7 +126,7 @@ export default function PlannedLoansPage() {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
+    severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
 
   const { data, isLoading, isError } = useQuery({
@@ -148,7 +148,7 @@ export default function PlannedLoansPage() {
         setSnackbar({
           open: true,
           message: '이미 목록에 없습니다.',
-          severity: 'error',
+          severity: 'info',
         });
       }
       queryClient.invalidateQueries({ queryKey: ['planned-loans'] });

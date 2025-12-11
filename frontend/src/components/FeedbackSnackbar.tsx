@@ -2,7 +2,7 @@ import { Alert, Snackbar } from '@mui/material';
 
 // Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
 
-export type FeedbackSeverity = 'success' | 'error';
+export type FeedbackSeverity = 'success' | 'error' | 'info' | 'warning';
 
 export interface FeedbackState {
   open: boolean;
