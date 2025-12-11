@@ -12,6 +12,8 @@ import type {
   ChargeHistory,
   ChargesResponse,
   FetchOptions,
+  LibraryItem,
+  LibraryItemsResponse,
   LibraryNewBooksResponse,
   LibrarySearchBooksResponse,
   LoginRequest,
@@ -295,6 +297,37 @@ export class LibraryClient {
       `[LibraryClient] Retrieved ${data.data.list.length} search results (total: ${data.data.totalCount})`,
     );
     return data;
+  }
+
+  /**
+   * Fetch item availability for a biblio id
+   * @param biblioId - library biblio identifier
+   */
+  async getBiblioItems(biblioId: number): Promise<LibraryItem[]> {
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/biblios/${biblioId}/items`,
+      { method: 'GET' },
+    );
+
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to fetch items with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: LibraryItemsResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to fetch items: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    const buckets = Object.values(data.data || {});
+    return buckets.flat();
   }
 
   /**

@@ -194,3 +194,22 @@ export interface LibrarySearchBooksResponse {
     list: SearchBook[];
   };
 }
+
+// Library item availability (biblios/{id}/items)
+export interface LibraryItem {
+  id: number;
+  circulationState?: {
+    id?: number;
+    code?: string;
+    name?: string;
+    isCharged?: boolean;
+  };
+  dueDate?: string | null;
+}
+
+export interface LibraryItemsResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: Record<string, LibraryItem[]>;
+}

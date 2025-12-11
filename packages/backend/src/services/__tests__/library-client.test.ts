@@ -1,6 +1,7 @@
 /**
  * Library client tests
- * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, task_id: TASK-009
+ * Trace: spec_id: SPEC-auth-001, SPEC-charges-001, SPEC-loan-plan-002
+ *        task_id: TASK-009, TASK-061
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -336,6 +337,53 @@ describe('LibraryClient', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('getBiblioItems', () => {
+    it('fetches and flattens items list (TEST-loan-plan-008)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'success.retrieved',
+          message: '조회되었습니다.',
+          data: {
+            1: [
+              {
+                id: 753165,
+                circulationState: { code: 'READY', isCharged: false },
+                dueDate: null,
+              },
+            ],
+            2: [
+              {
+                id: 753166,
+                circulationState: { code: 'LOAN', isCharged: true },
+                dueDate: '2025-12-20',
+              },
+            ],
+          },
+        }),
+      });
+
+      const items = await client.getBiblioItems(7894566);
+
+      expect(items).toHaveLength(2);
+      expect(items[0].circulationState?.code).toBe('READY');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://lib.knue.ac.kr/pyxis-api/8/biblios/7894566/items',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('throws LibraryApiError on failure response (TEST-loan-plan-008)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: false, code: 'error', message: 'fail' }),
+      });
+
+      await expect(client.getBiblioItems(1)).rejects.toThrow('fail');
     });
   });
 
