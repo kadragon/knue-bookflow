@@ -4,6 +4,10 @@
 KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea National University of Education library.
 
 ## Architecture Decisions
+- **Architecture**: NPM Workspace Monorepo (migrated 2025-12-11)
+  - `packages/backend`: Cloudflare Worker (logic & DB)
+  - `packages/frontend`: React SPA (UI)
+  - `packages/shared`: Shared Types & DTOs
 - **Platform**: Cloudflare Workers (serverless)
 - **Database**: Cloudflare D1 (serverless SQLite)
 - **Scheduler**: Cron Triggers (daily execution)
@@ -23,6 +27,7 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Renewal criteria: renewCnt == 0 AND dueDate within 2 days
 - Aladin API uses ItemLookUp endpoint for detailed book info
 - D1 schema includes books and renewal_logs tables
+- **Monorepo Structure**: Separation of concerns allows sharing types without manual duplication. Root `package.json` manages dev dependencies.
 
 ## Patterns Identified
 - API Client Pattern: Encapsulated external API calls in client classes
@@ -284,3 +289,17 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   - Added `normalizeBranchVolumes` util, zod preprocessing in planned-loans handler, and acceptance test TEST-loan-plan-007.
   - Branch volume strings (call numbers) now default to a single copy instead of being parsed as counts.
   - Full suite passing: 186 tests (`npm test`).
+
+### Session 2025-12-11 (Monorepo Conversion)
+- Completed TASK-048 to TASK-053 (SPEC-arch-001): Transitioned project to NPM Workspace Monorepo.
+  - **Structure**:
+    - `packages/backend`: Worker logic (formerly `src`), migrations, wrangler config.
+    - `packages/frontend`: React app (formerly `frontend`), vite config.
+    - `packages/shared`: Unified type definitions (formerly `src/types/api.ts`).
+  - **Key Changes**:
+    - Centralized types in `packages/shared` eliminated manual duplication between frontend and backend.
+    - Refactored `src/types/library.ts` to rename conflicting `NewBooksResponse` -> `LibraryNewBooksResponse`.
+    - Updated `library-client.ts`, `sync-handler.ts`, `api.ts` to consume shared types.
+    - Root `package.json` now orchestrates workspaces using `npm run ... --workspaces`.
+    - CI/CD updated to run `npm ci` (once lockfile exists) and build/test via root scripts.
+  - **Action Required**: User must run `npm install` to link workspaces and generate `package-lock.json`.

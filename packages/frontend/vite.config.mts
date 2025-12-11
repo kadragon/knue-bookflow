@@ -3,7 +3,6 @@ import { defineConfig } from 'vite';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 export default defineConfig({
-  root: 'frontend',
   plugins: [react()],
   build: {
     outDir: 'dist',
@@ -11,5 +10,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/trigger': 'http://localhost:8787',
+    },
   },
 });
