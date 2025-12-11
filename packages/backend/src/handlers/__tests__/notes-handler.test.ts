@@ -90,8 +90,8 @@ describe('Notes Handler', () => {
         error?: string;
         success?: boolean;
       };
-      expect(body.note!.id).toBe(100);
-      expect(body.note!.content).toBe('Test Note');
+      expect(body.note?.id).toBe(100);
+      expect(body.note?.content).toBe('Test Note');
     });
 
     it('should return 404 if book not found', async () => {
@@ -155,8 +155,8 @@ describe('Notes Handler', () => {
         error?: string;
         success?: boolean;
       };
-      expect(body.note!.pageNumber).toBe(20);
-      expect(body.note!.content).toBe('Updated');
+      expect(body.note?.pageNumber).toBe(20);
+      expect(body.note?.content).toBe('Updated');
     });
 
     it('should return 404 if note not found', async () => {
