@@ -68,3 +68,16 @@ completed_tasks:
     result: "Added cached availability fetcher (5 min TTL) to reduce Pyxis item lookups for planned loans."
     test_refs:
       - "npm test -- packages/backend/src/handlers/__tests__/planned-loans-handler.test.ts packages/backend/src/services/__tests__/library-client.test.ts packages/frontend/src/pages/PlannedLoansPage.test.tsx"
+  - id: TASK-063
+    spec_id: SPEC-loan-plan-001
+    status: completed
+    completed_at: "2025-12-11T12:22:40Z"
+    result: "Diagnosed missing call number display on planned loans: legacy entries lack callNumber because it was not stored pre-feature; new entries show call numbers when provided by Pyxis. Recommended manual re-add for affected items."
+    test_refs: []
+  - id: TASK-064
+    spec_id: SPEC-loan-plan-001
+    status: completed
+    completed_at: "2025-12-11T12:29:37Z"
+    result: "Captured explicit callNumber from Pyxis branchVolumes by updating normalization and tests; new planned loans now preserve call numbers even when volumes is numeric."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/new-books-handler.test.ts packages/backend/src/handlers/__tests__/search-handler.test.ts"

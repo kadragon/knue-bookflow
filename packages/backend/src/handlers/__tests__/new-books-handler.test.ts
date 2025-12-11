@@ -205,5 +205,42 @@ describe('New Books Handler', () => {
         },
       ]);
     });
+
+    it('should preserve callNumber when provided explicitly', async () => {
+      const request = new Request('http://localhost/api/new-books');
+      mockGetNewBooks.mockResolvedValue([
+        {
+          id: 3,
+          titleStatement: 'CallNumber Book',
+          author: 'Author',
+          publication: 'Pub, 2024',
+          isbn: '1234567890',
+          thumbnailUrl: null,
+          biblioType: { name: 'Book' },
+          branchVolumes: [
+            {
+              branchId: 30,
+              branchName: '법학도서관',
+              volumes: 2,
+              callNumber: '345.01 C123c',
+            },
+          ],
+        },
+      ]);
+
+      const response = await handleNewBooksApi(request);
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
+
+      expect(body.items[0].branchVolumes).toEqual([
+        {
+          branchId: 30,
+          branchName: '법학도서관',
+          volumes: 2,
+          callNumber: '345.01 C123c',
+        },
+      ]);
+    });
   });
 });
