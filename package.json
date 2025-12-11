@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "npm run dev --workspace=@knue-bookflow/backend",
     "dev:frontend": "npm run dev --workspace=@knue-bookflow/frontend",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @knue-bookflow/shared && npm run build -w @knue-bookflow/frontend && npm run build -w @knue-bookflow/backend",
     "test": "vitest run",
     "lint": "biome check .",
     "typecheck": "tsc --build",
