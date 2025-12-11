@@ -6,6 +6,6 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true
   },
-  "include": ["src/**/*", "vite.config.mts"],
+  "include": ["src/**/*", "vite.config.mts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
