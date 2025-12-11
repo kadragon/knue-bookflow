@@ -450,3 +450,14 @@ completed_tasks:
     learnings:
       - "Sort server responses by created_at to keep newest planned items on top even with mixed repositories"
       - "Unify branch availability formatting between search and planned views for clarity"
+
+  - task_id: TASK-044
+    title: "Auto-remove planned loans once borrowed"
+    completed_at: "2025-12-11T05:43:29Z"
+    outcome: success
+    spec_id: SPEC-loan-plan-001
+    summary: |
+      Synced planned-loan cleanup with library sync: processCharge now deletes matching planned entries by library biblio id after add/update/unchanged paths. Added repository helper deleteByLibraryBiblioId, wired sync handler, and added test TEST-loan-plan-006. All tests now 140 passing.
+    learnings:
+      - "Pass shared repositories into sync functions to avoid repeated instantiation and enable targeted hooks"
+      - "Use biblio id as the stable key to reconcile catalog-based planned items with active loans"

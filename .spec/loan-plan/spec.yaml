@@ -27,6 +27,10 @@ given_when_then:
     when: "POST /api/planned-loans receives missing/invalid required fields"
     then: "API responds 400 with validation message"
 
+  - given: "A planned loaned book actually gets borrowed"
+    when: "Sync detects the library charge for that biblio id"
+    then: "The planned-loan entry is removed automatically"
+
 acceptance_tests:
   - id: TEST-loan-plan-001
     desc: "POST /api/planned-loans validates payload, deduplicates by libraryId, and stores a new entry"
@@ -42,6 +46,9 @@ acceptance_tests:
 
   - id: TEST-loan-plan-005
     desc: "Planned Loans page shows list/empty state and remove control updates the view"
+
+  - id: TEST-loan-plan-006
+    desc: "processCharge deletes planned loan when the same libraryId appears in active charges"
 
 dependencies:
   - governance: "coding-style"

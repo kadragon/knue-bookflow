@@ -72,6 +72,15 @@ export class PlannedLoanRepository {
 
     return result.meta.changes > 0;
   }
+
+  async deleteByLibraryBiblioId(libraryBiblioId: number): Promise<boolean> {
+    const result = await this.db
+      .prepare('DELETE FROM planned_loans WHERE library_biblio_id = ?')
+      .bind(libraryBiblioId)
+      .run();
+
+    return result.meta.changes > 0;
+  }
 }
 
 export function createPlannedLoanRepository(

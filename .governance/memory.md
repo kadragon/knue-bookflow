@@ -256,3 +256,7 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Frontend: New /planned page listing planned items with removal, + buttons on Search/NewBooks pages, shared payload helpers, and branch availability summary.
 - Tests: Added planned-loans handler tests and payload builder tests; `npm test` now 139 passing.
 - Next: apply migration 0007 to production D1 and sanity-check planned list UI against live catalog data.
+
+### Session 2025-12-11 (Planned loans sync)
+- Completed TASK-044 (SPEC-loan-plan-001): processCharge now deletes planned loans by library biblio id after syncing charges, ensuring borrowed items drop from "대출 예정" automatically.
+- Added repo helper deleteByLibraryBiblioId and test TEST-loan-plan-006; full suite now 140 tests passing.
