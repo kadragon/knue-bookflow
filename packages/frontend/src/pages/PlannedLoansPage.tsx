@@ -137,7 +137,7 @@ export default function PlannedLoansPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deletePlannedLoan,
-    onSuccess: (res, id) => {
+    onSuccess: (res, _id) => {
       if (res.success) {
         setSnackbar({
           open: true,

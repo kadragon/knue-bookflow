@@ -12,12 +12,12 @@ import type {
   ChargeHistory,
   ChargesResponse,
   FetchOptions,
+  LibraryNewBooksResponse,
+  LibrarySearchBooksResponse,
   LoginRequest,
   LoginResponse,
   NewBook,
-  NewBooksResponse,
   RenewalResponse,
-  SearchBooksResponse,
   SessionData,
 } from '../types';
 
@@ -237,7 +237,7 @@ export class LibraryClient {
       );
     }
 
-    const data: NewBooksResponse = await response.json();
+    const data: LibraryNewBooksResponse = await response.json();
 
     if (!data.success) {
       throw new LibraryApiError(
@@ -264,7 +264,7 @@ export class LibraryClient {
     query: string,
     max: number = 20,
     offset: number = 0,
-  ): Promise<SearchBooksResponse> {
+  ): Promise<LibrarySearchBooksResponse> {
     const encodedQuery = encodeURIComponent(query);
 
     const response = await this.fetchWithResilience(
@@ -281,7 +281,7 @@ export class LibraryClient {
       );
     }
 
-    const data: SearchBooksResponse = await response.json();
+    const data: LibrarySearchBooksResponse = await response.json();
 
     if (!data.success) {
       throw new LibraryApiError(

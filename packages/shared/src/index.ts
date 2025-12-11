@@ -1,8 +1,12 @@
 /**
- * API response type definitions
- * Types for HTTP handlers and frontend view models
- * Trace: spec_id: SPEC-frontend-001, SPEC-notes-001, task_id: TASK-008
+ * Shared Type Definitions for KNUE BookFlow
+ * Centralizes API contracts between Backend (Worker) and Frontend (React).
+ * Trace: spec_id: SPEC-arch-001, task_id: TASK-048
  */
+
+// =============================================================================
+// Core View Models (formerly src/types/api.ts)
+// =============================================================================
 
 /**
  * Book due date status
@@ -44,6 +48,9 @@ export interface BookViewModel {
   isRead: boolean;
 }
 
+/** Alias for compatibility with legacy Frontend types */
+export type BookItem = BookViewModel;
+
 /**
  * Update read status request body
  */
@@ -57,6 +64,9 @@ export interface UpdateReadStatusRequest {
 export interface BooksApiResponse {
   items: BookViewModel[];
 }
+
+/** Alias for compatibility */
+export type ApiResponse = BooksApiResponse;
 
 /**
  * Health check response
@@ -86,6 +96,9 @@ export interface NoteViewModel {
   updatedAt: string;
 }
 
+/** Alias for compatibility */
+export type NoteItem = NoteViewModel;
+
 /**
  * Notes API response
  */
@@ -93,12 +106,18 @@ export interface NotesApiResponse {
   notes: NoteViewModel[];
 }
 
+/** Alias for compatibility */
+export type NotesResponse = NotesApiResponse;
+
 /**
  * Single note API response
  */
 export interface NoteApiResponse {
   note: NoteViewModel;
 }
+
+/** Alias for compatibility */
+export type NoteResponse = NoteApiResponse;
 
 /**
  * Create note request body
@@ -123,6 +142,19 @@ export interface DeleteNoteResponse {
   success: boolean;
 }
 
+// =============================================================================
+// Book Detail Types
+// =============================================================================
+
+export interface BookDetailResponse {
+  book: BookViewModel;
+  notes: NoteViewModel[];
+}
+
+// =============================================================================
+// Planned Loans (formerly src/types/api.ts)
+// =============================================================================
+
 /**
  * Branch availability info for planned loans
  * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
@@ -132,6 +164,9 @@ export interface BranchAvailability {
   branchName: string;
   volumes: number;
 }
+
+/** Alias for compatibility */
+export type BranchVolume = BranchAvailability;
 
 /**
  * Planned loan view model returned by API
@@ -152,6 +187,9 @@ export interface PlannedLoanViewModel {
   createdAt: string;
 }
 
+/** Alias for compatibility */
+export type PlannedLoanItem = PlannedLoanViewModel;
+
 export interface PlannedLoansResponse {
   items: PlannedLoanViewModel[];
 }
@@ -167,4 +205,70 @@ export interface CreatePlannedLoanRequest {
   coverUrl?: string | null;
   materialType?: string | null;
   branchVolumes?: BranchAvailability[];
+}
+
+/** Alias for compatibility */
+export type PlannedLoanPayload = CreatePlannedLoanRequest;
+
+// =============================================================================
+// Sync (formerly src/handlers/sync-handler.ts)
+// =============================================================================
+
+export interface SyncSummary {
+  total_charges: number;
+  added: number;
+  updated: number;
+  unchanged: number;
+  returned: number;
+}
+
+export interface SyncResponse {
+  message: string;
+  summary: SyncSummary;
+}
+
+// =============================================================================
+// Catalog / New Books / Search (formerly src/types/library.ts)
+// =============================================================================
+
+// Catalog book shape shared by search and new-books
+export interface CatalogBookItem {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  coverUrl: string | null;
+  isbn: string | null;
+  materialType: string | null;
+  publication: string;
+  branchVolumes: BranchAvailability[];
+}
+
+// New Books API
+export type NewBookItem = CatalogBookItem;
+
+export interface NewBooksResponse {
+  items: NewBookItem[];
+  meta: {
+    count: number;
+    days: number;
+    fromDate: string;
+    toDate: string;
+  };
+}
+
+// Search API
+export type SearchBookItem = CatalogBookItem;
+
+export interface SearchBooksResponse {
+  items: SearchBookItem[];
+  meta: {
+    count: number;
+    totalCount: number;
+    offset: number;
+    max: number;
+    query: string;
+    isFuzzy: boolean;
+  };
 }

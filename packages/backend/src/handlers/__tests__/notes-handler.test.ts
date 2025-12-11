@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Env, NoteRecord } from '../../types';
+import type { Env, NoteViewModel } from '../../types';
 import {
   handleCreateNote,
   handleDeleteNote,
@@ -50,7 +50,12 @@ describe('Notes Handler', () => {
       const response = await handleGetNotes(env, 1);
       expect(response.status).toBe(200);
 
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
       expect(body.notes).toHaveLength(1);
       expect(body.notes[0].content).toBe('Note 1');
     });
@@ -79,9 +84,14 @@ describe('Notes Handler', () => {
       const response = await handleCreateNote(env, 1, validBody);
       expect(response.status).toBe(201);
 
-      const body = (await response.json()) as any;
-      expect(body.note.id).toBe(100);
-      expect(body.note.content).toBe('Test Note');
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
+      expect(body.note?.id).toBe(100);
+      expect(body.note?.content).toBe('Test Note');
     });
 
     it('should return 404 if book not found', async () => {
@@ -97,7 +107,12 @@ describe('Notes Handler', () => {
         page_number: -1,
       });
       expect(response.status).toBe(400);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
       expect(body.error).toContain('positive number');
     });
 
@@ -107,7 +122,12 @@ describe('Notes Handler', () => {
         content: '',
       });
       expect(response.status).toBe(400);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
       expect(body.error).toContain('page_number and content are required');
     });
   });
@@ -129,9 +149,14 @@ describe('Notes Handler', () => {
       });
       expect(response.status).toBe(200);
 
-      const body = (await response.json()) as any;
-      expect(body.note.pageNumber).toBe(20);
-      expect(body.note.content).toBe('Updated');
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
+      expect(body.note?.pageNumber).toBe(20);
+      expect(body.note?.content).toBe('Updated');
     });
 
     it('should return 404 if note not found', async () => {
@@ -159,7 +184,12 @@ describe('Notes Handler', () => {
 
       const response = await handleDeleteNote(env, 100);
       expect(response.status).toBe(200);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as {
+        notes: NoteViewModel[];
+        note?: NoteViewModel;
+        error?: string;
+        success?: boolean;
+      };
       expect(body.success).toBe(true);
     });
 

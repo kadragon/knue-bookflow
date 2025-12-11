@@ -1,1 +1,1 @@
-export default ['vitest.worker.config.ts', 'frontend/vitest.config.ts'];
+export default ['packages/backend', 'packages/frontend'];

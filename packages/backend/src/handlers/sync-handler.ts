@@ -16,25 +16,16 @@ import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
 import type { LibraryClient } from '../services/library-client';
 import type { PlannedLoanRepository } from '../services/planned-loan-repository';
-import type { BookInfo, Charge, ChargeHistory, Env } from '../types';
+import type {
+  BookInfo,
+  Charge,
+  ChargeHistory,
+  Env,
+  SyncResponse,
+  SyncSummary,
+} from '../types';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
-
-/**
- * Sync summary response
- */
-export interface SyncSummary {
-  total_charges: number;
-  added: number;
-  updated: number;
-  unchanged: number;
-  returned: number;
-}
-
-export interface SyncResponse {
-  message: string;
-  summary: SyncSummary;
-}
 
 /**
  * Handle library-DB synchronization

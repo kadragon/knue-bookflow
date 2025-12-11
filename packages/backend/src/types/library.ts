@@ -154,7 +154,7 @@ export interface NewBook {
   dateReceived: string | null;
 }
 
-export interface NewBooksResponse {
+export interface LibraryNewBooksResponse {
   success: boolean;
   code: string;
   message: string;
@@ -182,7 +182,7 @@ export interface SearchBook {
   dateReceived: string | null;
 }
 
-export interface SearchBooksResponse {
+export interface LibrarySearchBooksResponse {
   success: boolean;
   code: string;
   message: string;

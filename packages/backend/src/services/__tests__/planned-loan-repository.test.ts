@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlannedLoanRecord } from '../../types';
 import {
   createPlannedLoanRepository,
   PlannedLoanRepository,
@@ -53,7 +52,7 @@ describe('PlannedLoanRepository', () => {
       // but mocks might be set up differently. In repo: .prepare(...).all()
       (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
         all: vi.fn().mockResolvedValue({ results: [{ id: 1 }, { id: 2 }] }),
-      } as any);
+      } as unknown as D1PreparedStatement);
 
       const result = await repository.findAll();
       expect(result).toHaveLength(2);

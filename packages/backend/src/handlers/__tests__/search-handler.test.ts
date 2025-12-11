@@ -6,7 +6,12 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SearchBook } from '../../types';
+import type {
+  NewBookBiblioType,
+  NewBookBranchVolume,
+  SearchBook,
+  SearchBookItem,
+} from '../../types';
 import { handleSearchBooksApi, parsePublication } from '../search-handler';
 
 // Mock LibraryClient
@@ -310,8 +315,8 @@ describe('Search Handler', () => {
           branchVolumes: [
             { id: 10, name: 'Main Lib', volume: 5 }, // Inconsistent
             { branchId: 20, branchName: 'Branch Lib', volumes: 3 }, // Standard
-          ] as any,
-          biblioType: { name: 'Book' } as any,
+          ] as unknown as NewBookBranchVolume[],
+          biblioType: { name: 'Book' } as unknown as NewBookBiblioType,
           thumbnailUrl: null,
           isbn: null,
           issn: null,
@@ -330,7 +335,7 @@ describe('Search Handler', () => {
 
       const request = new Request('http://localhost/api/search?query=test');
       const response = await handleSearchBooksApi(request);
-      const data = (await response.json()) as { items: any[] };
+      const data = (await response.json()) as { items: SearchBookItem[] };
 
       expect(data.items[0].branchVolumes).toEqual([
         { branchId: 10, branchName: 'Main Lib', volumes: 5 },

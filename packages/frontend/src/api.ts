@@ -1,30 +1,41 @@
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
+import type {
+  ApiResponse,
+  BookDetailResponse,
+  BookItem,
+  BranchVolume,
+  CatalogBookItem,
+  NewBookItem,
+  NewBooksResponse,
+  NoteItem,
+  NoteResponse,
+  NotesResponse,
+  PlannedLoanItem,
+  PlannedLoanPayload,
+  PlannedLoansResponse,
+  SearchBookItem,
+  SearchBooksResponse,
+  SyncResponse,
+} from '@knue-bookflow/shared';
 
-interface BookItem {
-  id: string;
-  dbId: number;
-  title: string;
-  author: string;
-  publisher: string | null;
-  coverUrl: string | null;
-  description: string | null;
-  isbn13: string | null;
-  pubDate: string | null;
-  chargeDate: string;
-  dueDate: string;
-  dischargeDate: string | null;
-  renewCount: number;
-  daysLeft: number;
-  dueStatus: 'overdue' | 'due_soon' | 'ok';
-  loanState: 'on_loan' | 'returned';
-  noteCount: number;
-  noteState: 'not_started' | 'in_progress' | 'completed';
-  isRead: boolean;
-}
-
-export interface ApiResponse {
-  items: BookItem[];
-}
+export type {
+  ApiResponse,
+  BookDetailResponse,
+  BookItem,
+  BranchVolume,
+  CatalogBookItem,
+  NewBookItem,
+  NewBooksResponse,
+  NoteItem,
+  NoteResponse,
+  NotesResponse,
+  PlannedLoanItem,
+  PlannedLoanPayload,
+  PlannedLoansResponse,
+  SearchBookItem,
+  SearchBooksResponse,
+  SyncResponse,
+};
 
 export const getBooks = async (): Promise<ApiResponse> => {
   const res = await fetch('/api/books', {
@@ -36,12 +47,6 @@ export const getBooks = async (): Promise<ApiResponse> => {
   return res.json();
 };
 
-// Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
-export interface BookDetailResponse {
-  book: BookItem;
-  notes: NoteItem[];
-}
-
 export const getBook = async (bookId: number): Promise<BookDetailResponse> => {
   const res = await fetch(`/api/books/${bookId}`, {
     headers: { Accept: 'application/json' },
@@ -52,8 +57,6 @@ export const getBook = async (bookId: number): Promise<BookDetailResponse> => {
   }
   return res.json();
 };
-
-export type { BookItem };
 
 export const updateReadStatus = async (
   bookId: number,
@@ -86,22 +89,6 @@ export const triggerWorkflow = async (): Promise<{ message: string }> => {
   return res.json();
 };
 
-// Library-DB sync
-// Trace: spec_id: SPEC-sync-001, task_id: TASK-021
-
-export interface SyncSummary {
-  total_charges: number;
-  added: number;
-  updated: number;
-  unchanged: number;
-  returned: number;
-}
-
-export interface SyncResponse {
-  message: string;
-  summary: SyncSummary;
-}
-
 export const syncBooks = async (): Promise<SyncResponse> => {
   const res = await fetch('/api/books/sync', {
     method: 'POST',
@@ -115,26 +102,6 @@ export const syncBooks = async (): Promise<SyncResponse> => {
 
   return res.json();
 };
-
-// Notes API
-// Trace: spec_id: SPEC-notes-002, task_id: TASK-023
-
-export interface NoteItem {
-  id: number;
-  bookId: number;
-  pageNumber: number;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface NotesResponse {
-  notes: NoteItem[];
-}
-
-export interface NoteResponse {
-  note: NoteItem;
-}
 
 export const getNotes = async (bookId: number): Promise<NotesResponse> => {
   const res = await fetch(`/api/books/${bookId}/notes`, {
@@ -199,33 +166,6 @@ export const deleteNote = async (
   return res.json();
 };
 
-// Catalog book shape shared by search and new-books
-export interface CatalogBookItem {
-  id: number;
-  title: string;
-  author: string;
-  publisher: string | null;
-  year: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-  materialType: string | null;
-  publication: string;
-  branchVolumes: BranchVolume[];
-}
-
-// New Books API (신착 도서)
-export type NewBookItem = CatalogBookItem;
-
-export interface NewBooksResponse {
-  items: NewBookItem[];
-  meta: {
-    count: number;
-    days: number;
-    fromDate: string;
-    toDate: string;
-  };
-}
-
 export const getNewBooks = async (
   days: number = 90,
   max: number = 50,
@@ -240,38 +180,6 @@ export const getNewBooks = async (
   return res.json();
 };
 
-// Library Search API
-export interface BranchVolume {
-  branchId: number;
-  branchName: string;
-  volumes: number;
-}
-
-export type SearchBookItem = CatalogBookItem;
-
-// Planned Loan API
-export interface PlannedLoanPayload {
-  libraryId: number;
-  source: 'new_books' | 'search';
-  title: string;
-  author: string;
-  publisher: string | null;
-  year: string | null;
-  isbn: string | null;
-  coverUrl: string | null;
-  materialType: string | null;
-  branchVolumes: BranchVolume[];
-}
-
-export interface PlannedLoanItem extends PlannedLoanPayload {
-  id: number;
-  createdAt: string;
-}
-
-export interface PlannedLoansResponse {
-  items: PlannedLoanItem[];
-}
-
 async function handleApiError(
   response: Response,
   defaultMessage: string,
@@ -282,18 +190,6 @@ async function handleApiError(
       .catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || defaultMessage);
   }
-}
-
-export interface SearchBooksResponse {
-  items: SearchBookItem[];
-  meta: {
-    count: number;
-    totalCount: number;
-    offset: number;
-    max: number;
-    query: string;
-    isFuzzy: boolean;
-  };
 }
 
 export const searchBooks = async (
