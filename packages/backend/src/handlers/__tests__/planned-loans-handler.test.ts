@@ -5,9 +5,10 @@
  *        task_id: TASK-043, TASK-047, TASK-061
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Env, PlannedLoanRecord } from '../../types';
 import {
+  clearAvailabilityCache,
   createCachedFetcher,
   handleCreatePlannedLoan,
   handleDeletePlannedLoan,
@@ -63,6 +64,12 @@ function makeEnv(): Env {
     ENVIRONMENT: 'test',
   };
 }
+
+// Clear cache between tests to ensure isolation
+afterEach(() => {
+  clearAvailabilityCache();
+  vi.restoreAllMocks();
+});
 
 describe('handleCreatePlannedLoan', () => {
   it('stores a planned loan and returns view model (TEST-loan-plan-001)', async () => {
@@ -381,7 +388,7 @@ describe('summarizeAvailability', () => {
     expect(availability.status).toBe('loaned_out');
     expect(availability.availableItems).toBe(0);
     expect(availability.totalItems).toBe(2);
-    expect(availability.earliestDueDate).toBe('2025-12-20 00:00:00');
+    expect(availability.earliestDueDate).toBe('2025-12-20');
   });
 });
 

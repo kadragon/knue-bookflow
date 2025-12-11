@@ -95,14 +95,25 @@ type AvailabilityFetcher = (
 ) => Promise<PlannedLoanAvailability | null>;
 
 const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 500; // Limit cache size to prevent memory issues
 
+/**
+ * Summarize availability for a biblio's items
+ * Rules:
+ * - Available if at least one item is not charged (isCharged=false or status code indicates ready)
+ * - Loaned out if all items are charged, with earliest due date
+ *
+ * Note: isCharged is the primary indicator; status codes are fallback for API compatibility
+ */
 function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
   const totalItems = items.length;
   const availableItems = items.filter((item) => {
     const code = item.circulationState?.code;
     const isCharged = item.circulationState?.isCharged;
+    // Primary check: use isCharged boolean when present
     if (isCharged === false) return true;
     if (isCharged === true) return false;
+    // Fallback: check status codes when isCharged is undefined
     return code === 'READY' || code === 'ON_SHELF' || code === 'AVAILABLE';
   }).length;
 
@@ -119,7 +130,7 @@ function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
     })
     .map((item) => item.dueDate)
     .filter((date): date is string => Boolean(date))
-    .map((date) => date.split('T')[0])
+    .map((date) => date.substring(0, 10)) // Extract YYYY-MM-DD regardless of separator (T or space)
     .sort();
 
   const earliestDueDate = availableItems > 0 ? null : (dueDates[0] ?? null);
@@ -133,31 +144,64 @@ function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
 }
 
 // Exported for testing
-export { summarizeAvailability, createCachedFetcher };
+export { summarizeAvailability, createCachedFetcher, clearAvailabilityCache };
+
+// Module-level cache for availability data (persistent across requests)
+const availabilityCache = new Map<
+  number,
+  { value: PlannedLoanAvailability | null; expiresAt: number }
+>();
+
+/**
+ * Clear the availability cache (primarily for testing)
+ */
+function clearAvailabilityCache(): void {
+  availabilityCache.clear();
+}
 
 function createCachedFetcher(
   baseFetcher: AvailabilityFetcher,
   ttlMs: number = AVAILABILITY_TTL_MS,
-): AvailabilityFetcher {
-  const cache = new Map<
+  maxSize: number = MAX_CACHE_SIZE,
+  cache: Map<
     number,
     { value: PlannedLoanAvailability | null; expiresAt: number }
-  >();
-
+  > = availabilityCache,
+): AvailabilityFetcher {
   return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
     const now = Date.now();
     const cached = cache.get(libraryId);
+
+    // Return cached value if still valid
     if (cached && cached.expiresAt > now) {
       return cached.value;
     }
 
+    // Fetch fresh value
     const value = await baseFetcher(libraryId);
+
+    // Implement simple LRU: remove oldest entry if cache is full
+    if (cache.size >= maxSize) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey !== undefined) {
+        cache.delete(oldestKey);
+      }
+    }
+
     cache.set(libraryId, { value, expiresAt: now + ttlMs });
     return value;
   };
 }
 
+// Singleton fetcher instance to maintain cache across requests
+let cachedAvailabilityFetcher: AvailabilityFetcher | null = null;
+
 function createAvailabilityFetcher(): AvailabilityFetcher {
+  // Return existing singleton if available
+  if (cachedAvailabilityFetcher) {
+    return cachedAvailabilityFetcher;
+  }
+
   const client = createLibraryClient();
   const fetcher: AvailabilityFetcher = async (
     libraryId: number,
@@ -166,7 +210,8 @@ function createAvailabilityFetcher(): AvailabilityFetcher {
     return summarizeAvailability(items);
   };
 
-  return createCachedFetcher(fetcher);
+  cachedAvailabilityFetcher = createCachedFetcher(fetcher);
+  return cachedAvailabilityFetcher;
 }
 
 function validatePayload(body: unknown): {

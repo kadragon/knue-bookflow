@@ -41,11 +41,17 @@ function PlannedLoanCard({
 }) {
   const branchSummary = summarizeBranches(item.branchVolumes);
 
+  /**
+   * Format due date for display
+   * Backend returns YYYY-MM-DD format, so we trust it directly
+   * Only parse if it contains time component (defensive fallback)
+   */
   const formatDueDate = (date: string | null): string | null => {
     if (!date) return null;
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return date;
-    return parsed.toISOString().split('T')[0];
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    // Otherwise extract date part (defensive fallback)
+    return date.split('T')[0] || date.split(' ')[0] || date;
   };
 
   const renderAvailability = () => {
