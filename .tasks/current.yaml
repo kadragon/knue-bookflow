@@ -1,7 +1,1 @@
-task:
-  id: TASK-062
-  spec_id: SPEC-loan-plan-002
-  title: "Cache Pyxis availability lookups for planned loans"
-  status: in_progress
-  started_at: "2025-12-11T11:19:16Z"
-  test_refs: []
+task: null

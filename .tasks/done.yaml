@@ -61,3 +61,10 @@ completed_tasks:
     result: "Added Pyxis item availability lookup for planned loans, returning availability when any copy is READY and earliest due date otherwise; surfaced availability chips on Planned page."
     test_refs:
       - "npm test -- packages/backend/src/handlers/__tests__/planned-loans-handler.test.ts packages/backend/src/services/__tests__/library-client.test.ts packages/frontend/src/pages/PlannedLoansPage.test.tsx"
+  - id: TASK-062
+    spec_id: SPEC-loan-plan-002
+    status: completed
+    completed_at: "2025-12-11T11:21:05Z"
+    result: "Added cached availability fetcher (5 min TTL) to reduce Pyxis item lookups for planned loans."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/planned-loans-handler.test.ts packages/backend/src/services/__tests__/library-client.test.ts packages/frontend/src/pages/PlannedLoansPage.test.tsx"
