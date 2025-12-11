@@ -280,6 +280,18 @@ export interface PlannedLoansResponse {
   items: PlannedLoanItem[];
 }
 
+async function handleApiError(
+  response: Response,
+  defaultMessage: string,
+): Promise<void> {
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || defaultMessage);
+  }
+}
+
 export interface SearchBooksResponse {
   items: SearchBookItem[];
   meta: {
@@ -316,10 +328,7 @@ export const getPlannedLoans = async (): Promise<PlannedLoansResponse> => {
   const res = await fetch('/api/planned-loans', {
     headers: { Accept: 'application/json' },
   });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || 'Failed to load planned loans');
-  }
+  await handleApiError(res, 'Failed to load planned loans');
   return res.json();
 };
 
@@ -335,10 +344,7 @@ export const createPlannedLoan = async (
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || 'Failed to save planned loan');
-  }
+  await handleApiError(res, 'Failed to save planned loan');
 
   return res.json();
 };
@@ -351,10 +357,7 @@ export const deletePlannedLoan = async (
     headers: { Accept: 'application/json' },
   });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || 'Failed to delete planned loan');
-  }
+  await handleApiError(res, 'Failed to delete planned loan');
 
   return res.json();
 };
