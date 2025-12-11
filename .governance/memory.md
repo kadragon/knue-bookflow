@@ -316,3 +316,15 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-12-11 (Wrangler upgrade)
 - Completed TASK-058 (SPEC-maintenance-001): Verified Wrangler v4.53.0 release (changelog shows no breaking changes for Workers builds) and upgraded backend devDependency to `^4.53.0`. Backend suite stays green (`npm test --workspace @knue-bookflow/backend`).
+
+### Session 2025-12-11 (Deployment Fix)
+- Completed TASK-059 (SPEC-maintenance-001): Added `build:frontend` and `build:backend` scripts to root `package.json`.
+  - Issue: Deployment environment (likely Cloudflare Pages/Workers Assets) was configured to run `npm run build:frontend`, which was missing after monorepo migration.
+  - Fix: Added alias to `npm run build --workspace=@knue-bookflow/frontend`.
+  - Verified: `npm run build:frontend` builds successfully locally.
+- Completed TASK-060 (SPEC-maintenance-001): Updated deployment scripts for Monorepo.
+  - Issue: User's `npx wrangler deploy` and `npx wrangler d1 migrations` commands would fail from the root directory because `wrangler.toml` is located in `packages/backend`.
+  - Fix:
+    - Added a `db:migrate` script to `packages/backend/package.json` to encapsulate the D1 migration logic.
+    - Added root-level `deploy` and `db:migrate` scripts to `package.json` that correctly target the backend workspace.
+  - This provides a cleaner and more robust way to manage deployment and database migrations in the monorepo.

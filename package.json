@@ -8,6 +8,10 @@
   "scripts": {
     "dev": "npm run dev --workspace=@knue-bookflow/backend",
     "dev:frontend": "npm run dev --workspace=@knue-bookflow/frontend",
+    "build:frontend": "npm run build --workspace=@knue-bookflow/frontend",
+    "build:backend": "npm run build --workspace=@knue-bookflow/backend",
+    "deploy": "npm run deploy --workspace=@knue-bookflow/backend",
+    "db:migrate": "npm run db:migrate --workspace=@knue-bookflow/backend",
     "build": "npm run build -w @knue-bookflow/shared && npm run build -w @knue-bookflow/frontend && npm run build -w @knue-bookflow/backend",
     "test": "vitest run",
     "lint": "biome check .",

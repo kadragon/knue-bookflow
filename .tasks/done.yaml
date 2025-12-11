@@ -41,3 +41,16 @@ completed_tasks:
     result: "Verified Wrangler 4.53 compatibility and upgraded backend devDependency; tests remain green."
     test_refs:
       - "npm test --workspace @knue-bookflow/backend"
+  - id: TASK-059
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-11T07:50:00Z"
+    result: "Added build:frontend script to root package.json to fix deployment build error."
+    test_refs:
+      - "npm run build:frontend"
+  - id: TASK-060
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-11T07:58:00Z"
+    result: "Updated package.json scripts for Monorepo deployment. Added root-level 'deploy' and 'db:migrate' commands."
+    test_refs: []

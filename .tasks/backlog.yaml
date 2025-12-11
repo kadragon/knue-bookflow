@@ -1,8 +1,1 @@
-tasks:
-  - id: TASK-055
-    title: "Infrastructure: Production Deployment"
-    desc: "Deploy the Monorepo-structured application to Cloudflare."
-    status: pending
-    priority: high
-    spec_id: SPEC-infra-001
-    created_at: "2025-12-11T18:00:00Z"
+tasks: []
