@@ -5,6 +5,7 @@
  * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
  */
 
+import { z } from 'zod';
 import {
   createPlannedLoanRepository,
   type PlannedLoanRepository,
@@ -22,33 +23,44 @@ type PlannedRepo = Pick<
   'findAll' | 'findByLibraryBiblioId' | 'create' | 'deleteById'
 >;
 
-function parseBranches(branches?: unknown): BranchAvailability[] {
-  if (!Array.isArray(branches)) return [];
+const branchSchema = z.object({
+  branchId: z.number({ required_error: 'branchId is required' }),
+  branchName: z.string({ required_error: 'branchName is required' }),
+  volumes: z.number({ required_error: 'volumes is required' }),
+});
 
-  return branches
-    .map((b) => {
-      if (
-        b &&
-        typeof b.branchId === 'number' &&
-        typeof b.branchName === 'string' &&
-        typeof b.volumes === 'number'
-      ) {
-        return {
-          branchId: b.branchId,
-          branchName: b.branchName,
-          volumes: b.volumes,
-        } satisfies BranchAvailability;
-      }
-      return null;
-    })
-    .filter((b): b is BranchAvailability => b !== null);
-}
+const plannedLoanSchema = z.object({
+  libraryId: z
+    .number({ required_error: 'libraryId is required' })
+    .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
+  source: z.enum(['new_books', 'search'], {
+    required_error: 'source is required',
+    invalid_type_error: 'source must be new_books or search',
+  }),
+  title: z
+    .string({ required_error: 'title is required' })
+    .trim()
+    .min(1, 'title is required'),
+  author: z
+    .string({ required_error: 'author is required' })
+    .trim()
+    .min(1, 'author is required'),
+  publisher: z.string().nullable().optional(),
+  year: z.string().nullable().optional(),
+  isbn: z.string().nullable().optional(),
+  coverUrl: z.string().nullable().optional(),
+  materialType: z.string().nullable().optional(),
+  branchVolumes: z.array(branchSchema).optional().default([]),
+});
 
 function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {
   let branchVolumes: BranchAvailability[] = [];
   try {
     const parsed = JSON.parse(record.branch_volumes || '[]');
-    branchVolumes = parseBranches(parsed);
+    const result = branchSchema.array().safeParse(parsed);
+    if (result.success) {
+      branchVolumes = result.data;
+    }
   } catch (error) {
     console.warn('[PlannedLoans] Failed to parse branch_volumes', error);
   }
@@ -73,58 +85,14 @@ function validatePayload(body: unknown): {
   payload?: CreatePlannedLoanRequest;
   error?: string;
 } {
-  if (!body || typeof body !== 'object') {
-    return { error: 'Invalid JSON body' };
+  const parsed = plannedLoanSchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue?.message || 'Invalid request body' };
   }
-
-  const candidate = body as Record<string, unknown>;
-  const libraryId = Number(candidate.libraryId);
-  const source = candidate.source;
-  const title = candidate.title;
-  const author = candidate.author;
-
-  if (!Number.isFinite(libraryId)) {
-    return { error: 'libraryId must be a number' };
-  }
-
-  if (source !== 'new_books' && source !== 'search') {
-    return { error: 'source must be new_books or search' };
-  }
-
-  if (!title || typeof title !== 'string' || title.trim() === '') {
-    return { error: 'title is required' };
-  }
-
-  if (!author || typeof author !== 'string' || author.trim() === '') {
-    return { error: 'author is required' };
-  }
-
-  const branchVolumes = parseBranches(candidate.branchVolumes);
 
   return {
-    payload: {
-      libraryId,
-      source,
-      title: title.trim(),
-      author: author.trim(),
-      publisher:
-        candidate.publisher === undefined
-          ? null
-          : (candidate.publisher as string | null),
-      year:
-        candidate.year === undefined ? null : (candidate.year as string | null),
-      isbn:
-        candidate.isbn === undefined ? null : (candidate.isbn as string | null),
-      coverUrl:
-        candidate.coverUrl === undefined
-          ? null
-          : (candidate.coverUrl as string | null),
-      materialType:
-        candidate.materialType === undefined
-          ? null
-          : (candidate.materialType as string | null),
-      branchVolumes,
-    },
+    payload: parsed.data,
   };
 }
 
