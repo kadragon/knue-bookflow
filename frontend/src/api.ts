@@ -235,3 +235,55 @@ export const getNewBooks = async (
   }
   return res.json();
 };
+
+// Library Search API
+export interface BranchVolume {
+  branchId: number;
+  branchName: string;
+  volumes: number;
+}
+
+export interface SearchBookItem {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  coverUrl: string | null;
+  isbn: string | null;
+  materialType: string | null;
+  publication: string;
+  branchVolumes: BranchVolume[];
+}
+
+export interface SearchBooksResponse {
+  items: SearchBookItem[];
+  meta: {
+    count: number;
+    totalCount: number;
+    offset: number;
+    max: number;
+    query: string;
+    isFuzzy: boolean;
+  };
+}
+
+export const searchBooks = async (
+  query: string,
+  max: number = 20,
+  offset: number = 0,
+): Promise<SearchBooksResponse> => {
+  const params = new URLSearchParams({
+    query,
+    max: max.toString(),
+    offset: offset.toString(),
+  });
+  const res = await fetch(`/api/search?${params}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to search books');
+  }
+  return res.json();
+};

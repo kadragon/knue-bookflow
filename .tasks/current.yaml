@@ -1,7 +1,1 @@
-current_task:
-  task_id: TASK-039
-  title: "Add React component rendering tests"
-  spec_id: SPEC-ci-002
-  status: done
-  started_at: "2025-12-11T13:20:00Z"
-  completed_at: "2025-12-11T13:25:00Z"
+current_task: null

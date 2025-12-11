@@ -17,6 +17,7 @@ import type {
   NewBook,
   NewBooksResponse,
   RenewalResponse,
+  SearchBooksResponse,
   SessionData,
 } from '../types';
 
@@ -250,6 +251,50 @@ export class LibraryClient {
       `[LibraryClient] Retrieved ${data.data.list.length} new books (total: ${data.data.totalCount})`,
     );
     return data.data.list;
+  }
+
+  /**
+   * Search for books in the library
+   * @param query - Search query (title, author, ISBN, etc.)
+   * @param max - Maximum number of results (default: 20)
+   * @param offset - Offset for pagination (default: 0)
+   * @returns Search result with books and metadata
+   */
+  async searchBooks(
+    query: string,
+    max: number = 20,
+    offset: number = 0,
+  ): Promise<SearchBooksResponse> {
+    const encodedQuery = encodeURIComponent(query);
+
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/collections/2/search?all=k|a|${encodedQuery}&abc=&max=${max}&offset=${offset}`,
+      {
+        method: 'GET',
+      },
+    );
+
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to search books with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: SearchBooksResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to search books: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    console.log(
+      `[LibraryClient] Retrieved ${data.data.list.length} search results (total: ${data.data.totalCount})`,
+    );
+    return data;
   }
 
   /**

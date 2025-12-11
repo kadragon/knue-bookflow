@@ -1,20 +1,13 @@
 /**
- * New Books API Handler
- * Handles requests for fetching new books from KNUE library
+ * Library Search API Handler
+ * Handles requests for searching books in KNUE library
  *
- * Trace: spec_id: SPEC-new-books-001
- *        task_id: TASK-new-books
+ * Trace: spec_id: SPEC-search-001
+ *        task_id: TASK-search
  */
 
 import { createLibraryClient } from '../services';
-import type { NewBook } from '../types';
-
-/**
- * Format date to YYYY-MM-DD
- */
-function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
+import type { SearchBook } from '../types';
 
 /**
  * Parse publication string to extract publisher and year
@@ -22,7 +15,7 @@ function formatDate(date: Date): string {
  *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
  *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
  */
-function parsePublication(publication: string): {
+export function parsePublication(publication: string): {
   publisher: string | null;
   year: string | null;
 } {
@@ -54,9 +47,9 @@ function parsePublication(publication: string): {
 }
 
 /**
- * Transform NewBook to simplified frontend format
+ * Transform SearchBook to simplified frontend format
  */
-function transformNewBook(book: NewBook) {
+function transformSearchBook(book: SearchBook) {
   const { publisher, year } = parsePublication(book.publication);
 
   return {
@@ -69,34 +62,37 @@ function transformNewBook(book: NewBook) {
     isbn: book.isbn,
     materialType: book.biblioType?.name || null,
     publication: book.publication,
+    branchVolumes: book.branchVolumes,
   };
 }
 
-export interface NewBooksQuery {
-  days?: number;
+export interface SearchBooksQuery {
+  query?: string;
   max?: number;
+  offset?: number;
 }
 
 /**
- * Handle GET /api/new-books
- * Fetches new books from the library within the specified date range
+ * Handle GET /api/search
+ * Searches for books in the library
  *
  * Query parameters:
- * - days: Number of days to look back (default: 90)
- * - max: Maximum number of results (default: 50)
+ * - query: Search query (title, author, ISBN, etc.)
+ * - max: Maximum number of results (default: 20)
+ * - offset: Offset for pagination (default: 0)
  */
-export async function handleNewBooksApi(request: Request): Promise<Response> {
+export async function handleSearchBooksApi(
+  request: Request,
+): Promise<Response> {
   const url = new URL(request.url);
-  const daysParam = url.searchParams.get('days');
+  const query = url.searchParams.get('query');
   const maxParam = url.searchParams.get('max');
+  const offsetParam = url.searchParams.get('offset');
 
-  const days = daysParam ? parseInt(daysParam, 10) : 90;
-  const max = maxParam ? parseInt(maxParam, 10) : 50;
-
-  // Validate parameters
-  if (Number.isNaN(days) || days < 1 || days > 365) {
+  // Validate query parameter
+  if (!query || query.trim() === '') {
     return new Response(
-      JSON.stringify({ error: 'Invalid days parameter (1-365)' }),
+      JSON.stringify({ error: 'Query parameter is required' }),
       {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -104,6 +100,10 @@ export async function handleNewBooksApi(request: Request): Promise<Response> {
     );
   }
 
+  const max = maxParam ? parseInt(maxParam, 10) : 20;
+  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+
+  // Validate parameters
   if (Number.isNaN(max) || max < 1 || max > 100) {
     return new Response(
       JSON.stringify({ error: 'Invalid max parameter (1-100)' }),
@@ -114,49 +114,53 @@ export async function handleNewBooksApi(request: Request): Promise<Response> {
     );
   }
 
+  if (Number.isNaN(offset) || offset < 0) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid offset parameter (>= 0)' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  }
+
   try {
     const libraryClient = createLibraryClient();
 
-    // Calculate date range
-    const toDate = new Date();
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days);
-
-    const newBooks = await libraryClient.getNewBooks(
-      formatDate(fromDate),
-      formatDate(toDate),
+    const searchResult = await libraryClient.searchBooks(
+      query.trim(),
       max,
+      offset,
     );
 
-    const items = newBooks.map(transformNewBook);
+    const items = searchResult.data.list.map(transformSearchBook);
 
     return new Response(
       JSON.stringify({
         items,
         meta: {
           count: items.length,
-          days,
-          fromDate: formatDate(fromDate),
-          toDate: formatDate(toDate),
+          totalCount: searchResult.data.totalCount,
+          offset,
+          max,
+          query: query.trim(),
+          isFuzzy: searchResult.data.isFuzzy,
         },
       }),
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+          'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
         },
       },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[NewBooksHandler] Failed to fetch new books: ${message}`);
+    console.error(`[SearchHandler] Failed to search books: ${message}`);
 
-    return new Response(
-      JSON.stringify({ error: 'Failed to fetch new books' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    return new Response(JSON.stringify({ error: 'Failed to search books' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

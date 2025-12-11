@@ -1,0 +1,16 @@
+spec_id: SPEC-governance-001
+title: "Governance and task registry maintenance"
+given_when_then:
+  - given: "task and governance registries contain stale or duplicated entries"
+    when: "the agent compacts records"
+    then: "completed tasks move to done, backlog keeps only pending tasks, and current is cleared when idle"
+acceptance_tests:
+  - id: TEST-governance-001
+    desc: "Backlog lists only pending tasks with correct spec_ids"
+  - id: TEST-governance-002
+    desc: "Completed tasks are recorded once in done.yaml with outcomes"
+  - id: TEST-governance-003
+    desc: "current.yaml shows no active task after completion"
+dependencies: []
+linked_tasks:
+  - TASK-040
