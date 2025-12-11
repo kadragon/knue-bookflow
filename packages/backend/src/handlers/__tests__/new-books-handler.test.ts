@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { NewBooksResponse } from '../../types';
 import { handleNewBooksApi, parsePublication } from '../new-books-handler';
 
 // Mock services
@@ -62,7 +63,9 @@ describe('New Books Handler', () => {
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(200);
 
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
       expect(body.items).toHaveLength(1);
       expect(body.items[0]).toEqual({
         id: 1,
@@ -104,7 +107,9 @@ describe('New Books Handler', () => {
       ]);
 
       const response = await handleNewBooksApi(request);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
 
       expect(body.items[0].branchVolumes).toEqual([
         { branchId: 10, branchName: '본관', volumes: 1 },
@@ -120,7 +125,9 @@ describe('New Books Handler', () => {
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(200);
 
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
       expect(body.meta.days).toBe(30);
 
       expect(mockGetNewBooks).toHaveBeenCalledWith(
@@ -134,7 +141,9 @@ describe('New Books Handler', () => {
       const request = new Request('http://localhost/api/new-books?days=400');
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(400);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
       expect(body.error).toContain('Invalid days parameter');
     });
 
@@ -142,7 +151,9 @@ describe('New Books Handler', () => {
       const request = new Request('http://localhost/api/new-books?max=200');
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(400);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
       expect(body.error).toContain('Invalid max parameter');
     });
 
@@ -152,7 +163,9 @@ describe('New Books Handler', () => {
 
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(500);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
       expect(body.error).toBe('Failed to fetch new books');
     });
 
@@ -173,7 +186,9 @@ describe('New Books Handler', () => {
       ]);
 
       const response = await handleNewBooksApi(request);
-      const body = (await response.json()) as any;
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
 
       expect(body.items[0].branchVolumes).toEqual([
         { branchId: 10, branchName: 'Main Lib', volumes: 5 },
