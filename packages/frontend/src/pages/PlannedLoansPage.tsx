@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   CardMedia,
+  Chip,
   CircularProgress,
   Container,
   IconButton,
@@ -28,7 +29,8 @@ import {
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { summarizeBranches } from '../plannedLoanPayload';
 
-// Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
+// Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
+//        task_id: TASK-043, TASK-061
 
 function PlannedLoanCard({
   item,
@@ -38,6 +40,43 @@ function PlannedLoanCard({
   onRemove: (id: number) => void;
 }) {
   const branchSummary = summarizeBranches(item.branchVolumes);
+
+  const formatDueDate = (date: string | null): string | null => {
+    if (!date) return null;
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return parsed.toISOString().split('T')[0];
+  };
+
+  const renderAvailability = () => {
+    const availability = item.availability;
+    if (!availability) {
+      return (
+        <Chip
+          label="대출 가능 여부 확인 불가"
+          size="small"
+          variant="outlined"
+          sx={{ mt: 0.5 }}
+        />
+      );
+    }
+
+    if (availability.status === 'available') {
+      return (
+        <Chip
+          label={`대출 가능 (${availability.availableItems}/${availability.totalItems}권)`}
+          size="small"
+          color="success"
+          sx={{ mt: 0.5 }}
+        />
+      );
+    }
+
+    const due = formatDueDate(availability.earliestDueDate);
+    const label = due ? `대출 중 · 반납예정 ${due}` : '대출 중';
+
+    return <Chip label={label} size="small" color="warning" sx={{ mt: 0.5 }} />;
+  };
 
   return (
     <Card
@@ -104,6 +143,7 @@ function PlannedLoanCard({
         >
           {branchSummary}
         </Typography>
+        <Box sx={{ mt: 0.5 }}>{renderAvailability()}</Box>
         <Typography
           variant="caption"
           color="text.disabled"

@@ -328,3 +328,8 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
     - Added a `db:migrate` script to `packages/backend/package.json` to encapsulate the D1 migration logic.
     - Added root-level `deploy` and `db:migrate` scripts to `package.json` that correctly target the backend workspace.
   - This provides a cleaner and more robust way to manage deployment and database migrations in the monorepo.
+
+### Session 2025-12-11 (Planned loans availability)
+- Completed TASK-061 (SPEC-loan-plan-002): Enriched planned-loan GET API with Pyxis `/8/biblios/{id}/items` lookup via `LibraryClient.getBiblioItems`, summarizing availability (availableItems/totalItems, earliestDueDate) with safe null fallback on errors. Availability now follows rule: if any copy is available → status `available` and due date omitted; otherwise status `loaned_out` with nearest due date.
+- Frontend PlannedLoansPage renders availability chips: `대출 가능 (x/y권)` when copies are ready, `대출 중 · 반납예정 YYYY-MM-DD` when all charged out, and a fallback chip for unknown availability.
+- Tests: `npm test -- packages/backend/src/handlers/__tests__/planned-loans-handler.test.ts packages/backend/src/services/__tests__/library-client.test.ts packages/frontend/src/pages/PlannedLoansPage.test.tsx`.

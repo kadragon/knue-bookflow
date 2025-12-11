@@ -169,6 +169,17 @@ export interface BranchAvailability {
 export type BranchVolume = BranchAvailability;
 
 /**
+ * Availability summary for a planned loan
+ * Trace: spec_id: SPEC-loan-plan-002, task_id: TASK-061
+ */
+export interface PlannedLoanAvailability {
+  status: 'available' | 'loaned_out';
+  totalItems: number;
+  availableItems: number;
+  earliestDueDate: string | null;
+}
+
+/**
  * Planned loan view model returned by API
  * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
  */
@@ -184,6 +195,7 @@ export interface PlannedLoanViewModel {
   coverUrl: string | null;
   materialType: string | null;
   branchVolumes: BranchAvailability[];
+  availability: PlannedLoanAvailability | null;
   createdAt: string;
 }
 

@@ -1,0 +1,40 @@
+spec_id: SPEC-loan-plan-002
+title: "Planned Loans Availability Indicator"
+description: |
+  Show real-time loan availability for each planned (대출 예정) item by calling the
+  Pyxis items endpoint (`/pyxis-api/8/biblios/{biblioId}/items`) and surface the
+  result on the Planned Loans page. Users can immediately see whether a planned
+  book is currently borrowable or when it is due back.
+
+given_when_then:
+  - given: "Planned loans exist in D1 and the user opens the Planned Loans page"
+    when: "The client fetches `/api/planned-loans`"
+    then: "Each item includes an availability summary derived from the Pyxis items API (available count, total count, earliest due date)"
+
+  - given: "At least one copy is ready for checkout (isCharged = false or circulationState.code = READY)"
+    when: "Availability is calculated"
+    then: "The item is marked '대출 가능' with available/total counts"
+
+  - given: "All copies are charged out"
+    when: "Availability is calculated"
+    then: "The item is marked '대출 중' and shows the earliest due date if present"
+
+  - given: "Pyxis availability lookup fails (network/error)"
+    when: "Planned loans list is requested"
+    then: "The response still succeeds but availability is null so the UI can show a fallback"
+
+acceptance_tests:
+  - id: TEST-loan-plan-008
+    desc: "GET /api/planned-loans enriches each item with availability derived from /biblios/{id}/items, handling available vs charged-out copies"
+
+  - id: TEST-loan-plan-009
+    desc: "PlannedLoansPage renders availability badges: '대출 가능 (x/y)' or '대출 중 · 반납예정 yyyy-MM-dd' with a degraded '확인 불가' state when lookup fails"
+
+dependencies:
+  - governance: "coding-style"
+  - governance: "memory.md"
+  - spec: SPEC-loan-plan-001
+  - spec: SPEC-search-001
+
+linked_tasks:
+  - TASK-061

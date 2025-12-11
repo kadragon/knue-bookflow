@@ -2,10 +2,12 @@
  * Planned Loans Handler
  * Manage borrow-later list from search/new books
  *
- * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043, TASK-047
+ * Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
+ *        task_id: TASK-043, TASK-047, TASK-061
  */
 
 import { z } from 'zod';
+import { createLibraryClient } from '../services';
 import {
   createPlannedLoanRepository,
   type PlannedLoanRepository,
@@ -14,6 +16,8 @@ import type {
   BranchAvailability,
   CreatePlannedLoanRequest,
   Env,
+  LibraryItem,
+  PlannedLoanAvailability,
   PlannedLoanRecord,
   PlannedLoanViewModel,
 } from '../types';
@@ -81,7 +85,60 @@ function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {
     coverUrl: record.cover_url,
     materialType: record.material_type,
     branchVolumes,
+    availability: null,
     createdAt: record.created_at ?? '',
+  };
+}
+
+type AvailabilityFetcher = (
+  libraryId: number,
+) => Promise<PlannedLoanAvailability | null>;
+
+function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
+  const totalItems = items.length;
+  const availableItems = items.filter((item) => {
+    const code = item.circulationState?.code;
+    const isCharged = item.circulationState?.isCharged;
+    if (isCharged === false) return true;
+    if (isCharged === true) return false;
+    return code === 'READY' || code === 'ON_SHELF' || code === 'AVAILABLE';
+  }).length;
+
+  const dueDates = items
+    .filter((item) => {
+      const code = item.circulationState?.code;
+      const isCharged = item.circulationState?.isCharged;
+      return (
+        isCharged === true ||
+        code === 'LOAN' ||
+        code === 'CHARGED' ||
+        code === 'CHARGE'
+      );
+    })
+    .map((item) => item.dueDate)
+    .filter((date): date is string => Boolean(date))
+    .map((date) => date.split('T')[0])
+    .sort();
+
+  const earliestDueDate = availableItems > 0 ? null : (dueDates[0] ?? null);
+
+  return {
+    status: availableItems > 0 ? 'available' : 'loaned_out',
+    totalItems,
+    availableItems,
+    earliestDueDate,
+  };
+}
+
+// Exported for testing
+export { summarizeAvailability };
+
+function createAvailabilityFetcher(): AvailabilityFetcher {
+  const client = createLibraryClient();
+
+  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
+    const items = await client.getBiblioItems(libraryId);
+    return summarizeAvailability(items);
   };
 }
 
@@ -156,6 +213,7 @@ export async function handleCreatePlannedLoan(
 export async function handleGetPlannedLoans(
   env: Env,
   repo: PlannedRepo = createPlannedLoanRepository(env.DB),
+  fetchAvailability: AvailabilityFetcher = createAvailabilityFetcher(),
 ): Promise<Response> {
   try {
     const items = await repo.findAll();
@@ -163,7 +221,19 @@ export async function handleGetPlannedLoans(
       .map(toViewModel)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-    return new Response(JSON.stringify({ items: view }), {
+    const withAvailability = await Promise.all(
+      view.map(async (item) => {
+        try {
+          const availability = await fetchAvailability(item.libraryId);
+          return { ...item, availability };
+        } catch (error) {
+          console.error('[PlannedLoans] Availability lookup failed', error);
+          return { ...item, availability: null };
+        }
+      }),
+    );
+
+    return new Response(JSON.stringify({ items: withAvailability }), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
