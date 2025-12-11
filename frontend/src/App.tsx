@@ -1,4 +1,5 @@
 import {
+  AutoStories as AutoStoriesIcon,
   CheckCircle as CheckCircleIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
@@ -57,6 +58,7 @@ import {
   type StatFilter,
 } from './filterBooks';
 import BookDetailPage from './pages/BookDetailPage';
+import NewBooksPage from './pages/NewBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
 
@@ -883,6 +885,14 @@ function BookshelfPage() {
             </Box>
             <Stack direction="row" spacing={1}>
               <Button
+                variant="outlined"
+                startIcon={<AutoStoriesIcon />}
+                onClick={() => navigate('/new-books')}
+                color="secondary"
+              >
+                신착
+              </Button>
+              <Button
                 variant="contained"
                 startIcon={<PlayArrowIcon />}
                 onClick={() => triggerMutation.mutate()}
@@ -981,12 +991,13 @@ function BookshelfPage() {
   );
 }
 
-// Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+// Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, task_id: TASK-030, TASK-new-books
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<BookshelfPage />} />
       <Route path="/books/:id" element={<BookDetailPage />} />
+      <Route path="/new-books" element={<NewBooksPage />} />
     </Routes>
   );
 }

@@ -1,0 +1,27 @@
+spec_id: SPEC-ci-002
+title: "Frontend Component Testing in CI"
+description: |
+  Ensure the React frontend application is robust by including component rendering tests
+  in the Continuous Integration pipeline. This aims to catch runtime errors, such as
+  library version mismatches, that static analysis (build/lint) might miss.
+
+given_when_then:
+  - given: "The React frontend application"
+    when: "The CI pipeline executes tests"
+    then: "It must run component rendering tests (e.g., Smoke Tests)"
+  
+  - given: "The App component"
+    when: "It is rendered in a test environment"
+    then: "It should mount successfully without throwing exceptions"
+
+acceptance_tests:
+  - id: TEST-ci-002
+    desc: "CI pipeline executes frontend tests using a DOM-aware environment (jsdom)"
+  - id: TEST-ci-003
+    desc: "App component smoke test passes"
+
+dependencies:
+  - governance: "env.yaml"
+
+linked_tasks:
+  - TASK-039

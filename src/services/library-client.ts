@@ -14,6 +14,8 @@ import type {
   FetchOptions,
   LoginRequest,
   LoginResponse,
+  NewBook,
+  NewBooksResponse,
   RenewalResponse,
   SessionData,
 } from '../types';
@@ -203,6 +205,51 @@ export class LibraryClient {
       `[LibraryClient] Renewed charge ${chargeId}, new due date: ${data.data.dueDate}`,
     );
     return data;
+  }
+
+  /**
+   * Get list of new books (신착 도서) received within the specified date range
+   * @param fromDate - Start date in YYYY-MM-DD format
+   * @param toDate - End date in YYYY-MM-DD format
+   * @param max - Maximum number of results (default: 20)
+   * @returns Array of new book records
+   */
+  async getNewBooks(
+    fromDate: string,
+    toDate: string,
+    max: number = 20,
+  ): Promise<NewBook[]> {
+    const dateRange = `[${fromDate} TO ${toDate}]`;
+    const encodedRange = encodeURIComponent(dateRange);
+
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/collections/3/search?date_received=${encodedRange}&max=${max}`,
+      {
+        method: 'GET',
+      },
+    );
+
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to fetch new books with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: NewBooksResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to fetch new books: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    console.log(
+      `[LibraryClient] Retrieved ${data.data.list.length} new books (total: ${data.data.totalCount})`,
+    );
+    return data.data.list;
   }
 
   /**

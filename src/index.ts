@@ -10,6 +10,7 @@ import {
   handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
+import { handleNewBooksApi } from './handlers/new-books-handler';
 import {
   handleCreateNote,
   handleDeleteNote,
@@ -79,6 +80,11 @@ export default {
 
     if (url.pathname === '/api/books' && request.method === 'GET') {
       return handleBooksApi(env);
+    }
+
+    // New books API endpoint (신착 도서)
+    if (url.pathname === '/api/new-books' && request.method === 'GET') {
+      return handleNewBooksApi(request);
     }
 
     // Library-DB sync endpoint

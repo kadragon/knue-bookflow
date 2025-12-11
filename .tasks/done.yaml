@@ -382,3 +382,16 @@ completed_tasks: []
     - "Escaping MarkdownV2 must include backslash, dot, and dash to avoid unexpected formatting."
     - "Quoting multiline content stays consistent by prefixing each line after escaping."
     - "Telegram requests should disable previews to keep reading snippets compact."
+
+- task_id: TASK-039
+  title: "Add React component rendering tests"
+  completed_at: "2025-12-11T13:25:00Z"
+  outcome: success
+  spec_id: SPEC-ci-002
+  summary: |
+    Integrated basic React component testing into the CI pipeline. Installed @testing-library/react and jsdom,
+    configured a separate frontend Vitest environment via workspace setup, and added a smoke test for the App
+    component. This ensures runtime compatibility (e.g., React version mismatches) is caught during tests.
+  learnings:
+    - "Vitest Workspaces cleanly separate Cloudflare Worker (Node-compat) and Frontend (jsdom) test environments."
+    - "Worker tests must explicitly exclude frontend sources to avoid jsdom/document errors in non-DOM environments."

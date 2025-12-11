@@ -198,3 +198,40 @@ export const deleteNote = async (
   }
   return res.json();
 };
+
+// New Books API (신착 도서)
+export interface NewBookItem {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  coverUrl: string | null;
+  isbn: string | null;
+  materialType: string | null;
+  publication: string;
+}
+
+export interface NewBooksResponse {
+  items: NewBookItem[];
+  meta: {
+    count: number;
+    days: number;
+    fromDate: string;
+    toDate: string;
+  };
+}
+
+export const getNewBooks = async (
+  days: number = 90,
+  max: number = 50,
+): Promise<NewBooksResponse> => {
+  const res = await fetch(`/api/new-books?days=${days}&max=${max}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to load new books');
+  }
+  return res.json();
+};
