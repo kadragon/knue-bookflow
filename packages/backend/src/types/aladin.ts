@@ -33,6 +33,7 @@ export interface AladinItem {
   categoryId: number;
   categoryName: string;
   publisher: string;
+  bookDtlContents?: string; // Table of Contents (목차)
 }
 
 export interface BookInfo {
@@ -44,6 +45,7 @@ export interface BookInfo {
   pubDate: string;
   description: string;
   coverUrl: string;
+  tableOfContents?: string;
 }
 
 /**

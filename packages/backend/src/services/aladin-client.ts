@@ -39,7 +39,7 @@ export class AladinClient {
       ItemId: cleanIsbn,
       output: 'js',
       Version: '20131101',
-      OptResult: 'previewImgList',
+      OptResult: 'previewImgList,Toc',
       Cover: 'Big',
     });
 
@@ -69,6 +69,7 @@ export class AladinClient {
         pubDate: item.pubDate,
         description: item.description,
         coverUrl: item.cover,
+        tableOfContents: item.bookDtlContents,
       };
 
       console.log(`[AladinClient] Found book: ${bookInfo.title}`);

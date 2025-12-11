@@ -286,3 +286,23 @@ export interface SearchBooksResponse {
     isFuzzy: boolean;
   };
 }
+
+// =============================================================================
+// Aladin Book Info
+// =============================================================================
+
+export interface AladinBookInfo {
+  isbn: string;
+  isbn13: string;
+  title: string;
+  author: string;
+  publisher: string;
+  pubDate: string;
+  description: string;
+  coverUrl: string;
+  tableOfContents?: string;
+}
+
+export interface AladinBookResponse {
+  book: AladinBookInfo;
+}

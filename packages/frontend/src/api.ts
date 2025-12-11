@@ -1,5 +1,7 @@
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 import type {
+  AladinBookInfo,
+  AladinBookResponse,
   ApiResponse,
   BookDetailResponse,
   BookItem,
@@ -19,6 +21,8 @@ import type {
 } from '@knue-bookflow/shared';
 
 export type {
+  AladinBookInfo,
+  AladinBookResponse,
   ApiResponse,
   BookDetailResponse,
   BookItem,
@@ -246,6 +250,18 @@ export const deletePlannedLoan = async (
   });
 
   await handleApiError(res, 'Failed to delete planned loan');
+
+  return res.json();
+};
+
+export const getBookByIsbn = async (
+  isbn: string,
+): Promise<AladinBookResponse> => {
+  const res = await fetch(`/api/aladin/isbn/${encodeURIComponent(isbn)}`, {
+    headers: { Accept: 'application/json' },
+  });
+
+  await handleApiError(res, 'Failed to fetch book information');
 
   return res.json();
 };

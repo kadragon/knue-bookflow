@@ -26,6 +26,7 @@ import {
   getPlannedLoans,
   type PlannedLoanItem,
 } from '../api';
+import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { summarizeBranches } from '../plannedLoanPayload';
 
@@ -35,9 +36,11 @@ import { summarizeBranches } from '../plannedLoanPayload';
 function PlannedLoanCard({
   item,
   onRemove,
+  onImageClick,
 }: {
   item: PlannedLoanItem;
   onRemove: (id: number) => void;
+  onImageClick: (isbn: string) => void;
 }) {
   const branchSummary = summarizeBranches(item.branchVolumes);
 
@@ -117,10 +120,7 @@ function PlannedLoanCard({
         }}
         onClick={() => {
           if (item.isbn) {
-            window.open(
-              `https://www.aladin.co.kr/search/wsearchresult.aspx?SearchTarget=Book&KeyWord=${item.isbn}`,
-              '_blank',
-            );
+            onImageClick(item.isbn);
           }
         }}
       >
@@ -205,6 +205,7 @@ export default function PlannedLoansPage() {
     message: string;
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
+  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['planned-loans'],
@@ -319,6 +320,7 @@ export default function PlannedLoansPage() {
                 key={item.id}
                 item={item}
                 onRemove={handleRemove}
+                onImageClick={setSelectedIsbn}
               />
             ))}
           </Box>
@@ -328,6 +330,11 @@ export default function PlannedLoansPage() {
       <FeedbackSnackbar
         feedback={snackbar}
         onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      />
+
+      <BookDetailModal
+        isbn={selectedIsbn}
+        onClose={() => setSelectedIsbn(null)}
       />
     </Box>
   );
