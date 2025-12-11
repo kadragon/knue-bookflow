@@ -8,6 +8,7 @@
 
 import { createLibraryClient } from '../services';
 import type { NewBook } from '../types';
+import { normalizeBranchVolumes } from '../utils';
 
 /**
  * Format date to YYYY-MM-DD
@@ -22,7 +23,7 @@ function formatDate(date: Date): string {
  *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
  *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
  */
-function parsePublication(publication: string): {
+export function parsePublication(publication: string): {
   publisher: string | null;
   year: string | null;
 } {
@@ -69,7 +70,7 @@ function transformNewBook(book: NewBook) {
     isbn: book.isbn,
     materialType: book.biblioType?.name || null,
     publication: book.publication,
-    branchVolumes: book.branchVolumes || [],
+    branchVolumes: normalizeBranchVolumes(book.branchVolumes),
   };
 }
 

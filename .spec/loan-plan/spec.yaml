@@ -50,6 +50,9 @@ acceptance_tests:
   - id: TEST-loan-plan-006
     desc: "processCharge deletes planned loan when the same libraryId appears in active charges"
 
+  - id: TEST-loan-plan-007
+    desc: "Branch availability data from New Books/Search is normalized (id/name/volume) so planned-loan creation succeeds without branchId validation errors"
+
 dependencies:
   - governance: "coding-style"
   - governance: "memory.md"

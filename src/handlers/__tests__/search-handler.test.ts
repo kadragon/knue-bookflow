@@ -299,5 +299,43 @@ describe('Search Handler', () => {
         materialType: '기타',
       });
     });
+
+    it('should correctly map inconsistent branchVolumes', async () => {
+      const mockBooks: SearchBook[] = [
+        {
+          id: 1,
+          titleStatement: 'Book',
+          author: 'Author',
+          publication: 'Pub, 2024',
+          branchVolumes: [
+            { id: 10, name: 'Main Lib', volume: 5 }, // Inconsistent
+            { branchId: 20, branchName: 'Branch Lib', volumes: 3 }, // Standard
+          ] as any,
+          biblioType: { name: 'Book' } as any,
+          thumbnailUrl: null,
+          isbn: null,
+          issn: null,
+          etcContent: null,
+          dateReceived: null,
+        },
+      ];
+
+      mockSearchBooks.mockResolvedValue({
+        data: {
+          list: mockBooks,
+          totalCount: 1,
+          isFuzzy: false,
+        },
+      });
+
+      const request = new Request('http://localhost/api/search?query=test');
+      const response = await handleSearchBooksApi(request);
+      const data = (await response.json()) as { items: any[] };
+
+      expect(data.items[0].branchVolumes).toEqual([
+        { branchId: 10, branchName: 'Main Lib', volumes: 5 },
+        { branchId: 20, branchName: 'Branch Lib', volumes: 3 },
+      ]);
+    });
   });
 });

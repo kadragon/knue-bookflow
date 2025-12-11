@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "dev:frontend": "vite --config frontend/vite.config.mts",
     "deploy": "wrangler deploy",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "mkdir -p frontend/dist && vitest run",
     "ci:prepare": "npm run build:frontend",
     "build": "wrangler build",

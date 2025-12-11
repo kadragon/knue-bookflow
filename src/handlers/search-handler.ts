@@ -8,6 +8,7 @@
 
 import { createLibraryClient } from '../services';
 import type { SearchBook } from '../types';
+import { normalizeBranchVolumes } from '../utils';
 
 /**
  * Parse publication string to extract publisher and year
@@ -62,7 +63,7 @@ function transformSearchBook(book: SearchBook) {
     isbn: book.isbn,
     materialType: book.biblioType?.name || null,
     publication: book.publication,
-    branchVolumes: book.branchVolumes,
+    branchVolumes: normalizeBranchVolumes(book.branchVolumes),
   };
 }
 
