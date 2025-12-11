@@ -210,6 +210,7 @@ export interface NewBookItem {
   isbn: string | null;
   materialType: string | null;
   publication: string;
+  branchVolumes: BranchVolume[];
 }
 
 export interface NewBooksResponse {
@@ -256,6 +257,29 @@ export interface SearchBookItem {
   branchVolumes: BranchVolume[];
 }
 
+// Planned Loan API
+export interface PlannedLoanPayload {
+  libraryId: number;
+  source: 'new_books' | 'search';
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  isbn: string | null;
+  coverUrl: string | null;
+  materialType: string | null;
+  branchVolumes: BranchVolume[];
+}
+
+export interface PlannedLoanItem extends PlannedLoanPayload {
+  id: number;
+  createdAt: string;
+}
+
+export interface PlannedLoansResponse {
+  items: PlannedLoanItem[];
+}
+
 export interface SearchBooksResponse {
   items: SearchBookItem[];
   meta: {
@@ -285,5 +309,52 @@ export const searchBooks = async (
     const error = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || 'Failed to search books');
   }
+  return res.json();
+};
+
+export const getPlannedLoans = async (): Promise<PlannedLoansResponse> => {
+  const res = await fetch('/api/planned-loans', {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to load planned loans');
+  }
+  return res.json();
+};
+
+export const createPlannedLoan = async (
+  payload: PlannedLoanPayload,
+): Promise<{ item: PlannedLoanItem }> => {
+  const res = await fetch('/api/planned-loans', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to save planned loan');
+  }
+
+  return res.json();
+};
+
+export const deletePlannedLoan = async (
+  id: number,
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/planned-loans/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || 'Failed to delete planned loan');
+  }
+
   return res.json();
 };

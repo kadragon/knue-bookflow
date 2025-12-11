@@ -1,5 +1,6 @@
 import {
   AutoStories as AutoStoriesIcon,
+  BookmarkAdd as BookmarkAddIcon,
   CheckCircle as CheckCircleIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
@@ -56,6 +57,7 @@ import {
 } from './filterBooks';
 import BookDetailPage from './pages/BookDetailPage';
 import NewBooksPage from './pages/NewBooksPage';
+import PlannedLoansPage from './pages/PlannedLoansPage';
 import SearchBooksPage from './pages/SearchBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
@@ -892,6 +894,14 @@ function BookshelfPage() {
               </Button>
               <Button
                 variant="outlined"
+                startIcon={<BookmarkAddIcon />}
+                onClick={() => navigate('/planned')}
+                color="secondary"
+              >
+                대출 예정
+              </Button>
+              <Button
+                variant="outlined"
                 startIcon={<AutoStoriesIcon />}
                 onClick={() => navigate('/new-books')}
                 color="secondary"
@@ -997,12 +1007,13 @@ function BookshelfPage() {
   );
 }
 
-// Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, SPEC-search-001, task_id: TASK-030, TASK-new-books, TASK-search
+// Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, SPEC-search-001, SPEC-loan-plan-001, task_id: TASK-030, TASK-new-books, TASK-search, TASK-043
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<BookshelfPage />} />
       <Route path="/books/:id" element={<BookDetailPage />} />
+      <Route path="/planned" element={<PlannedLoansPage />} />
       <Route path="/new-books" element={<NewBooksPage />} />
       <Route path="/search" element={<SearchBooksPage />} />
     </Routes>

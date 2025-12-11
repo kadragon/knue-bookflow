@@ -17,6 +17,11 @@ import {
   handleGetNotes,
   handleUpdateNote,
 } from './handlers/notes-handler';
+import {
+  handleCreatePlannedLoan,
+  handleDeletePlannedLoan,
+  handleGetPlannedLoans,
+} from './handlers/planned-loans-handler';
 import { handleSearchBooksApi } from './handlers/search-handler';
 import {
   fetchAndProcessReturns,
@@ -91,6 +96,24 @@ export default {
     // Library search API endpoint
     if (url.pathname === '/api/search' && request.method === 'GET') {
       return handleSearchBooksApi(request);
+    }
+
+    // Planned loans API endpoints
+    if (url.pathname === '/api/planned-loans') {
+      if (request.method === 'GET') {
+        return handleGetPlannedLoans(env);
+      }
+      if (request.method === 'POST') {
+        return handleCreatePlannedLoan(env, request);
+      }
+    }
+
+    const plannedLoanMatch = url.pathname.match(
+      /^\/api\/planned-loans\/(\d+)$/,
+    );
+    if (plannedLoanMatch && request.method === 'DELETE') {
+      const plannedId = parseInt(plannedLoanMatch[1], 10);
+      return handleDeletePlannedLoan(env, plannedId);
     }
 
     // Library-DB sync endpoint

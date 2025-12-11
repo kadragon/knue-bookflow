@@ -250,3 +250,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
     - Always validate user-supplied URL parameters with explicit checks
     - Material-UI v5+ has different prop structures: slotProps vs component-specific props
     - Extract validation logic to testable helper functions
+
+### Session 2025-12-11 (Planned loans)
+- Completed TASK-043 (SPEC-loan-plan-001): Added planned loans D1 table/migration 0007, repository, and /api/planned-loans POST/GET/DELETE with duplicate guard on libraryId and branch volume parsing.
+- Frontend: New /planned page listing planned items with removal, + buttons on Search/NewBooks pages, shared payload helpers, and branch availability summary.
+- Tests: Added planned-loans handler tests and payload builder tests; `npm test` now 139 passing.
+- Next: apply migration 0007 to production D1 and sanity-check planned list UI against live catalog data.
