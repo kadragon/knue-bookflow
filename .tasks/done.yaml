@@ -20,3 +20,24 @@ completed_tasks:
     result: "Production deployment successful from Monorepo structure."
     test_refs:
       - TEST-infra-002
+  - id: TASK-056
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-11T20:15:00Z"
+    result: "Added zod as runtime dependency for @knue-bookflow/backend to align with validation usage."
+    test_refs:
+      - "npm test --workspace @knue-bookflow/backend"
+  - id: TASK-057
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-11T21:20:00Z"
+    result: "Audited dependency freshness across workspace; identified upgrade options and critical gaps."
+    test_refs:
+      - "npm view versions summary"
+  - id: TASK-058
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-11T21:45:00Z"
+    result: "Verified Wrangler 4.53 compatibility and upgraded backend devDependency; tests remain green."
+    test_refs:
+      - "npm test --workspace @knue-bookflow/backend"

@@ -303,3 +303,16 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
     - Root `package.json` now orchestrates workspaces using `npm run ... --workspaces`.
     - CI/CD updated to run `npm ci` (once lockfile exists) and build/test via root scripts.
   - **Action Required**: User must run `npm install` to link workspaces and generate `package-lock.json`.
+
+### Session 2025-12-11 (Dependency fix)
+- Completed TASK-056 (SPEC-maintenance-001): Declared `zod` as a runtime dependency in `packages/backend/package.json` to match handler validation usage and avoid `npm ci --omit=dev` breakage. Backend tests remain green (`npm test --workspace @knue-bookflow/backend`).
+
+### Session 2025-12-11 (Dependency audit)
+- Completed TASK-057 (SPEC-maintenance-001): Audited workspace dependencies against latest npm releases.
+  - Outdated (major): `zod` 3.25.76 → 4.1.13 (breaking changes expected).
+  - Outdated (minor/patch): `typescript` 5.7.2 → 5.9.3, `vitest` 3.2.4 → 4.0.15, `wrangler` 4.50.0 → 4.53.0, `@cloudflare/vitest-pool-workers` 0.10.11 → 0.10.14, `@cloudflare/workers-types` 4.20251205.0 → 4.20251211.0, `vite` 7.2.4 → 7.2.7, `@vitejs/plugin-react` 5.0.4 → 5.1.2, `@mui/material` 7.3.5 → 7.3.6, `clsx` 2.1.0 → 2.1.1.
+  - Up-to-date: React 19.2.1, React Router 7.10.1, TanStack Query 5.90.12, Emotion 11.14.x, Testing Library (dom/react), jsdom 27.3.0, Biome 2.3.8, Husky 9.1.7, Lint-staged 16.2.7.
+  - No upgrades applied; pending decision on zod v4 migration and TypeScript/Vitest bumps.
+
+### Session 2025-12-11 (Wrangler upgrade)
+- Completed TASK-058 (SPEC-maintenance-001): Verified Wrangler v4.53.0 release (changelog shows no breaking changes for Workers builds) and upgraded backend devDependency to `^4.53.0`. Backend suite stays green (`npm test --workspace @knue-bookflow/backend`).

@@ -11,13 +11,14 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@knue-bookflow/shared": "*"
+    "@knue-bookflow/shared": "*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.11",
     "@cloudflare/workers-types": "^4.20251205.0",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.53.0"
   }
 }
