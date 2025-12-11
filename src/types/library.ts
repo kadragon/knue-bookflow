@@ -166,3 +166,31 @@ export interface NewBooksResponse {
     list: NewBook[];
   };
 }
+
+// Library Search API types
+export interface SearchBook {
+  id: number;
+  biblioType: NewBookBiblioType;
+  thumbnailUrl: string | null;
+  isbn: string | null;
+  issn: string | null;
+  titleStatement: string;
+  author: string;
+  publication: string;
+  etcContent: string | null;
+  branchVolumes: NewBookBranchVolume[];
+  dateReceived: string | null;
+}
+
+export interface SearchBooksResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    isFuzzy: boolean;
+    totalCount: number;
+    offset: number;
+    max: number;
+    list: SearchBook[];
+  };
+}

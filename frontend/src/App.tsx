@@ -8,6 +8,7 @@ import {
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
   Refresh as RefreshIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import {
   Alert,
@@ -25,12 +26,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  FormControl,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Snackbar,
   Stack,
   TextField,
@@ -59,6 +56,7 @@ import {
 } from './filterBooks';
 import BookDetailPage from './pages/BookDetailPage';
 import NewBooksPage from './pages/NewBooksPage';
+import SearchBooksPage from './pages/SearchBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
 
@@ -106,7 +104,7 @@ function truncateTitle(title: string, maxLength: number = 15): string {
   if (title.length <= maxLength) {
     return title;
   }
-  return title.slice(0, maxLength) + '...';
+  return `${title.slice(0, maxLength)}...`;
 }
 
 // Format author display: show max 3 authors, rest as '외 N명'
@@ -886,6 +884,14 @@ function BookshelfPage() {
             <Stack direction="row" spacing={1}>
               <Button
                 variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={() => navigate('/search')}
+                color="secondary"
+              >
+                검색
+              </Button>
+              <Button
+                variant="outlined"
                 startIcon={<AutoStoriesIcon />}
                 onClick={() => navigate('/new-books')}
                 color="secondary"
@@ -991,13 +997,14 @@ function BookshelfPage() {
   );
 }
 
-// Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, task_id: TASK-030, TASK-new-books
+// Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, SPEC-search-001, task_id: TASK-030, TASK-new-books, TASK-search
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<BookshelfPage />} />
       <Route path="/books/:id" element={<BookDetailPage />} />
       <Route path="/new-books" element={<NewBooksPage />} />
+      <Route path="/search" element={<SearchBooksPage />} />
     </Routes>
   );
 }

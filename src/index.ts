@@ -17,6 +17,7 @@ import {
   handleGetNotes,
   handleUpdateNote,
 } from './handlers/notes-handler';
+import { handleSearchBooksApi } from './handlers/search-handler';
 import {
   fetchAndProcessReturns,
   handleSyncBooks,
@@ -85,6 +86,11 @@ export default {
     // New books API endpoint (신착 도서)
     if (url.pathname === '/api/new-books' && request.method === 'GET') {
       return handleNewBooksApi(request);
+    }
+
+    // Library search API endpoint
+    if (url.pathname === '/api/search' && request.method === 'GET') {
+      return handleSearchBooksApi(request);
     }
 
     // Library-DB sync endpoint

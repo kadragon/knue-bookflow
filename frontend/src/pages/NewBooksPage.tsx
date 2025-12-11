@@ -42,7 +42,7 @@ function truncateTitle(title: string, maxLength: number = 20): string {
   if (title.length <= maxLength) {
     return title;
   }
-  return title.slice(0, maxLength) + '...';
+  return `${title.slice(0, maxLength)}...`;
 }
 
 // Format author display: show max 2 authors, rest as '외 N명'
@@ -185,9 +185,8 @@ export default function NewBooksPage() {
       (book) =>
         book.title.toLowerCase().includes(searchLower) ||
         book.author.toLowerCase().includes(searchLower) ||
-        (book.publisher &&
-          book.publisher.toLowerCase().includes(searchLower)) ||
-        (book.isbn && book.isbn.toLowerCase().includes(searchLower)),
+        book.publisher?.toLowerCase().includes(searchLower) ||
+        book.isbn?.toLowerCase().includes(searchLower),
     );
   }, [data, search]);
 
