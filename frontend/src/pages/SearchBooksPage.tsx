@@ -122,12 +122,21 @@ function SearchBookCard({ book }: { book: SearchBookItem }) {
   );
 }
 
+/**
+ * Validates and sanitizes page parameter from URL
+ * Returns 1 for invalid values (NaN, zero, negative)
+ */
+function validatePageParam(pageStr: string | null): number {
+  const parsedPage = parseInt(pageStr || '1', 10);
+  return !Number.isNaN(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+}
+
 export default function SearchBooksPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryParam = searchParams.get('q') || '';
-  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const pageParam = validatePageParam(searchParams.get('page'));
   const [searchInput, setSearchInput] = useState(queryParam);
 
   // Sync input when URL changes (e.g. back button)
@@ -210,26 +219,24 @@ export default function SearchBooksPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             variant="outlined"
             size="medium"
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <Button
-                      variant="contained"
-                      type="submit"
-                      disabled={!searchInput.trim()}
-                      sx={{ minWidth: 80 }}
-                    >
-                      검색
-                    </Button>
-                  </InputAdornment>
-                ),
-              },
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Button
+                    variant="contained"
+                    type="submit"
+                    disabled={!searchInput.trim()}
+                    sx={{ minWidth: 80 }}
+                  >
+                    검색
+                  </Button>
+                </InputAdornment>
+              ),
             }}
           />
         </Box>
