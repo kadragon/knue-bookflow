@@ -2,7 +2,7 @@
  * Planned Loans Handler
  * Manage borrow-later list from search/new books
  *
- * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
+ * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043, TASK-047
  */
 
 import { z } from 'zod';
@@ -17,6 +17,7 @@ import type {
   PlannedLoanRecord,
   PlannedLoanViewModel,
 } from '../types';
+import { normalizeBranchVolumes } from '../utils';
 
 type PlannedRepo = Pick<
   PlannedLoanRepository,
@@ -50,7 +51,10 @@ const plannedLoanSchema = z.object({
   isbn: z.string().nullable().optional(),
   coverUrl: z.string().nullable().optional(),
   materialType: z.string().nullable().optional(),
-  branchVolumes: z.array(branchSchema).optional().default([]),
+  branchVolumes: z
+    .preprocess((value) => normalizeBranchVolumes(value), z.array(branchSchema))
+    .optional()
+    .default([]),
 });
 
 function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {

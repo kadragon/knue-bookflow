@@ -2,7 +2,7 @@
  * Planned Loans Handler Tests
  *
  * Trace: spec_id: SPEC-loan-plan-001
- *        task_id: TASK-043
+ *        task_id: TASK-043, TASK-047
  */
 
 import { describe, expect, it } from 'vitest';
@@ -146,6 +146,41 @@ describe('handleCreatePlannedLoan', () => {
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: string };
     expect(body.error).toMatch(/libraryId/);
+  });
+
+  it('accepts branch volumes that use id/name/volume shape (TEST-loan-plan-007)', async () => {
+    const repo = new FakePlannedRepo();
+    const request = new Request('http://localhost/api/planned-loans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        libraryId: 321,
+        source: 'new_books',
+        title: '식탐 해방',
+        author: 'Brewer, Judson',
+        branchVolumes: [
+          {
+            id: 1,
+            name: '한국교원대학교도서관',
+            volume: '616.8526 B847ㅅㄱ',
+            cState: '대출가능',
+            cStateCode: 'READY',
+            hasItem: true,
+          },
+        ],
+      }),
+    });
+
+    const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
+
+    expect(response.status).toBe(201);
+    const body = (await response.json()) as { item: Record<string, unknown> };
+    expect(body.item.branchVolumes).toEqual([
+      { branchId: 1, branchName: '한국교원대학교도서관', volumes: 1 },
+    ]);
+    expect(JSON.parse(repo.items[0].branch_volumes)).toEqual([
+      { branchId: 1, branchName: '한국교원대학교도서관', volumes: 1 },
+    ]);
   });
 });
 

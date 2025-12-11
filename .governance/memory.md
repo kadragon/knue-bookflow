@@ -30,6 +30,7 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 - Result Type Pattern: RenewalResult for success/failure tracking
 - Service Composition: Separate services for library, aladin, renewal, storage
 - **Hybrid Testing**: Vitest workspaces allow running node-compatible Worker tests and jsdom-based React tests in the same repo without conflict.
+- **Robust API Mapping**: External APIs (like Pyxis) may return inconsistent field names (e.g., `name`/`volume` vs `branchName`/`volumes`). Handlers must robustly map these variations to a strict internal schema to prevent frontend display issues (e.g., `undefined(undefined)`).
 
 ## Known Issues
 - Vitest compatibility issue with nodejs_compat after 2025-09-21 (using 2024-11-01 compat date)
@@ -260,3 +261,26 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 ### Session 2025-12-11 (Planned loans sync)
 - Completed TASK-044 (SPEC-loan-plan-001): processCharge now deletes planned loans by library biblio id after syncing charges, ensuring borrowed items drop from "대출 예정" automatically.
 - Added repo helper deleteByLibraryBiblioId and test TEST-loan-plan-006; full suite now 140 tests passing.
+
+### Session 2025-12-11 (Test Coverage)
+- Completed TASK-045 (SPEC-maintenance-001): Improved test coverage by identifying and testing uncovered modules.
+  - Identified `vitest --coverage` failure in worker environment (known issue with `node:inspector`).
+  - Removed duplicate test file `src/handlers/books-handler.test.ts` (covered by `src/handlers/__tests__/books-handler.test.ts`).
+  - Added unit tests for:
+    - `NewBooksHandler` (validation, transformation, regex parsing)
+    - `NotesHandler` (CRUD validation, error handling)
+    - `NoteRepository` (D1 integration, dynamic updates)
+    - `PlannedLoanRepository` (D1 integration)
+  - Result: Test count increased from 140 to 182, covering all major handlers and services.
+
+### Session 2025-12-11 (Bugfix - New Books)
+- Completed TASK-046 (SPEC-bugfix-001): Fixed `undefined(undefined)` display in New Books/Search lists by implementing robust mapping for `branchVolumes`.
+  - Issue: Library API inconsistently returns `name`/`volume` instead of `branchName`/`volumes` in some contexts.
+  - Fix: Updated `transformNewBook` (new-books-handler.ts) and `transformSearchBook` (search-handler.ts) to map both field sets to the internal schema.
+  - Tests: Added test cases for inconsistent `branchVolumes` structure in both handlers. 183 tests passing.
+
+### Session 2025-12-11 (Planned loans branch normalization)
+- Completed TASK-047 (SPEC-loan-plan-001): Normalized branch availability from New Books/Search to `branchId/branchName/volumes` and tolerated legacy `id/name/volume` payloads so planned-loan POST no longer fails with "branchId is required".
+  - Added `normalizeBranchVolumes` util, zod preprocessing in planned-loans handler, and acceptance test TEST-loan-plan-007.
+  - Branch volume strings (call numbers) now default to a single copy instead of being parsed as counts.
+  - Full suite passing: 186 tests (`npm test`).
