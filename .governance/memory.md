@@ -336,3 +336,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-12-11 (Availability cache)
 - Completed TASK-062 (SPEC-loan-plan-002): Added cached availability fetcher with 5-minute TTL to reduce repeated Pyxis `/biblios/{id}/items` calls when rendering planned loans. Added createCachedFetcher helper and unit tests for cache hits/expiry. End-to-end tests remain green.
+
+### Session 2025-12-11 (Call number display check)
+- Completed TASK-063 (SPEC-loan-plan-001): Investigated missing 청구기호 in 대출 예정 목록. Root cause: legacy planned_loans rows were created before callNumber was stored; current pipeline already preserves callNumber when Pyxis sends it (non-numeric volume strings). No code change needed. Guidance: remove and re-add affected planned items so callNumber is persisted; future entries are unaffected.
+
+### Session 2025-12-11 (Call number preservation)
+- Completed TASK-064 (SPEC-loan-plan-001): Updated branch volume normalization to read explicit callNumber field from Pyxis branchVolumes, with fallback to non-numeric volume strings. Added tests for new-books and search handlers ensuring callNumber survives into planned-loan payloads. New planned loans now display 청구기호 when provided even alongside numeric volumes.

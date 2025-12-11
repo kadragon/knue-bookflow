@@ -347,5 +347,51 @@ describe('Search Handler', () => {
         },
       ]);
     });
+
+    it('should keep callNumber when provided separately from volumes', async () => {
+      const mockBooks: SearchBook[] = [
+        {
+          id: 3,
+          titleStatement: 'CallNumber Search',
+          author: 'Author',
+          publication: 'Pub, 2024',
+          branchVolumes: [
+            {
+              branchId: 30,
+              branchName: '법학도서관',
+              volumes: 4,
+              callNumber: '345.01 C123c',
+            },
+          ] as unknown as NewBookBranchVolume[],
+          biblioType: { name: 'Book' } as unknown as NewBookBiblioType,
+          thumbnailUrl: null,
+          isbn: null,
+          issn: null,
+          etcContent: null,
+          dateReceived: null,
+        },
+      ];
+
+      mockSearchBooks.mockResolvedValue({
+        data: {
+          list: mockBooks,
+          totalCount: 1,
+          isFuzzy: false,
+        },
+      });
+
+      const request = new Request('http://localhost/api/search?query=test');
+      const response = await handleSearchBooksApi(request);
+      const data = (await response.json()) as { items: SearchBookItem[] };
+
+      expect(data.items[0].branchVolumes).toEqual([
+        {
+          branchId: 30,
+          branchName: '법학도서관',
+          volumes: 4,
+          callNumber: '345.01 C123c',
+        },
+      ]);
+    });
   });
 });

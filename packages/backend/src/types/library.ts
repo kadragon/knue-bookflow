@@ -138,6 +138,7 @@ export interface NewBookBranchVolume {
   branchId: number;
   branchName: string;
   volumes: number;
+  callNumber?: string | null;
 }
 
 export interface NewBook {

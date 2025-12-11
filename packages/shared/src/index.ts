@@ -256,6 +256,7 @@ export interface CatalogBookItem {
   materialType: string | null;
   publication: string;
   branchVolumes: BranchAvailability[];
+  availability?: PlannedLoanAvailability | null;
 }
 
 // New Books API

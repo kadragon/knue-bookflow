@@ -13,6 +13,7 @@ export interface RawBranchVolume {
   volumes?: number | string | null;
   volume?: number | string | null;
   hasItem?: boolean | null;
+  callNumber?: string | null;
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
@@ -42,7 +43,12 @@ export function normalizeBranchVolume(
 
   // If volume is a string but not a number, treat it as callNumber
   let callNumber: string | null = null;
+  if (raw.callNumber && typeof raw.callNumber === 'string') {
+    callNumber = raw.callNumber.trim() || null;
+  }
+
   if (
+    !callNumber &&
     volumes === null &&
     volumesRaw &&
     typeof volumesRaw === 'string' &&

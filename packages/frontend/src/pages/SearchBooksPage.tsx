@@ -50,8 +50,50 @@ function SearchBookCard({
           .join(', ') || '소장 정보 없음'
       : '소장 정보 없음';
 
+  const callNumbersDisplay = [
+    ...new Set(
+      book.branchVolumes
+        .filter((bv) => bv.callNumber)
+        .map((bv) => bv.callNumber as string),
+    ),
+  ].join(', ');
+
+  /**
+   * Format due date for display
+   */
+  const formatDueDate = (date: string | null): string | null => {
+    if (!date) return null;
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    // Otherwise extract date part
+    return date.split('T')[0] || date.split(' ')[0] || date;
+  };
+
+  const renderAvailability = () => {
+    const availability = book.availability;
+    if (!availability) {
+      return null;
+    }
+
+    if (availability.status === 'available') {
+      return (
+        <Chip
+          label={`대출 가능 (${availability.availableItems}/${availability.totalItems}권)`}
+          size="small"
+          color="success"
+          sx={{ mt: 0.5 }}
+        />
+      );
+    }
+
+    const due = formatDueDate(availability.earliestDueDate);
+    const label = due ? `대출 중 · 반납예정 ${due}` : '대출 중';
+
+    return <Chip label={label} size="small" color="warning" sx={{ mt: 0.5 }} />;
+  };
+
   return (
-    <Card variant="outlined" sx={{ display: 'flex', height: 180 }}>
+    <Card variant="outlined" sx={{ display: 'flex', minHeight: 180 }}>
       <Box
         sx={{
           width: 120,
@@ -94,7 +136,7 @@ function SearchBookCard({
         )}
       </Box>
       <CardContent
-        sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}
+        sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}
       >
         <Typography
           variant="h6"
@@ -113,8 +155,18 @@ function SearchBookCard({
           </Typography>
         )}
         {book.isbn && (
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" display="block">
             ISBN: {book.isbn}
+          </Typography>
+        )}
+        {callNumbersDisplay && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: 0.5 }}
+          >
+            청구기호: {callNumbersDisplay}
           </Typography>
         )}
         <Stack
@@ -122,7 +174,7 @@ function SearchBookCard({
           spacing={1}
           flexWrap="wrap"
           useFlexGap
-          sx={{ mt: 'auto' }}
+          sx={{ mt: 0.5 }}
         >
           {book.materialType && (
             <Chip label={book.materialType} size="small" variant="outlined" />
@@ -134,6 +186,8 @@ function SearchBookCard({
             variant="outlined"
           />
         </Stack>
+
+        <Box sx={{ mt: 0.5 }}>{renderAvailability()}</Box>
 
         <Button
           variant="outlined"
