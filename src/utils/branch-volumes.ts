@@ -21,7 +21,7 @@ function toNumber(value: number | string | null | undefined): number | null {
     const trimmed = value.trim();
     if (!/^[-]?\d+$/.test(trimmed)) return null;
     const parsed = Number.parseInt(trimmed, 10);
-    return Number.isFinite(parsed) ? parsed : null;
+    return parsed;
   }
   return null;
 }
