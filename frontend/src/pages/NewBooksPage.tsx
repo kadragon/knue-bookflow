@@ -1,11 +1,13 @@
 import {
   AutoStories as AutoStoriesIcon,
+  BookmarkAdd as BookmarkAddIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import {
   Alert,
   AppBar,
   Box,
+  Button,
   Card,
   CardContent,
   CardMedia,
@@ -26,8 +28,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
+import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
+import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 
-// Trace: spec_id: SPEC-new-books-001, task_id: TASK-new-books
+// Trace: spec_id: SPEC-new-books-001, SPEC-loan-plan-001, task_id: TASK-new-books, TASK-043
 
 function useNewBooks(days: number, max: number) {
   return useQuery<NewBooksResponse>({
@@ -62,9 +67,13 @@ function formatAuthors(authorStr: string): string {
 
 interface NewBookCardProps {
   book: NewBookItem;
+  onPlan: (book: NewBookItem) => void;
+  isSaving: boolean;
 }
 
-function NewBookCard({ book }: NewBookCardProps) {
+function NewBookCard({ book, onPlan, isSaving }: NewBookCardProps) {
+  const branchSummary = summarizeBranches(book.branchVolumes);
+
   return (
     <Card
       variant="outlined"
@@ -157,6 +166,20 @@ function NewBookCard({ book }: NewBookCardProps) {
             {book.publisher}
           </Typography>
         )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+          {branchSummary}
+        </Typography>
+
+        <Button
+          variant="outlined"
+          startIcon={<BookmarkAddIcon />}
+          onClick={() => onPlan(book)}
+          disabled={isSaving}
+          sx={{ mt: 1, alignSelf: 'flex-start' }}
+        >
+          대출 예정
+        </Button>
       </CardContent>
     </Card>
   );
@@ -175,6 +198,12 @@ export default function NewBooksPage() {
   const [days, setDays] = useState(90);
   const [search, setSearch] = useState('');
   const { data, isLoading, isError, refetch } = useNewBooks(days, 100);
+  const {
+    mutate: planMutate,
+    isPending: isPlanPending,
+    feedback,
+    closeFeedback,
+  } = usePlannedLoanMutation();
 
   const filteredBooks = useMemo(() => {
     if (!data?.items) return [];
@@ -189,6 +218,10 @@ export default function NewBooksPage() {
         book.isbn?.toLowerCase().includes(searchLower),
     );
   }, [data, search]);
+
+  const handlePlan = (book: NewBookItem) => {
+    planMutate(buildFromNewBook(book));
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -308,11 +341,18 @@ export default function NewBooksPage() {
             }}
           >
             {filteredBooks.map((book) => (
-              <NewBookCard key={book.id} book={book} />
+              <NewBookCard
+                key={book.id}
+                book={book}
+                onPlan={handlePlan}
+                isSaving={isPlanPending}
+              />
             ))}
           </Box>
         )}
       </Container>
+
+      <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
     </Box>
   );
 }

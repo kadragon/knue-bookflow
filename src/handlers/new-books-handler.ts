@@ -69,6 +69,7 @@ function transformNewBook(book: NewBook) {
     isbn: book.isbn,
     materialType: book.biblioType?.name || null,
     publication: book.publication,
+    branchVolumes: book.branchVolumes || [],
   };
 }
 

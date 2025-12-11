@@ -1,4 +1,7 @@
-import { Search as SearchIcon } from '@mui/icons-material';
+import {
+  BookmarkAdd as BookmarkAddIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
 import {
   Alert,
   AppBar,
@@ -22,15 +25,29 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
+import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
+import { buildFromSearch } from '../plannedLoanPayload';
+
+// Trace: spec_id: SPEC-search-001, SPEC-loan-plan-001, task_id: TASK-042, TASK-043
 
 const MAX_RESULTS_PER_PAGE = 20;
 
-function SearchBookCard({ book }: { book: SearchBookItem }) {
+function SearchBookCard({
+  book,
+  onPlan,
+  isSaving,
+}: {
+  book: SearchBookItem;
+  onPlan: (book: SearchBookItem) => void;
+  isSaving: boolean;
+}) {
   const branchInfo =
     book.branchVolumes.length > 0
       ? book.branchVolumes
+          .filter((bv) => bv.branchName && bv.volumes !== undefined)
           .map((bv) => `${bv.branchName} (${bv.volumes})`)
-          .join(', ')
+          .join(', ') || '소장 정보 없음'
       : '소장 정보 없음';
 
   return (
@@ -117,6 +134,16 @@ function SearchBookCard({ book }: { book: SearchBookItem }) {
             variant="outlined"
           />
         </Stack>
+
+        <Button
+          variant="outlined"
+          startIcon={<BookmarkAddIcon />}
+          onClick={() => onPlan(book)}
+          disabled={isSaving}
+          sx={{ alignSelf: 'flex-start', mt: 1 }}
+        >
+          대출 예정
+        </Button>
       </CardContent>
     </Card>
   );
@@ -153,6 +180,13 @@ export default function SearchBooksPage() {
     placeholderData: keepPreviousData,
   });
 
+  const {
+    mutate: planMutate,
+    isPending: isPlanPending,
+    feedback,
+    closeFeedback,
+  } = usePlannedLoanMutation();
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
@@ -166,6 +200,10 @@ export default function SearchBooksPage() {
   ) => {
     setSearchParams({ q: queryParam, page: page.toString() });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePlan = (book: SearchBookItem) => {
+    planMutate(buildFromSearch(book));
   };
 
   const totalPages = data?.meta.totalCount
@@ -282,7 +320,12 @@ export default function SearchBooksPage() {
               <>
                 <Stack spacing={2} sx={{ mb: 4 }}>
                   {data.items.map((book) => (
-                    <SearchBookCard key={book.id} book={book} />
+                    <SearchBookCard
+                      key={book.id}
+                      book={book}
+                      onPlan={handlePlan}
+                      isSaving={isPlanPending}
+                    />
                   ))}
                 </Stack>
 
@@ -306,6 +349,8 @@ export default function SearchBooksPage() {
           </>
         )}
       </Container>
+
+      <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
     </Box>
   );
 }

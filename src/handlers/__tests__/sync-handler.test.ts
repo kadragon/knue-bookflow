@@ -6,6 +6,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AladinClient } from '../../services/aladin-client';
 import type { BookRepository } from '../../services/book-repository';
+import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
 import type { Charge, ChargeHistory } from '../../types';
 import { processCharge, processChargeHistory } from '../sync-handler';
 
@@ -197,6 +198,27 @@ describe('processCharge', () => {
     expect(status).toBe('updated');
     expect(mockAladinClient.lookupByIsbn).not.toHaveBeenCalled();
     expect(mockBookRepository.saveBook).toHaveBeenCalled();
+  });
+
+  it('deletes planned loan when loaned book appears (TEST-loan-plan-006)', async () => {
+    const charge = createMockCharge({ id: 777 });
+
+    const mockBookRepository = createMockBookRepository(null);
+    const mockAladinClient = createMockAladinClient(null);
+    const plannedRepo = {
+      deleteByLibraryBiblioId: vi.fn().mockResolvedValue(true),
+    } as unknown as PlannedLoanRepository;
+
+    await processCharge(
+      charge,
+      mockBookRepository,
+      mockAladinClient,
+      plannedRepo,
+    );
+
+    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(
+      charge.biblio.id,
+    );
   });
 
   it('returns unchanged when Aladin returns null for metadata recovery', async () => {

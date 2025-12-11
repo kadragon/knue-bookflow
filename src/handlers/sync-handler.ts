@@ -10,10 +10,12 @@ import {
   createBookRecord,
   createBookRepository,
   createLibraryClient,
+  createPlannedLoanRepository,
 } from '../services';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
 import type { LibraryClient } from '../services/library-client';
+import type { PlannedLoanRepository } from '../services/planned-loan-repository';
 import type { BookInfo, Charge, ChargeHistory, Env } from '../types';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
@@ -41,6 +43,7 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
   const libraryClient = createLibraryClient();
   const aladinClient = createAladinClient(env.ALADIN_API_KEY);
   const bookRepository = createBookRepository(env.DB);
+  const plannedLoanRepository = createPlannedLoanRepository(env.DB);
 
   const summary: SyncSummary = {
     total_charges: 0,
@@ -82,7 +85,12 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
 
     const results = await Promise.all(
       charges.map((charge) =>
-        processCharge(charge, bookRepository, aladinClient),
+        processCharge(
+          charge,
+          bookRepository,
+          aladinClient,
+          plannedLoanRepository,
+        ),
       ),
     );
 
@@ -161,10 +169,12 @@ export async function processCharge(
   charge: Charge,
   bookRepository: BookRepository,
   aladinClient: AladinClient,
+  plannedLoanRepository?: PlannedLoanRepository,
 ): Promise<SyncStatus> {
   const chargeId = String(charge.id);
   const existing = await bookRepository.findByChargeId(chargeId);
   const isbn = charge.biblio.isbn;
+  const biblioId = charge.biblio.id;
 
   if (!existing) {
     // Book not in DB - add with Aladin metadata
@@ -175,6 +185,10 @@ export async function processCharge(
     const bookInfo = await fetchBookInfo(isbn, aladinClient, 'new book');
     const record = createBookRecord(charge, bookInfo);
     await bookRepository.saveBook(record);
+
+    if (plannedLoanRepository) {
+      await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
+    }
     return 'added';
   }
 
@@ -212,7 +226,15 @@ export async function processCharge(
     }
 
     await bookRepository.saveBook(record);
+
+    if (plannedLoanRepository) {
+      await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
+    }
     return 'updated';
+  }
+
+  if (plannedLoanRepository) {
+    await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
   }
 
   return 'unchanged';

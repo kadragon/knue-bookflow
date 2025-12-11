@@ -199,8 +199,8 @@ export const deleteNote = async (
   return res.json();
 };
 
-// New Books API (신착 도서)
-export interface NewBookItem {
+// Catalog book shape shared by search and new-books
+export interface CatalogBookItem {
   id: number;
   title: string;
   author: string;
@@ -210,7 +210,11 @@ export interface NewBookItem {
   isbn: string | null;
   materialType: string | null;
   publication: string;
+  branchVolumes: BranchVolume[];
 }
+
+// New Books API (신착 도서)
+export type NewBookItem = CatalogBookItem;
 
 export interface NewBooksResponse {
   items: NewBookItem[];
@@ -243,17 +247,41 @@ export interface BranchVolume {
   volumes: number;
 }
 
-export interface SearchBookItem {
-  id: number;
+export type SearchBookItem = CatalogBookItem;
+
+// Planned Loan API
+export interface PlannedLoanPayload {
+  libraryId: number;
+  source: 'new_books' | 'search';
   title: string;
   author: string;
   publisher: string | null;
   year: string | null;
-  coverUrl: string | null;
   isbn: string | null;
+  coverUrl: string | null;
   materialType: string | null;
-  publication: string;
   branchVolumes: BranchVolume[];
+}
+
+export interface PlannedLoanItem extends PlannedLoanPayload {
+  id: number;
+  createdAt: string;
+}
+
+export interface PlannedLoansResponse {
+  items: PlannedLoanItem[];
+}
+
+async function handleApiError(
+  response: Response,
+  defaultMessage: string,
+): Promise<void> {
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || defaultMessage);
+  }
 }
 
 export interface SearchBooksResponse {
@@ -285,5 +313,43 @@ export const searchBooks = async (
     const error = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || 'Failed to search books');
   }
+  return res.json();
+};
+
+export const getPlannedLoans = async (): Promise<PlannedLoansResponse> => {
+  const res = await fetch('/api/planned-loans', {
+    headers: { Accept: 'application/json' },
+  });
+  await handleApiError(res, 'Failed to load planned loans');
+  return res.json();
+};
+
+export const createPlannedLoan = async (
+  payload: PlannedLoanPayload,
+): Promise<{ item: PlannedLoanItem }> => {
+  const res = await fetch('/api/planned-loans', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  await handleApiError(res, 'Failed to save planned loan');
+
+  return res.json();
+};
+
+export const deletePlannedLoan = async (
+  id: number,
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/planned-loans/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+
+  await handleApiError(res, 'Failed to delete planned loan');
+
   return res.json();
 };

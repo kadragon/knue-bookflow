@@ -122,3 +122,49 @@ export interface UpdateNoteRequest {
 export interface DeleteNoteResponse {
   success: boolean;
 }
+
+/**
+ * Branch availability info for planned loans
+ * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
+ */
+export interface BranchAvailability {
+  branchId: number;
+  branchName: string;
+  volumes: number;
+}
+
+/**
+ * Planned loan view model returned by API
+ * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
+ */
+export interface PlannedLoanViewModel {
+  id: number;
+  libraryId: number;
+  source: 'new_books' | 'search';
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  isbn: string | null;
+  coverUrl: string | null;
+  materialType: string | null;
+  branchVolumes: BranchAvailability[];
+  createdAt: string;
+}
+
+export interface PlannedLoansResponse {
+  items: PlannedLoanViewModel[];
+}
+
+export interface CreatePlannedLoanRequest {
+  libraryId: number;
+  source: 'new_books' | 'search';
+  title: string;
+  author: string;
+  publisher?: string | null;
+  year?: string | null;
+  isbn?: string | null;
+  coverUrl?: string | null;
+  materialType?: string | null;
+  branchVolumes?: BranchAvailability[];
+}

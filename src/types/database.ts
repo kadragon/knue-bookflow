@@ -58,3 +58,23 @@ export interface NoteSendStat {
   send_count: number;
   last_sent_at?: string | null;
 }
+
+/**
+ * Planned loan record for future borrowing list
+ * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
+ */
+export interface PlannedLoanRecord {
+  id?: number;
+  library_biblio_id: number;
+  source: 'new_books' | 'search';
+  title: string;
+  author: string;
+  publisher: string | null;
+  year: string | null;
+  isbn: string | null;
+  cover_url: string | null;
+  material_type: string | null;
+  branch_volumes: string; // JSON string of branch availability
+  created_at?: string;
+  updated_at?: string;
+}
