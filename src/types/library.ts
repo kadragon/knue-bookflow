@@ -125,3 +125,44 @@ export interface RenewalResponse {
     dueDate: string;
   };
 }
+
+// New Books (신착 도서) API types
+export interface NewBookBiblioType {
+  id: number;
+  name: string;
+  materialType: string;
+  biblioSchema: string;
+}
+
+export interface NewBookBranchVolume {
+  branchId: number;
+  branchName: string;
+  volumes: number;
+}
+
+export interface NewBook {
+  id: number;
+  biblioType: NewBookBiblioType;
+  thumbnailUrl: string | null;
+  isbn: string | null;
+  issn: string | null;
+  titleStatement: string;
+  author: string;
+  publication: string;
+  etcContent: string | null;
+  branchVolumes: NewBookBranchVolume[];
+  dateReceived: string | null;
+}
+
+export interface NewBooksResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    isFuzzy: boolean;
+    totalCount: number;
+    offset: number;
+    max: number;
+    list: NewBook[];
+  };
+}
