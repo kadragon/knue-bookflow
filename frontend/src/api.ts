@@ -199,8 +199,8 @@ export const deleteNote = async (
   return res.json();
 };
 
-// New Books API (신착 도서)
-export interface NewBookItem {
+// Catalog book shape shared by search and new-books
+export interface CatalogBookItem {
   id: number;
   title: string;
   author: string;
@@ -212,6 +212,9 @@ export interface NewBookItem {
   publication: string;
   branchVolumes: BranchVolume[];
 }
+
+// New Books API (신착 도서)
+export type NewBookItem = CatalogBookItem;
 
 export interface NewBooksResponse {
   items: NewBookItem[];
@@ -244,18 +247,7 @@ export interface BranchVolume {
   volumes: number;
 }
 
-export interface SearchBookItem {
-  id: number;
-  title: string;
-  author: string;
-  publisher: string | null;
-  year: string | null;
-  coverUrl: string | null;
-  isbn: string | null;
-  materialType: string | null;
-  publication: string;
-  branchVolumes: BranchVolume[];
-}
+export type SearchBookItem = CatalogBookItem;
 
 // Planned Loan API
 export interface PlannedLoanPayload {

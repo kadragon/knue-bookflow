@@ -3,12 +3,7 @@
  * Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
  */
 
-import type {
-  BranchVolume,
-  NewBookItem,
-  PlannedLoanPayload,
-  SearchBookItem,
-} from './api';
+import type { BranchVolume, CatalogBookItem, PlannedLoanPayload } from './api';
 
 function normalizeAuthor(author?: string | null): string {
   if (!author || author.trim() === '') {
@@ -17,10 +12,13 @@ function normalizeAuthor(author?: string | null): string {
   return author;
 }
 
-export function buildFromSearch(book: SearchBookItem): PlannedLoanPayload {
+function buildPlannedLoan(
+  book: CatalogBookItem,
+  source: 'new_books' | 'search',
+): PlannedLoanPayload {
   return {
     libraryId: book.id,
-    source: 'search',
+    source,
     title: book.title,
     author: normalizeAuthor(book.author),
     publisher: book.publisher ?? null,
@@ -32,20 +30,11 @@ export function buildFromSearch(book: SearchBookItem): PlannedLoanPayload {
   };
 }
 
-export function buildFromNewBook(book: NewBookItem): PlannedLoanPayload {
-  return {
-    libraryId: book.id,
-    source: 'new_books',
-    title: book.title,
-    author: normalizeAuthor(book.author),
-    publisher: book.publisher ?? null,
-    year: book.year ?? null,
-    isbn: book.isbn ?? null,
-    coverUrl: book.coverUrl ?? null,
-    materialType: book.materialType ?? null,
-    branchVolumes: book.branchVolumes ?? [],
-  };
-}
+export const buildFromSearch = (book: CatalogBookItem): PlannedLoanPayload =>
+  buildPlannedLoan(book, 'search');
+
+export const buildFromNewBook = (book: CatalogBookItem): PlannedLoanPayload =>
+  buildPlannedLoan(book, 'new_books');
 
 export function summarizeBranches(branches: BranchVolume[]): string {
   if (!branches || branches.length === 0) {
