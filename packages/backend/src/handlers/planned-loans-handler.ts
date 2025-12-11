@@ -32,6 +32,7 @@ const branchSchema = z.object({
   branchId: z.number({ required_error: 'branchId is required' }),
   branchName: z.string({ required_error: 'branchName is required' }),
   volumes: z.number({ required_error: 'volumes is required' }),
+  callNumber: z.string().nullable().optional(),
 });
 
 const plannedLoanSchema = z.object({

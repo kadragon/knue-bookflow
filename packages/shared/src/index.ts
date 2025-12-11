@@ -163,6 +163,7 @@ export interface BranchAvailability {
   branchId: number;
   branchName: string;
   volumes: number;
+  callNumber?: string | null;
 }
 
 /** Alias for compatibility */
