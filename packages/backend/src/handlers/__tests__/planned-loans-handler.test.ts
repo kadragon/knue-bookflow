@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Env, PlannedLoanRecord } from '../../types';
 import {
+  createCachedFetcher,
   handleCreatePlannedLoan,
   handleDeletePlannedLoan,
   handleGetPlannedLoans,
@@ -381,6 +382,62 @@ describe('summarizeAvailability', () => {
     expect(availability.availableItems).toBe(0);
     expect(availability.totalItems).toBe(2);
     expect(availability.earliestDueDate).toBe('2025-12-20 00:00:00');
+  });
+});
+
+describe('createCachedFetcher', () => {
+  it('caches availability within TTL', async () => {
+    vi.useFakeTimers();
+    const base = vi.fn().mockResolvedValue({
+      status: 'available',
+      totalItems: 2,
+      availableItems: 1,
+      earliestDueDate: null,
+    });
+
+    const cached = createCachedFetcher(base, 5 * 60 * 1000);
+
+    const first = await cached(123);
+    const second = await cached(123);
+
+    expect(first?.status).toBe('available');
+    expect(second?.status).toBe('available');
+    expect(base).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it('refreshes after TTL', async () => {
+    vi.useFakeTimers();
+    const base = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: 'available',
+        totalItems: 1,
+        availableItems: 1,
+        earliestDueDate: null,
+      })
+      .mockResolvedValueOnce({
+        status: 'loaned_out',
+        totalItems: 1,
+        availableItems: 0,
+        earliestDueDate: '2025-12-31',
+      });
+
+    const cached = createCachedFetcher(base, 1000);
+
+    const first = await cached(1);
+    expect(first?.status).toBe('available');
+    expect(base).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1500);
+
+    const second = await cached(1);
+    expect(second?.status).toBe('loaned_out');
+    expect(second?.earliestDueDate).toBe('2025-12-31');
+    expect(base).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
   });
 });
 

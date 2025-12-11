@@ -94,6 +94,8 @@ type AvailabilityFetcher = (
   libraryId: number,
 ) => Promise<PlannedLoanAvailability | null>;
 
+const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
   const totalItems = items.length;
   const availableItems = items.filter((item) => {
@@ -131,15 +133,40 @@ function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
 }
 
 // Exported for testing
-export { summarizeAvailability };
+export { summarizeAvailability, createCachedFetcher };
+
+function createCachedFetcher(
+  baseFetcher: AvailabilityFetcher,
+  ttlMs: number = AVAILABILITY_TTL_MS,
+): AvailabilityFetcher {
+  const cache = new Map<
+    number,
+    { value: PlannedLoanAvailability | null; expiresAt: number }
+  >();
+
+  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
+    const now = Date.now();
+    const cached = cache.get(libraryId);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+
+    const value = await baseFetcher(libraryId);
+    cache.set(libraryId, { value, expiresAt: now + ttlMs });
+    return value;
+  };
+}
 
 function createAvailabilityFetcher(): AvailabilityFetcher {
   const client = createLibraryClient();
-
-  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
+  const fetcher: AvailabilityFetcher = async (
+    libraryId: number,
+  ): Promise<PlannedLoanAvailability | null> => {
     const items = await client.getBiblioItems(libraryId);
     return summarizeAvailability(items);
   };
+
+  return createCachedFetcher(fetcher);
 }
 
 function validatePayload(body: unknown): {
