@@ -27,6 +27,8 @@ import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { Header } from '../components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromSearch } from '../plannedLoanPayload';
 
@@ -282,41 +284,9 @@ export default function SearchBooksPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Container maxWidth="lg">
-          <Toolbar
-            disableGutters
-            sx={{ justifyContent: 'space-between', py: 2 }}
-          >
-            <Box>
-              <Typography
-                variant="overline"
-                color="secondary"
-                sx={{ letterSpacing: 2, fontWeight: 600 }}
-              >
-                KNUE BookFlow
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
-              >
-                도서 검색
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/')}
-              color="inherit"
-            >
-              내 책장
-            </Button>
-          </Toolbar>
-        </Container>
-      </AppBar>
+      <Header title="도서 검색" />
 
-      <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         <Box component="form" onSubmit={handleSearch} sx={{ mb: 4, mt: 3 }}>
           <TextField
             fullWidth
