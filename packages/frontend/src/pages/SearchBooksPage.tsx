@@ -28,6 +28,7 @@ import { searchBooks } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { Header } from '../components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromSearch } from '../plannedLoanPayload';
 
@@ -285,7 +286,7 @@ export default function SearchBooksPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Header title="도서 검색" />
 
-      <Container maxWidth="lg" sx={{ pb: 10 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         <Box component="form" onSubmit={handleSearch} sx={{ mb: 4, mt: 3 }}>
           <TextField
             fullWidth

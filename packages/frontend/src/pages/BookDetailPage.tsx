@@ -14,7 +14,6 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Chip,
@@ -31,7 +30,6 @@ import {
   Snackbar,
   Stack,
   TextField,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,6 +44,8 @@ import {
   updateNote,
   updateReadStatus,
 } from '../api';
+import { Header } from '../components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { NOTES_LIST_SX } from './bookDetailLayout';
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
@@ -565,38 +565,16 @@ export default function BookDetailPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ py: 2 }}>
-            <IconButton
-              onClick={() => navigate('/')}
-              sx={{ mr: 2 }}
-              color="inherit"
-            >
-              <ArrowBackIcon />
-            </IconButton>
-            <Box>
-              <Typography
-                variant="overline"
-                color="secondary"
-                sx={{ letterSpacing: 2, fontWeight: 600 }}
-              >
-                KNUE BookFlow
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
-              >
-                Book Detail
-              </Typography>
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
+      <Header
+        title="Book Detail"
+        leading={
+          <IconButton onClick={() => navigate('/')} color="inherit">
+            <ArrowBackIcon />
+          </IconButton>
+        }
+      />
 
-      <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />

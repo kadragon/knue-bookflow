@@ -31,6 +31,7 @@ import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { Header } from '../components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 
@@ -259,7 +260,7 @@ export default function NewBooksPage() {
         }
       />
 
-      <Container maxWidth="lg" sx={{ pb: 10 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         {/* Filters */}
         <Box
           sx={{

@@ -29,6 +29,7 @@ import {
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { Header } from '../components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { summarizeBranches } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
@@ -251,7 +252,7 @@ export default function PlannedLoansPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <Header title="대출 예정" />
 
-      <Container maxWidth="lg" sx={{ pb: 10 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />

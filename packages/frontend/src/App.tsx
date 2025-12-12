@@ -51,6 +51,7 @@ import {
 } from './api';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Header } from './components/Header';
+import { PAGE_CONTAINER_PADDING_BOTTOM } from './constants';
 import {
   defaultFilters,
   type Filters as FilterState,
@@ -886,7 +887,7 @@ function BookshelfPage() {
         }
       />
 
-      <Container maxWidth="lg" sx={{ pb: 10 }}>
+      <Container maxWidth="lg" sx={{ pb: PAGE_CONTAINER_PADDING_BOTTOM }}>
         <FilterBar filters={filters} onChange={setFilters} />
 
         {isLoading && (
