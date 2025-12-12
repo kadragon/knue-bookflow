@@ -28,6 +28,7 @@ import {
 } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { Header } from '../components/Header';
 import { summarizeBranches } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
@@ -248,42 +249,9 @@ export default function PlannedLoansPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Container maxWidth="lg">
-          <Toolbar
-            disableGutters
-            sx={{ justifyContent: 'space-between', py: 2 }}
-          >
-            <Box>
-              <Typography
-                variant="overline"
-                color="secondary"
-                sx={{ letterSpacing: 2, fontWeight: 600 }}
-              >
-                KNUE BookFlow
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
-              >
-                대출 예정
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              <Button variant="outlined" onClick={() => navigate('/search')}>
-                도서 검색
-              </Button>
-              <Button variant="contained" onClick={() => navigate('/')}>
-                내 책장
-              </Button>
-            </Stack>
-          </Toolbar>
-        </Container>
-      </AppBar>
+      <Header title="대출 예정" />
 
-      <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Container maxWidth="lg" sx={{ pb: 10 }}>
         {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />

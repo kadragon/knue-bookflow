@@ -49,6 +49,8 @@ import {
   updateNote,
   updateReadStatus,
 } from './api';
+import { BottomNavigation } from './components/BottomNavigation';
+import { Header } from './components/Header';
 import {
   defaultFilters,
   type Filters as FilterState,
@@ -860,76 +862,31 @@ function BookshelfPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Container maxWidth="lg">
-          <Toolbar
-            disableGutters
-            sx={{ justifyContent: 'space-between', py: 2 }}
-          >
-            <Box>
-              <Typography
-                variant="overline"
-                color="secondary"
-                sx={{ letterSpacing: 2, fontWeight: 600 }}
-              >
-                KNUE BookFlow
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
-              >
-                Bookshelf
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="outlined"
-                startIcon={<SearchIcon />}
-                onClick={() => navigate('/search')}
-                color="secondary"
-              >
-                검색
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<BookmarkAddIcon />}
-                onClick={() => navigate('/planned')}
-                color="secondary"
-              >
-                대출 예정
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<AutoStoriesIcon />}
-                onClick={() => navigate('/new-books')}
-                color="secondary"
-              >
-                신착
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => triggerMutation.mutate()}
-                disabled={triggerMutation.isPending}
-                color="primary"
-              >
-                갱신
-              </Button>
-              <IconButton
-                onClick={() => refetch()}
-                disabled={isLoading}
-                color="inherit"
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Stack>
-          </Toolbar>
-        </Container>
-      </AppBar>
+      <Header
+        title="Bookshelf"
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => triggerMutation.mutate()}
+              disabled={triggerMutation.isPending}
+              color="primary"
+            >
+              갱신
+            </Button>
+            <IconButton
+              onClick={() => refetch()}
+              disabled={isLoading}
+              color="inherit"
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Stack>
+        }
+      />
 
-      <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Container maxWidth="lg" sx={{ pb: 10 }}>
         <FilterBar filters={filters} onChange={setFilters} />
 
         {isLoading && (
@@ -1010,12 +967,15 @@ function BookshelfPage() {
 // Trace: spec_id: SPEC-book-detail-001, SPEC-new-books-001, SPEC-search-001, SPEC-loan-plan-001, task_id: TASK-030, TASK-new-books, TASK-search, TASK-043
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<BookshelfPage />} />
-      <Route path="/books/:id" element={<BookDetailPage />} />
-      <Route path="/planned" element={<PlannedLoansPage />} />
-      <Route path="/new-books" element={<NewBooksPage />} />
-      <Route path="/search" element={<SearchBooksPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<BookshelfPage />} />
+        <Route path="/books/:id" element={<BookDetailPage />} />
+        <Route path="/planned" element={<PlannedLoansPage />} />
+        <Route path="/new-books" element={<NewBooksPage />} />
+        <Route path="/search" element={<SearchBooksPage />} />
+      </Routes>
+      <BottomNavigation />
+    </>
   );
 }

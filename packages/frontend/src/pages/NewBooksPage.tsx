@@ -30,6 +30,7 @@ import { Link } from 'react-router-dom';
 import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
+import { Header } from '../components/Header';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 
@@ -245,48 +246,20 @@ export default function NewBooksPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Container maxWidth="lg">
-          <Toolbar
-            disableGutters
-            sx={{ justifyContent: 'space-between', py: 2 }}
+      <Header
+        title="New Books"
+        actions={
+          <IconButton
+            onClick={() => refetch()}
+            disabled={isLoading}
+            color="inherit"
           >
-            <Box>
-              <Typography
-                component={Link}
-                to="/"
-                variant="overline"
-                color="secondary"
-                sx={{
-                  letterSpacing: 2,
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline' },
-                }}
-              >
-                KNUE BookFlow
-              </Typography>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
-              >
-                New Books
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={() => refetch()}
-              disabled={isLoading}
-              color="inherit"
-            >
-              <RefreshIcon />
-            </IconButton>
-          </Toolbar>
-        </Container>
-      </AppBar>
+            <RefreshIcon />
+          </IconButton>
+        }
+      />
 
-      <Container maxWidth="lg" sx={{ pb: 8 }}>
+      <Container maxWidth="lg" sx={{ pb: 10 }}>
         {/* Filters */}
         <Box
           sx={{
