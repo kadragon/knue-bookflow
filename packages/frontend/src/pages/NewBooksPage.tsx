@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
+import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
@@ -69,9 +70,15 @@ interface NewBookCardProps {
   book: NewBookItem;
   onPlan: (book: NewBookItem) => void;
   isSaving: boolean;
+  onImageClick: (isbn: string) => void;
 }
 
-function NewBookCard({ book, onPlan, isSaving }: NewBookCardProps) {
+function NewBookCard({
+  book,
+  onPlan,
+  isSaving,
+  onImageClick,
+}: NewBookCardProps) {
   const branchSummary = summarizeBranches(book.branchVolumes);
 
   return (
@@ -87,6 +94,12 @@ function NewBookCard({ book, onPlan, isSaving }: NewBookCardProps) {
           display: 'flex',
           justifyContent: 'center',
           bgcolor: 'background.paper',
+          cursor: book.isbn ? 'pointer' : 'default',
+        }}
+        onClick={() => {
+          if (book.isbn) {
+            onImageClick(book.isbn);
+          }
         }}
       >
         {book.coverUrl ? (
@@ -99,6 +112,12 @@ function NewBookCard({ book, onPlan, isSaving }: NewBookCardProps) {
               height: 140,
               borderRadius: 1,
               objectFit: 'cover',
+              transition: 'transform 0.2s',
+              '&:hover': book.isbn
+                ? {
+                    transform: 'scale(1.05)',
+                  }
+                : {},
             }}
           />
         ) : (
@@ -197,6 +216,7 @@ function EmptyState() {
 export default function NewBooksPage() {
   const [days, setDays] = useState(90);
   const [search, setSearch] = useState('');
+  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
   const { data, isLoading, isError, refetch } = useNewBooks(days, 100);
   const {
     mutate: planMutate,
@@ -346,6 +366,7 @@ export default function NewBooksPage() {
                 book={book}
                 onPlan={handlePlan}
                 isSaving={isPlanPending}
+                onImageClick={setSelectedIsbn}
               />
             ))}
           </Box>
@@ -353,6 +374,11 @@ export default function NewBooksPage() {
       </Container>
 
       <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
+
+      <BookDetailModal
+        isbn={selectedIsbn}
+        onClose={() => setSelectedIsbn(null)}
+      />
     </Box>
   );
 }

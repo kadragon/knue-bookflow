@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
+import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromSearch } from '../plannedLoanPayload';
@@ -37,10 +38,12 @@ function SearchBookCard({
   book,
   onPlan,
   isSaving,
+  onImageClick,
 }: {
   book: SearchBookItem;
   onPlan: (book: SearchBookItem) => void;
   isSaving: boolean;
+  onImageClick: (isbn: string) => void;
 }) {
   const branchInfo =
     book.branchVolumes.length > 0
@@ -103,6 +106,12 @@ function SearchBookCard({
           justifyContent: 'center',
           bgcolor: 'background.paper',
           p: 2,
+          cursor: book.isbn ? 'pointer' : 'default',
+        }}
+        onClick={() => {
+          if (book.isbn) {
+            onImageClick(book.isbn);
+          }
         }}
       >
         {book.coverUrl ? (
@@ -115,6 +124,12 @@ function SearchBookCard({
               height: '100%',
               objectFit: 'contain',
               borderRadius: 1,
+              transition: 'transform 0.2s',
+              '&:hover': book.isbn
+                ? {
+                    transform: 'scale(1.05)',
+                  }
+                : {},
             }}
           />
         ) : (
@@ -219,6 +234,7 @@ export default function SearchBooksPage() {
   const queryParam = searchParams.get('q') || '';
   const pageParam = validatePageParam(searchParams.get('page'));
   const [searchInput, setSearchInput] = useState(queryParam);
+  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
   // Sync input when URL changes (e.g. back button)
   useEffect(() => {
@@ -379,6 +395,7 @@ export default function SearchBooksPage() {
                       book={book}
                       onPlan={handlePlan}
                       isSaving={isPlanPending}
+                      onImageClick={setSelectedIsbn}
                     />
                   ))}
                 </Stack>
@@ -405,6 +422,11 @@ export default function SearchBooksPage() {
       </Container>
 
       <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
+
+      <BookDetailModal
+        isbn={selectedIsbn}
+        onClose={() => setSelectedIsbn(null)}
+      />
     </Box>
   );
 }
