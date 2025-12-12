@@ -17,13 +17,43 @@ interface BookDetailModalProps {
   onClose: () => void;
 }
 
+interface BookDetailSectionProps {
+  title: string;
+  content?: string;
+}
+
+function BookDetailSection({ title, content }: BookDetailSectionProps) {
+  if (!content) {
+    return null;
+  }
+
+  return (
+    <>
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+        {title}
+      </Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{
+          whiteSpace: 'pre-line',
+          lineHeight: 1.8,
+        }}
+      >
+        {content}
+      </Typography>
+    </>
+  );
+}
+
 export function BookDetailModal({ isbn, onClose }: BookDetailModalProps) {
   const open = isbn !== null;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['book-detail', isbn],
     queryFn: () => getBookByIsbn(isbn!),
-    enabled: open && !!isbn,
+    enabled: !!isbn,
     staleTime: 1000 * 60 * 30, // 30 minutes
   });
 
@@ -119,44 +149,10 @@ export function BookDetailModal({ isbn, onClose }: BookDetailModalProps) {
             </Box>
 
             {/* Description */}
-            {book.description && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  책 소개
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    whiteSpace: 'pre-line',
-                    lineHeight: 1.8,
-                  }}
-                >
-                  {book.description}
-                </Typography>
-              </>
-            )}
+            <BookDetailSection title="책 소개" content={book.description} />
 
             {/* Table of Contents */}
-            {book.tableOfContents && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  목차
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    whiteSpace: 'pre-line',
-                    lineHeight: 1.8,
-                  }}
-                >
-                  {book.tableOfContents}
-                </Typography>
-              </>
-            )}
+            <BookDetailSection title="목차" content={book.tableOfContents} />
           </Box>
         )}
       </DialogContent>

@@ -33,15 +33,17 @@ import { summarizeBranches } from '../plannedLoanPayload';
 // Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
 //        task_id: TASK-043, TASK-061
 
+interface PlannedLoanCardProps {
+  item: PlannedLoanItem;
+  onRemove: (id: number) => void;
+  onImageClick: (isbn: string) => void;
+}
+
 function PlannedLoanCard({
   item,
   onRemove,
   onImageClick,
-}: {
-  item: PlannedLoanItem;
-  onRemove: (id: number) => void;
-  onImageClick: (isbn: string) => void;
-}) {
+}: PlannedLoanCardProps) {
   const branchSummary = summarizeBranches(item.branchVolumes);
 
   /**

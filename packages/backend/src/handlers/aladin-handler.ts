@@ -6,6 +6,7 @@
 
 import { createAladinClient } from '../services';
 import type { BookInfo, Env } from '../types';
+import { jsonResponse } from '../utils';
 
 /**
  * Handle GET /api/aladin/isbn/:isbn
@@ -20,26 +21,17 @@ export async function handleGetBookByIsbn(
     const bookInfo = await aladinClient.lookupByIsbn(isbn);
 
     if (!bookInfo) {
-      return new Response(JSON.stringify({ error: 'Book not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Book not found' }, { status: 404 });
     }
 
-    return new Response(JSON.stringify({ book: bookInfo }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ book: bookInfo }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[AladinHandler] Failed to fetch book: ${message}`);
 
-    return new Response(
-      JSON.stringify({ error: 'Failed to fetch book information' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
+    return jsonResponse(
+      { error: 'Failed to fetch book information' },
+      { status: 500 },
     );
   }
 }

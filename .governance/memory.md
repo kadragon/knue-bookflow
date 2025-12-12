@@ -219,6 +219,9 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
   - Solution: Installed `@testing-library/react` and `jsdom`. Configured Vitest Workspaces to separate Worker (Node) and Frontend (jsdom) environments.
   - Outcome: `npm test` now runs both worker logic tests and a frontend `App` smoke test.
 
+### Session 2025-12-12
+- Completed TASK-065 (SPEC-frontend-001): Restored default loan-state filter to `on_loan` in the Bookshelf UI so the main page initially shows only currently borrowed books. Updated `filterBooks` unit test accordingly.
+
 ### Session 2025-12-11 (governance tidy)
 - Completed TASK-040 (SPEC-governance-001): Compacted task/governance registries.
   - Cleared backlog to only pending tasks (now empty), normalized done.yaml into a single completed_tasks list, and reset current.yaml to null.
