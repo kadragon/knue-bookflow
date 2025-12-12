@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultFilters, type Filters, filterBooks } from './filterBooks';
 
-// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029
+// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029, TASK-065
 
 describe('filterBooks', () => {
   const items = [
@@ -62,8 +62,8 @@ describe('filterBooks', () => {
     expect(filterBooks(items, filters)).toEqual(items);
   });
 
-  it('exposes default filters with loan state set to all', () => {
-    expect(defaultFilters.loanState).toBe('all');
+  it("exposes default filters with loan state set to 'on_loan'", () => {
+    expect(defaultFilters.loanState).toBe('on_loan');
   });
 
   it('applies combined search and stat filters', () => {

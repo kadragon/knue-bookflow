@@ -5,6 +5,7 @@
  * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023
  */
 
+import { handleGetBookByIsbn } from './handlers/aladin-handler';
 import {
   handleBooksApi,
   handleGetBook,
@@ -96,6 +97,13 @@ export default {
     // Library search API endpoint
     if (url.pathname === '/api/search' && request.method === 'GET') {
       return handleSearchBooksApi(request);
+    }
+
+    // Aladin book lookup by ISBN
+    const aladinIsbnMatch = url.pathname.match(/^\/api\/aladin\/isbn\/(.+)$/);
+    if (aladinIsbnMatch && request.method === 'GET') {
+      const isbn = decodeURIComponent(aladinIsbnMatch[1]);
+      return handleGetBookByIsbn(env, isbn);
     }
 
     // Planned loans API endpoints

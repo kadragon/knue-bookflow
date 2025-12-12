@@ -81,3 +81,11 @@ completed_tasks:
     result: "Captured explicit callNumber from Pyxis branchVolumes by updating normalization and tests; new planned loans now preserve call numbers even when volumes is numeric."
     test_refs:
       - "npm test -- packages/backend/src/handlers/__tests__/new-books-handler.test.ts packages/backend/src/handlers/__tests__/search-handler.test.ts"
+  - id: TASK-065
+    spec_id: SPEC-frontend-001
+    status: completed
+    completed_at: "2025-12-12T09:41:00Z"
+    result: "Changed frontend default loanState filter to 'on_loan' so main Bookshelf page shows only currently borrowed books on initial load."
+    test_refs:
+      - TEST-frontend-007
+      - "npm test -- filterBooks"

@@ -26,19 +26,24 @@ import {
   getPlannedLoans,
   type PlannedLoanItem,
 } from '../api';
+import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { summarizeBranches } from '../plannedLoanPayload';
 
 // Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
 //        task_id: TASK-043, TASK-061
 
+interface PlannedLoanCardProps {
+  item: PlannedLoanItem;
+  onRemove: (id: number) => void;
+  onImageClick: (isbn: string) => void;
+}
+
 function PlannedLoanCard({
   item,
   onRemove,
-}: {
-  item: PlannedLoanItem;
-  onRemove: (id: number) => void;
-}) {
+  onImageClick,
+}: PlannedLoanCardProps) {
   const branchSummary = summarizeBranches(item.branchVolumes);
 
   /**
@@ -98,8 +103,8 @@ function PlannedLoanCard({
     >
       <Box
         sx={{
-          width: 80,
-          height: 110,
+          width: 120,
+          height: 160,
           borderRadius: 1,
           bgcolor: 'background.paper',
           display: 'flex',
@@ -107,6 +112,18 @@ function PlannedLoanCard({
           justifyContent: 'center',
           overflow: 'hidden',
           flexShrink: 0,
+          cursor: item.isbn ? 'pointer' : 'default',
+          transition: 'transform 0.2s',
+          '&:hover': item.isbn
+            ? {
+                transform: 'scale(1.05)',
+              }
+            : {},
+        }}
+        onClick={() => {
+          if (item.isbn) {
+            onImageClick(item.isbn);
+          }
         }}
       >
         {item.coverUrl ? (
@@ -146,7 +163,7 @@ function PlannedLoanCard({
         {(() => {
           const callNumbersDisplay = item.branchVolumes
             .filter((b) => b.callNumber)
-            .map((b) => `${b.branchName}(${b.callNumber})`)
+            .map((b) => b.callNumber)
             .join(', ');
           return callNumbersDisplay ? (
             <Typography
@@ -190,6 +207,7 @@ export default function PlannedLoansPage() {
     message: string;
     severity: 'success' | 'error' | 'info' | 'warning';
   }>({ open: false, message: '', severity: 'success' });
+  const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['planned-loans'],
@@ -304,6 +322,7 @@ export default function PlannedLoansPage() {
                 key={item.id}
                 item={item}
                 onRemove={handleRemove}
+                onImageClick={setSelectedIsbn}
               />
             ))}
           </Box>
@@ -313,6 +332,11 @@ export default function PlannedLoansPage() {
       <FeedbackSnackbar
         feedback={snackbar}
         onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+      />
+
+      <BookDetailModal
+        isbn={selectedIsbn}
+        onClose={() => setSelectedIsbn(null)}
       />
     </Box>
   );

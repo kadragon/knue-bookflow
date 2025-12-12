@@ -1,4 +1,4 @@
-// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029
+// Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029, TASK-065
 
 export type LoanState = 'on_loan' | 'returned';
 export type StatFilter = 'none' | 'on_loan' | 'incomplete' | 'completed';
@@ -19,7 +19,7 @@ export interface Filters {
 
 export const defaultFilters: Filters = {
   search: '',
-  loanState: 'all',
+  loanState: 'on_loan',
   stat: 'none',
 };
 
