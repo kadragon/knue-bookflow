@@ -38,11 +38,12 @@ import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 // Trace: spec_id: SPEC-new-books-001, SPEC-loan-plan-001, task_id: TASK-new-books, TASK-043, TASK-066
 
 function useNewBooks(days: number, max: number) {
-  return useInfiniteQuery<NewBooksResponse>({
+  return useInfiniteQuery({
     queryKey: ['newBooks', days, max],
-    queryFn: ({ pageParam = 0 }) => getNewBooks(days, max, pageParam as number),
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      getNewBooks(days, max, pageParam),
     staleTime: 1000 * 60 * 5, // 5 minutes
-    getNextPageParam: (lastPage) => {
+    getNextPageParam: (lastPage: NewBooksResponse) => {
       return lastPage.meta.hasMore
         ? lastPage.meta.offset + lastPage.meta.max
         : undefined;
@@ -382,7 +383,7 @@ export default function NewBooksPage() {
             >
               {filteredBooks.map((book) => (
                 <NewBookCard
-                  key={`${book.id}-${book.isbn}`}
+                  key={book.id}
                   book={book}
                   onPlan={handlePlan}
                   isSaving={isPlanPending}
