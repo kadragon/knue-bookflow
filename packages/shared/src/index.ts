@@ -266,6 +266,10 @@ export interface NewBooksResponse {
   items: NewBookItem[];
   meta: {
     count: number;
+    totalCount: number;
+    offset: number;
+    max: number;
+    hasMore: boolean;
     days: number;
     fromDate: string;
     toDate: string;

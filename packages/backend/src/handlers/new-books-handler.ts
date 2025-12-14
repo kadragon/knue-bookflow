@@ -77,6 +77,7 @@ function transformNewBook(book: NewBook) {
 export interface NewBooksQuery {
   days?: number;
   max?: number;
+  offset?: number;
 }
 
 /**
@@ -84,16 +85,19 @@ export interface NewBooksQuery {
  * Fetches new books from the library within the specified date range
  *
  * Query parameters:
- * - days: Number of days to look back (default: 90)
- * - max: Maximum number of results (default: 50)
+ * - days: Number of days to look back (default: 30)
+ * - max: Maximum number of results per page (default: 50)
+ * - offset: Offset for pagination (default: 0)
  */
 export async function handleNewBooksApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const daysParam = url.searchParams.get('days');
   const maxParam = url.searchParams.get('max');
+  const offsetParam = url.searchParams.get('offset');
 
-  const days = daysParam ? parseInt(daysParam, 10) : 90;
+  const days = daysParam ? parseInt(daysParam, 10) : 30;
   const max = maxParam ? parseInt(maxParam, 10) : 50;
+  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
 
   // Validate parameters
   if (Number.isNaN(days) || days < 1 || days > 365) {
@@ -116,6 +120,16 @@ export async function handleNewBooksApi(request: Request): Promise<Response> {
     );
   }
 
+  if (Number.isNaN(offset) || offset < 0) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid offset parameter (must be >= 0)' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  }
+
   try {
     const libraryClient = createLibraryClient();
 
@@ -124,19 +138,26 @@ export async function handleNewBooksApi(request: Request): Promise<Response> {
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - days);
 
-    const newBooks = await libraryClient.getNewBooks(
+    const response = await libraryClient.getNewBooks(
       formatDate(fromDate),
       formatDate(toDate),
       max,
+      offset,
     );
 
-    const items = newBooks.map(transformNewBook);
+    const items = response.data.list.map(transformNewBook);
+    const totalCount = response.data.totalCount;
+    const hasMore = offset + items.length < totalCount;
 
     return new Response(
       JSON.stringify({
         items,
         meta: {
           count: items.length,
+          totalCount,
+          offset,
+          max,
+          hasMore,
           days,
           fromDate: formatDate(fromDate),
           toDate: formatDate(toDate),

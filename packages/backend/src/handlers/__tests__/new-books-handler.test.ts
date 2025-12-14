@@ -45,20 +45,31 @@ describe('New Books Handler', () => {
   });
 
   describe('handleNewBooksApi', () => {
-    it('should return new books with default parameters', async () => {
+    it('should return new books with default parameters (TEST-new-books-002, TEST-new-books-003)', async () => {
       const request = new Request('http://localhost/api/new-books');
-      mockGetNewBooks.mockResolvedValue([
-        {
-          id: 1,
-          titleStatement: 'Book Title',
-          author: 'Author',
-          publication: 'Seoul : Publisher, 2024',
-          isbn: '1234567890',
-          thumbnailUrl: 'http://example.com/cover.jpg',
-          biblioType: { name: 'Book' },
-          branchVolumes: [],
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 1,
+          offset: 0,
+          max: 50,
+          list: [
+            {
+              id: 1,
+              titleStatement: 'Book Title',
+              author: 'Author',
+              publication: 'Seoul : Publisher, 2024',
+              isbn: '1234567890',
+              thumbnailUrl: 'http://example.com/cover.jpg',
+              biblioType: { name: 'Book' },
+              branchVolumes: [],
+            },
+          ],
         },
-      ]);
+      });
 
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(200);
@@ -79,32 +90,47 @@ describe('New Books Handler', () => {
         publication: 'Seoul : Publisher, 2024',
         branchVolumes: [],
       });
-      expect(body.meta.days).toBe(90); // Default
+      expect(body.meta.days).toBe(30); // Default changed from 90 to 30
+      expect(body.meta.max).toBe(50); // Default
+      expect(body.meta.offset).toBe(0); // Default
+      expect(body.meta.totalCount).toBe(1);
+      expect(body.meta.hasMore).toBe(false);
     });
 
     it('normalizes branch volumes with id/name/volume shape (TEST-loan-plan-007)', async () => {
       const request = new Request('http://localhost/api/new-books');
-      mockGetNewBooks.mockResolvedValue([
-        {
-          id: 2,
-          titleStatement: 'Another Book',
-          author: 'Author',
-          publication: 'Seoul : Publisher, 2024',
-          isbn: '1234567890',
-          thumbnailUrl: 'http://example.com/cover.jpg',
-          biblioType: { name: 'Book' },
-          branchVolumes: [
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 1,
+          offset: 0,
+          max: 50,
+          list: [
             {
-              id: 10,
-              name: '본관',
-              volume: '616.85 B123',
-              cState: '대출가능',
-              cStateCode: 'READY',
-              hasItem: true,
+              id: 2,
+              titleStatement: 'Another Book',
+              author: 'Author',
+              publication: 'Seoul : Publisher, 2024',
+              isbn: '1234567890',
+              thumbnailUrl: 'http://example.com/cover.jpg',
+              biblioType: { name: 'Book' },
+              branchVolumes: [
+                {
+                  id: 10,
+                  name: '본관',
+                  volume: '616.85 B123',
+                  cState: '대출가능',
+                  cStateCode: 'READY',
+                  hasItem: true,
+                },
+              ],
             },
           ],
         },
-      ]);
+      });
 
       const response = await handleNewBooksApi(request);
       const body = (await response.json()) as NewBooksResponse & {
@@ -123,9 +149,20 @@ describe('New Books Handler', () => {
 
     it('should respect days and max parameters', async () => {
       const request = new Request(
-        'http://localhost/api/new-books?days=30&max=10',
+        'http://localhost/api/new-books?days=60&max=10',
       );
-      mockGetNewBooks.mockResolvedValue([]);
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 0,
+          offset: 0,
+          max: 10,
+          list: [],
+        },
+      });
 
       const response = await handleNewBooksApi(request);
       expect(response.status).toBe(200);
@@ -133,12 +170,13 @@ describe('New Books Handler', () => {
       const body = (await response.json()) as NewBooksResponse & {
         error?: string;
       };
-      expect(body.meta.days).toBe(30);
+      expect(body.meta.days).toBe(60);
 
       expect(mockGetNewBooks).toHaveBeenCalledWith(
         expect.any(String), // fromDate
         expect.any(String), // toDate
         10, // max
+        0, // offset (default)
       );
     });
 
@@ -176,19 +214,30 @@ describe('New Books Handler', () => {
 
     it('should correctly map inconsistent branchVolumes', async () => {
       const request = new Request('http://localhost/api/new-books');
-      mockGetNewBooks.mockResolvedValue([
-        {
-          id: 1,
-          titleStatement: 'Book',
-          author: 'Author',
-          publication: 'Pub, 2024',
-          biblioType: { name: 'Book' },
-          branchVolumes: [
-            { id: 10, name: 'Main Lib', volume: 5 }, // Inconsistent keys
-            { branchId: 20, branchName: 'Branch Lib', volumes: 3 }, // Standard keys
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 1,
+          offset: 0,
+          max: 50,
+          list: [
+            {
+              id: 1,
+              titleStatement: 'Book',
+              author: 'Author',
+              publication: 'Pub, 2024',
+              biblioType: { name: 'Book' },
+              branchVolumes: [
+                { id: 10, name: 'Main Lib', volume: 5 }, // Inconsistent keys
+                { branchId: 20, branchName: 'Branch Lib', volumes: 3 }, // Standard keys
+              ],
+            },
           ],
         },
-      ]);
+      });
 
       const response = await handleNewBooksApi(request);
       const body = (await response.json()) as NewBooksResponse & {
@@ -208,25 +257,36 @@ describe('New Books Handler', () => {
 
     it('should preserve callNumber when provided explicitly', async () => {
       const request = new Request('http://localhost/api/new-books');
-      mockGetNewBooks.mockResolvedValue([
-        {
-          id: 3,
-          titleStatement: 'CallNumber Book',
-          author: 'Author',
-          publication: 'Pub, 2024',
-          isbn: '1234567890',
-          thumbnailUrl: null,
-          biblioType: { name: 'Book' },
-          branchVolumes: [
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 1,
+          offset: 0,
+          max: 50,
+          list: [
             {
-              branchId: 30,
-              branchName: '법학도서관',
-              volumes: 2,
-              callNumber: '345.01 C123c',
+              id: 3,
+              titleStatement: 'CallNumber Book',
+              author: 'Author',
+              publication: 'Pub, 2024',
+              isbn: '1234567890',
+              thumbnailUrl: null,
+              biblioType: { name: 'Book' },
+              branchVolumes: [
+                {
+                  branchId: 30,
+                  branchName: '법학도서관',
+                  volumes: 2,
+                  callNumber: '345.01 C123c',
+                },
+              ],
             },
           ],
         },
-      ]);
+      });
 
       const response = await handleNewBooksApi(request);
       const body = (await response.json()) as NewBooksResponse & {
@@ -241,6 +301,112 @@ describe('New Books Handler', () => {
           callNumber: '345.01 C123c',
         },
       ]);
+    });
+
+    it('should validate offset parameter (TEST-new-books-006)', async () => {
+      const request = new Request('http://localhost/api/new-books?offset=-1');
+      const response = await handleNewBooksApi(request);
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
+      expect(body.error).toContain('Invalid offset parameter');
+    });
+
+    it('should return hasMore=true when more results available (TEST-new-books-008)', async () => {
+      const request = new Request('http://localhost/api/new-books?max=10');
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 100,
+          offset: 0,
+          max: 10,
+          list: Array.from({ length: 10 }, (_, i) => ({
+            id: i + 1,
+            titleStatement: `Book ${i + 1}`,
+            author: 'Author',
+            publication: 'Pub, 2024',
+            biblioType: { name: 'Book' },
+            branchVolumes: [],
+          })),
+        },
+      });
+
+      const response = await handleNewBooksApi(request);
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
+
+      expect(body.meta.hasMore).toBe(true);
+      expect(body.meta.totalCount).toBe(100);
+      expect(body.meta.offset).toBe(0);
+      expect(body.items).toHaveLength(10);
+    });
+
+    it('should return hasMore=false when no more results (TEST-new-books-009)', async () => {
+      const request = new Request(
+        'http://localhost/api/new-books?offset=90&max=50',
+      );
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 100,
+          offset: 90,
+          max: 50,
+          list: Array.from({ length: 10 }, (_, i) => ({
+            id: i + 91,
+            titleStatement: `Book ${i + 91}`,
+            author: 'Author',
+            publication: 'Pub, 2024',
+            biblioType: { name: 'Book' },
+            branchVolumes: [],
+          })),
+        },
+      });
+
+      const response = await handleNewBooksApi(request);
+      const body = (await response.json()) as NewBooksResponse & {
+        error?: string;
+      };
+
+      expect(body.meta.hasMore).toBe(false);
+      expect(body.meta.totalCount).toBe(100);
+      expect(body.meta.offset).toBe(90);
+      expect(body.items).toHaveLength(10);
+    });
+
+    it('should handle offset parameter correctly', async () => {
+      const request = new Request(
+        'http://localhost/api/new-books?offset=50&max=20',
+      );
+      mockGetNewBooks.mockResolvedValue({
+        success: true,
+        code: 'OK',
+        message: '',
+        data: {
+          isFuzzy: false,
+          totalCount: 150,
+          offset: 50,
+          max: 20,
+          list: [],
+        },
+      });
+
+      const response = await handleNewBooksApi(request);
+      expect(response.status).toBe(200);
+
+      expect(mockGetNewBooks).toHaveBeenCalledWith(
+        expect.any(String), // fromDate
+        expect.any(String), // toDate
+        20, // max
+        50, // offset
+      );
     });
   });
 });

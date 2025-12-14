@@ -89,3 +89,18 @@ completed_tasks:
     test_refs:
       - TEST-frontend-007
       - "npm test -- filterBooks"
+  - id: TASK-066
+    spec_id: SPEC-new-books-001
+    status: completed
+    completed_at: "2025-12-14T14:40:00Z"
+    result: "Implemented offset-based pagination for new books API with infinite scroll frontend. Backend: added offset parameter, hasMore flag, totalCount metadata; changed default days from 90 to 30. Frontend: migrated to useInfiniteQuery with Intersection Observer for infinite scroll. Users can now view all new books beyond 100-item limit."
+    test_refs:
+      - TEST-new-books-001
+      - TEST-new-books-002
+      - TEST-new-books-003
+      - TEST-new-books-006
+      - TEST-new-books-008
+      - TEST-new-books-009
+      - TEST-new-books-010
+      - "npm test -- packages/backend/src/handlers/__tests__/new-books-handler.test.ts"
+      - "npm test --workspace @knue-bookflow/frontend"

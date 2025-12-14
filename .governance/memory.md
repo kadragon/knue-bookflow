@@ -345,3 +345,22 @@ KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea
 
 ### Session 2025-12-11 (Call number preservation)
 - Completed TASK-064 (SPEC-loan-plan-001): Updated branch volume normalization to read explicit callNumber field from Pyxis branchVolumes, with fallback to non-numeric volume strings. Added tests for new-books and search handlers ensuring callNumber survives into planned-loan payloads. New planned loans now display 청구기호 when provided even alongside numeric volumes.
+
+### Session 2025-12-14 (New Books Pagination & Infinite Scroll)
+- Completed TASK-066 (SPEC-new-books-001): Implemented offset-based pagination for new books API with infinite scroll on frontend.
+  - **Backend changes**:
+    - Updated `LibraryClient.getNewBooks` to accept `offset` parameter and return full `LibraryNewBooksResponse` (including `totalCount`, `offset`, `max`)
+    - Updated `new-books-handler` to support `offset` query parameter with validation (>= 0)
+    - Added `hasMore` flag calculation: `offset + items.length < totalCount`
+    - Changed default `days` from 90 to 30, kept default `max` at 50
+    - Added comprehensive tests for pagination (offset validation, hasMore logic, etc.) - 18 tests passing
+  - **Frontend changes**:
+    - Migrated from `useQuery` to `useInfiniteQuery` in NewBooksPage
+    - Implemented infinite scroll using Intersection Observer API
+    - Changed default `days` filter from 90 to 30
+    - Merged all pages data and displays `totalCount` in meta info
+    - Shows loading spinner at bottom when fetching next page
+  - **Shared types**:
+    - Updated `NewBooksResponse.meta` to include `totalCount`, `offset`, `max`, `hasMore`
+  - **Result**: Users can now view all new books (100+ items) via infinite scroll instead of being limited to 100 books. Default view shows last 30 days instead of 90.
+  - All tests passing: 177 backend tests, 29 frontend tests

@@ -171,12 +171,16 @@ export const deleteNote = async (
 };
 
 export const getNewBooks = async (
-  days: number = 90,
+  days: number = 30,
   max: number = 50,
+  offset: number = 0,
 ): Promise<NewBooksResponse> => {
-  const res = await fetch(`/api/new-books?days=${days}&max=${max}`, {
-    headers: { Accept: 'application/json' },
-  });
+  const res = await fetch(
+    `/api/new-books?days=${days}&max=${max}&offset=${offset}`,
+    {
+      headers: { Accept: 'application/json' },
+    },
+  );
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || 'Failed to load new books');
