@@ -215,18 +215,20 @@ export class LibraryClient {
    * @param fromDate - Start date in YYYY-MM-DD format
    * @param toDate - End date in YYYY-MM-DD format
    * @param max - Maximum number of results (default: 20)
-   * @returns Array of new book records
+   * @param offset - Offset for pagination (default: 0)
+   * @returns Full response with list, totalCount, offset, max
    */
   async getNewBooks(
     fromDate: string,
     toDate: string,
     max: number = 20,
-  ): Promise<NewBook[]> {
+    offset: number = 0,
+  ): Promise<LibraryNewBooksResponse> {
     const dateRange = `[${fromDate} TO ${toDate}]`;
     const encodedRange = encodeURIComponent(dateRange);
 
     const response = await this.fetchWithResilience(
-      `${BASE_URL}/8/collections/3/search?date_received=${encodedRange}&max=${max}`,
+      `${BASE_URL}/8/collections/3/search?date_received=${encodedRange}&max=${max}&offset=${offset}`,
       {
         method: 'GET',
       },
@@ -250,9 +252,9 @@ export class LibraryClient {
     }
 
     console.log(
-      `[LibraryClient] Retrieved ${data.data.list.length} new books (total: ${data.data.totalCount})`,
+      `[LibraryClient] Retrieved ${data.data.list.length} new books (offset: ${offset}, total: ${data.data.totalCount})`,
     );
-    return data.data.list;
+    return data;
   }
 
   /**

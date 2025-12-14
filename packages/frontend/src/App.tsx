@@ -808,7 +808,11 @@ function BookshelfPage() {
       // Toggle the stat filter. If it's the same, turn it off.
       const nextStat = prev.stat === stat ? 'none' : stat;
 
-      return { ...prev, stat: nextStat };
+      // When selecting incomplete/completed, show all books (including returned ones)
+      const nextLoanState =
+        stat === 'incomplete' || stat === 'completed' ? 'all' : prev.loanState;
+
+      return { ...prev, stat: nextStat, loanState: nextLoanState };
     });
   };
 

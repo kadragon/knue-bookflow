@@ -24,8 +24,8 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
@@ -35,13 +35,19 @@ import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromNewBook, summarizeBranches } from '../plannedLoanPayload';
 
-// Trace: spec_id: SPEC-new-books-001, SPEC-loan-plan-001, task_id: TASK-new-books, TASK-043
+// Trace: spec_id: SPEC-new-books-001, SPEC-loan-plan-001, task_id: TASK-new-books, TASK-043, TASK-066
 
 function useNewBooks(days: number, max: number) {
-  return useQuery<NewBooksResponse>({
+  return useInfiniteQuery<NewBooksResponse>({
     queryKey: ['newBooks', days, max],
-    queryFn: () => getNewBooks(days, max),
+    queryFn: ({ pageParam = 0 }) => getNewBooks(days, max, pageParam as number),
     staleTime: 1000 * 60 * 5, // 5 minutes
+    getNextPageParam: (lastPage) => {
+      return lastPage.meta.hasMore
+        ? lastPage.meta.offset + lastPage.meta.max
+        : undefined;
+    },
+    initialPageParam: 0,
   });
 }
 
@@ -216,10 +222,18 @@ function EmptyState() {
 }
 
 export default function NewBooksPage() {
-  const [days, setDays] = useState(90);
+  const [days, setDays] = useState(30);
   const [search, setSearch] = useState('');
   const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
-  const { data, isLoading, isError, refetch } = useNewBooks(days, 100);
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useNewBooks(days, 50);
   const {
     mutate: planMutate,
     isPending: isPlanPending,
@@ -227,19 +241,49 @@ export default function NewBooksPage() {
     closeFeedback,
   } = usePlannedLoanMutation();
 
+  // Infinite scroll observer
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Merge all pages data
+  const allBooks = useMemo(() => {
+    return data?.pages.flatMap((page) => page.items) ?? [];
+  }, [data]);
+
   const filteredBooks = useMemo(() => {
-    if (!data?.items) return [];
-    if (!search.trim()) return data.items;
+    if (!allBooks.length) return [];
+    if (!search.trim()) return allBooks;
 
     const searchLower = search.toLowerCase();
-    return data.items.filter(
+    return allBooks.filter(
       (book) =>
         book.title.toLowerCase().includes(searchLower) ||
         book.author.toLowerCase().includes(searchLower) ||
         book.publisher?.toLowerCase().includes(searchLower) ||
         book.isbn?.toLowerCase().includes(searchLower),
     );
-  }, [data, search]);
+  }, [allBooks, search]);
 
   const handlePlan = (book: NewBookItem) => {
     planMutate(buildFromNewBook(book));
@@ -297,9 +341,10 @@ export default function NewBooksPage() {
         </Box>
 
         {/* Meta info */}
-        {data?.meta && (
+        {data?.pages?.[0]?.meta && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {data.meta.fromDate} ~ {data.meta.toDate} ({filteredBooks.length}권)
+            {data.pages[0].meta.fromDate} ~ {data.pages[0].meta.toDate} (
+            {data.pages[0].meta.totalCount}권 중 {filteredBooks.length}권 표시)
           </Typography>
         )}
 
@@ -322,28 +367,40 @@ export default function NewBooksPage() {
 
         {/* Book grid */}
         {!isLoading && filteredBooks.length > 0 && (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr 1fr',
-                sm: '1fr 1fr 1fr',
-                md: '1fr 1fr 1fr 1fr',
-                lg: '1fr 1fr 1fr 1fr 1fr',
-              },
-              gap: 2,
-            }}
-          >
-            {filteredBooks.map((book) => (
-              <NewBookCard
-                key={book.id}
-                book={book}
-                onPlan={handlePlan}
-                isSaving={isPlanPending}
-                onImageClick={setSelectedIsbn}
-              />
-            ))}
-          </Box>
+          <>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr 1fr',
+                  sm: '1fr 1fr 1fr',
+                  md: '1fr 1fr 1fr 1fr',
+                  lg: '1fr 1fr 1fr 1fr 1fr',
+                },
+                gap: 2,
+              }}
+            >
+              {filteredBooks.map((book) => (
+                <NewBookCard
+                  key={`${book.id}-${book.isbn}`}
+                  book={book}
+                  onPlan={handlePlan}
+                  isSaving={isPlanPending}
+                  onImageClick={setSelectedIsbn}
+                />
+              ))}
+            </Box>
+
+            {/* Infinite scroll trigger */}
+            {hasNextPage && (
+              <Box
+                ref={loadMoreRef}
+                sx={{ display: 'flex', justifyContent: 'center', py: 4 }}
+              >
+                {isFetchingNextPage && <CircularProgress />}
+              </Box>
+            )}
+          </>
         )}
       </Container>
 
