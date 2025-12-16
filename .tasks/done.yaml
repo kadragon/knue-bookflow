@@ -104,3 +104,13 @@ completed_tasks:
       - TEST-new-books-010
       - "npm test -- packages/backend/src/handlers/__tests__/new-books-handler.test.ts"
       - "npm test --workspace @knue-bookflow/frontend"
+  - id: TASK-067
+    spec_id: SPEC-deps-001
+    status: completed
+    completed_at: "2025-12-16T02:47:20Z"
+    result: "Upgraded Vitest to 4.0.15 and Zod to 4.1.13; configured Vitest projects with runner config loader so frontend TSX tests run under jsdom, updated planned-loans schema away from removed required_error options, improved validation error formatting, and removed @cloudflare/vitest-pool-workers due to Vitest 4 pool incompatibility. Verified Wrangler types/build."
+    test_refs:
+      - "npm test"
+      - "npm run typecheck"
+      - "npm run cf-typegen --workspace=@knue-bookflow/backend"
+      - "npm run build:backend"

@@ -3,7 +3,8 @@
  * Manage borrow-later list from search/new books
  *
  * Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
- *        task_id: TASK-043, TASK-047, TASK-061
+ *        task_id: TASK-043, TASK-047, TASK-061, TASK-067
+ *        spec_id: SPEC-deps-001
  */
 
 import { z } from 'zod';
@@ -29,38 +30,41 @@ type PlannedRepo = Pick<
 >;
 
 const branchSchema = z.object({
-  branchId: z.number({ required_error: 'branchId is required' }),
-  branchName: z.string({ required_error: 'branchName is required' }),
-  volumes: z.number({ required_error: 'volumes is required' }),
+  branchId: z.number('branchId is required'),
+  branchName: z.string('branchName is required'),
+  volumes: z.number('volumes is required'),
   callNumber: z.string().nullable().optional(),
 });
 
-const plannedLoanSchema = z.object({
-  libraryId: z
-    .number({ required_error: 'libraryId is required' })
-    .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
-  source: z.enum(['new_books', 'search'], {
-    required_error: 'source is required',
-    invalid_type_error: 'source must be new_books or search',
-  }),
-  title: z
-    .string({ required_error: 'title is required' })
-    .trim()
-    .min(1, 'title is required'),
-  author: z
-    .string({ required_error: 'author is required' })
-    .trim()
-    .min(1, 'author is required'),
-  publisher: z.string().nullable().optional(),
-  year: z.string().nullable().optional(),
-  isbn: z.string().nullable().optional(),
-  coverUrl: z.string().nullable().optional(),
-  materialType: z.string().nullable().optional(),
-  branchVolumes: z
-    .preprocess((value) => normalizeBranchVolumes(value), z.array(branchSchema))
-    .optional()
-    .default([]),
-});
+const plannedLoanSchema = z
+  .object({
+    libraryId: z
+      .number('libraryId is required')
+      .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
+    source: z
+      .enum(['new_books', 'search'], {
+        error: 'source must be new_books or search',
+      })
+      .optional(),
+    title: z.string('title is required').trim().min(1, 'title is required'),
+    author: z.string('author is required').trim().min(1, 'author is required'),
+    publisher: z.string().nullable().optional(),
+    year: z.string().nullable().optional(),
+    isbn: z.string().nullable().optional(),
+    coverUrl: z.string().nullable().optional(),
+    materialType: z.string().nullable().optional(),
+    branchVolumes: z
+      .preprocess(
+        (value) => normalizeBranchVolumes(value),
+        z.array(branchSchema),
+      )
+      .optional()
+      .default([]),
+  })
+  .refine((data) => data.source !== undefined, {
+    path: ['source'],
+    message: 'source is required',
+  });
 
 function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {
   let branchVolumes: BranchAvailability[] = [];
@@ -222,11 +226,19 @@ function validatePayload(body: unknown): {
   const parsed = plannedLoanSchema.safeParse(body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    return { error: issue?.message || 'Invalid request body' };
+    if (!issue) return { error: 'Invalid request body' };
+
+    const path = issue.path.length > 0 ? issue.path.join('.') : '';
+    const message = path ? `${path}: ${issue.message}` : issue.message;
+    return { error: message || 'Invalid request body' };
+  }
+
+  if (parsed.data.source === undefined) {
+    return { error: 'source is required' };
   }
 
   return {
-    payload: parsed.data,
+    payload: { ...parsed.data, source: parsed.data.source },
   };
 }
 

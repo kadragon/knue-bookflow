@@ -39,3 +39,6 @@ export default {
   }
 }
 ```
+
+## Vitest Projects Pattern
+Run multiple package configs from the repo root via `test.projects` (Vitest 4), and prefer `--configLoader runner` when configs import ESM-only dependencies.
