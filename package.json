@@ -13,7 +13,7 @@
     "deploy": "npm run deploy --workspace=@knue-bookflow/backend",
     "db:migrate": "npm run db:migrate --workspace=@knue-bookflow/backend",
     "build": "npm run build -w @knue-bookflow/shared && npm run build -w @knue-bookflow/frontend && npm run build -w @knue-bookflow/backend",
-    "test": "vitest run",
+    "test": "vitest --run --configLoader runner",
     "lint": "biome check .",
     "typecheck": "tsc --build",
     "lint:fix": "biome check --write .",
@@ -30,6 +30,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.15"
   }
 }

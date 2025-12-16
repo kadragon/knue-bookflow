@@ -2,10 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "types": [
-      "@cloudflare/workers-types/2023-07-01",
-      "@cloudflare/vitest-pool-workers"
-    ]
+    "types": ["@cloudflare/workers-types/2023-07-01"]
   },
   "include": ["src/**/*", "migrations/**/*", "vitest.config.ts"],
   "references": [{ "path": "../shared" }]

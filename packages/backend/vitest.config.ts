@@ -1,12 +1,8 @@
-import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+import { defineConfig } from 'vitest/config';
 
-export default defineWorkersConfig({
+// Trace: SPEC-deps-001 / TASK-067
+export default defineConfig({
   test: {
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: './wrangler.toml' },
-      },
-    },
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

@@ -1,0 +1,24 @@
+spec_id: SPEC-deps-001
+title: "Dependency Upgrade Compatibility: Vitest 4 + Zod 4"
+given_when_then:
+  - given: "The repo upgrades to Vitest 4.x"
+    when: "React (TSX) tests are executed"
+    then: "Tests run under a DOM-capable environment and do not fail with 'document is not defined'."
+  - given: "The repo upgrades to Zod 4.x"
+    when: "Backend request handlers are typechecked and tested"
+    then: "Schema definitions compile without using removed options such as 'required_error'."
+  - given: "The repo uses Wrangler for Cloudflare Workers development and deployment"
+    when: "Typecheck/test/build tasks are executed"
+    then: "Wrangler remains compatible with the configured Node/runtime and build outputs."
+acceptance_tests:
+  - id: TEST-deps-001
+    desc: "Frontend React tests (e.g., PlannedLoansPage.test.tsx, App.test.tsx) pass under Vitest 4 with a DOM environment configured."
+  - id: TEST-deps-002
+    desc: "Backend TypeScript builds/tests pass with Zod 4 schema definitions updated away from required_error."
+  - id: TEST-deps-003
+    desc: "Wrangler commands (version check + type generation/build) work with the upgraded dependency set."
+dependencies:
+  - governance: "coding-style.md"
+  - governance: "patterns.md"
+linked_tasks:
+  - TASK-067

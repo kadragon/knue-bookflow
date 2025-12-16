@@ -1,366 +1,39 @@
 # Project Memory
 
-## Project Overview
-KNUE BookFlow - Cloudflare Workers-based automatic book renewal system for Korea National University of Education library.
+## Overview
+KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Korea National University of Education library.
 
-## Architecture Decisions
-- **Architecture**: NPM Workspace Monorepo (migrated 2025-12-11)
-  - `packages/backend`: Cloudflare Worker (logic & DB)
-  - `packages/frontend`: React SPA (UI)
-  - `packages/shared`: Shared Types & DTOs
-- **Platform**: Cloudflare Workers (serverless)
-- **Database**: Cloudflare D1 (serverless SQLite)
-- **Scheduler**: Cron Triggers (daily execution)
-- **External APIs**:
-  - KNUE Library Pyxis API (login, charges, renewals)
-  - Aladin Open API (book metadata)
-- **Frontend**: React SPA (Vite) hosted via Worker Assets
-- **Testing**: Vitest Workspaces (separating Workers/Node and Frontend/jsdom)
+## Architecture
+- Monorepo (npm workspaces; since 2025-12-11)
+  - `packages/backend`: Cloudflare Worker (handlers/services) + D1 access
+  - `packages/frontend`: React SPA (Vite) served via Worker Assets
+  - `packages/shared`: shared DTOs/types
+- Platform: Cloudflare Workers + D1 + Cron Triggers
+- External APIs: KNUE Library Pyxis (login/charges/renew/items), Aladin (book metadata)
+- Renewal criteria: `renewCnt == 0` AND `dueDate` within 2 days (timezone-safe defaults use KST)
 
-## Key Learnings
-- Session initialized: 2025-01-22
-- Project status: Core implementation complete (TASK-001 to TASK-007)
+## Operational Notes
+- Wrangler config: `packages/backend/wrangler.toml` (compatibility_date pinned to `2024-11-01`)
+- Worker assets: `packages/frontend/dist` bound as `ASSETS`
+- `wrangler types` generates runtime types (`worker-configuration.d.ts`) and recommends migrating off `@cloudflare/workers-types` (optional)
 
-### Implementation Notes
-- Used latest versions: Wrangler 4.50.0, Workers-types 4.20251119.0, Vitest 3.2.4
-- LibraryClient handles session with cookies and pyxis-auth-token
-- Renewal criteria: renewCnt == 0 AND dueDate within 2 days
-- Aladin API uses ItemLookUp endpoint for detailed book info
-- D1 schema includes books and renewal_logs tables
-- **Monorepo Structure**: Separation of concerns allows sharing types without manual duplication. Root `package.json` manages dev dependencies.
+## Testing
+- Vitest 4.0.15 (Vite 7): use `--configLoader runner` to load ESM configs reliably.
+- Root test orchestration uses `test.projects` (backend + frontend).
+- Frontend tests run with `environment: 'jsdom'`.
+- Backend tests are Node-based unit tests (DB and env are mocked); `@cloudflare/vitest-pool-workers` removed because 0.10.x is not compatible with Vitest 4 pools.
 
-## Patterns Identified
-- API Client Pattern: Encapsulated external API calls in client classes
-- Repository Pattern: D1 database access through BookRepository
-- Result Type Pattern: RenewalResult for success/failure tracking
-- Service Composition: Separate services for library, aladin, renewal, storage
-- **Hybrid Testing**: Vitest workspaces allow running node-compatible Worker tests and jsdom-based React tests in the same repo without conflict.
-- **Robust API Mapping**: External APIs (like Pyxis) may return inconsistent field names (e.g., `name`/`volume` vs `branchName`/`volumes`). Handlers must robustly map these variations to a strict internal schema to prevent frontend display issues (e.g., `undefined(undefined)`).
+## Patterns
+- API client wrappers (LibraryClient / AladinClient)
+- Repository pattern for D1 access (BookRepository, NoteRepository, PlannedLoanRepository)
+- Robust mapping for Pyxis field variations (avoid UI `undefined(undefined)` regressions)
 
-## Known Issues
-- Vitest compatibility issue with nodejs_compat after 2025-09-21 (using 2024-11-01 compat date)
-- Need to create D1 database and update database_id in wrangler.toml
+## Known Issues / Follow-ups
+- Vitest coverage + `nodejs_compat` quirks: keep compatibility_date pinned unless revalidated.
+- D1 provisioning/migrations/secrets should be verified in the target environment before production deploy.
 
-## Next Session Focus
-- Create D1 database: `wrangler d1 create knue-bookflow-db`
-- Apply migrations: `wrangler d1 migrations apply knue-bookflow-db`
-- Set up secrets: `wrangler secret put LIBRARY_USER_ID` etc.
-- Write unit tests for all services
-- Deploy to production
-
-## Session 2025-11-22
-- Completed TASK-011 (SPEC-maintenance-001): post-build code audit after first build.
-- Key findings:
-  - Renewal workflow fetches charges twice and persists stale due dates/renewCnt (see TASK-012).
-  - Manual `/trigger` endpoint lacks authentication (TASK-013).
-  - Library client missing retries/timeouts and pagination; risk of partial data (TASK-014).
-  - Date utilities assume local timezone; need KST-aware calculations (TASK-015).
-  - Aladin client uses HTTP instead of HTTPS; should switch to HTTPS to avoid MITM/mixed content.
-- Added backlog items TASK-012 to TASK-015 for follow-up work; spec_id references set.
-- Tests: `npm test` (Vitest) passing as of 2025-11-22.
-- Completed TASK-012 (SPEC-renewal-001): reuse pre-fetched charges in renewal workflow, mutate
-  charges with renewed dueDate/renewCnt, and add tests to ensure no duplicate fetch and accurate
-  persistence path.
-- Completed TASK-013 (SPEC-scheduler-001-sec): secured /trigger with Bearer secret, documented
-  TRIGGER_SECRET, and added tests covering missing/invalid/valid secrets.
-- Completed TASK-014 (SPEC-auth-001): added fetchWithResilience (timeouts/backoff), login retries,
-  paginated charges retrieval, and retryable renewals. Tests cover pagination and 5xx retry.
-- Completed TASK-015 (SPEC-renewal-001): made date utilities timezone-safe with offset defaults (KST),
-  routed renewal/new-book selection through offset-aware checks, and added tests for day rollover.
-- Completed TASK-016 (SPEC-scheduler-001-zt): removed TRIGGER_SECRET requirement; manual trigger now
-  relies on Cloudflare Zero Trust for access control. Cleaned env/wrangler/test artifacts accordingly.
-- Completed TASK-017 (SPEC-deploy-001): added custom domain route for book.kadragon.work in wrangler.toml
-  with trace comment to keep routing aligned with deployment needs.
-- Completed TASK-018 (SPEC-observability-001): enabled Smart Placement and observability with 100% log
-  sampling and 10% trace sampling in wrangler.toml.
-
-- Completed TASK-019 (SPEC-frontend-001): served a React-based bookshelf SPA from Worker assets with
-  /api/books providing derived dueStatus/daysLeft, SPA index fallback via env.ASSETS.fetch, and
-  client-side filters for author, due status, renew count, and loan state. Vite config switched to
-  ESM (.mts) under single package.json; frontend build outputs to frontend/dist used by assets binding.
-
-- Completed TASK-020 (SPEC-notes-001): added stub note metadata (noteCount=0, noteState=not_started)
-  to /api/books and surfaced a note CTA on the bookshelf cards, keeping API contract ready for future
-  note persistence without DB changes yet.
-
-- Completed TASK-008: Consolidated TypeScript type definitions across codebase. Created src/types/renewal.ts
-  (RenewalCandidate, RenewalResult, RenewalConfig) and src/types/api.ts (DueStatus, BookViewModel, etc.).
-  Extracted inline types from services (FetchOptions, HttpMethod, ChargeWithBookInfo) into dedicated files.
-  All services now import from centralized types. 39 tests pass.
-
-- Completed TASK-009: Added comprehensive unit tests for all modules. Created book-repository.test.ts with
-  17 tests covering D1 operations (saveBook, findByChargeId, findByIsbn, findAll, logRenewal, getRenewalLogs,
-  createBookRecord). Test suite now has 56 tests total across 6 test files. All tests pass with mocked APIs.
-
-- Completed TASK-010: Verified production deployment. D1 database knue-bookflow-db with tables (books,
-  renewal_logs) confirmed. Secrets (LIBRARY_USER_ID, LIBRARY_PASSWORD, ALADIN_API_KEY) configured.
-  Cron trigger 10:00 UTC, custom domain book.kadragon.work, Smart Placement, and observability enabled.
-
-- Completed TASK-021 (SPEC-frontend-001): Created and applied a custom SVG favicon (book icon with
-  project gradient) to frontend/public/favicon.svg and linked it in index.html.
-
-- Completed TASK-022 (SPEC-ci-001): Updated .github/dependabot.yml to track updates for "github-actions"
-  ecosystem weekly.
-
-## Session 2025-11-23 (Continued)
-- Completed TASK-023 (SPEC-notes-002): Implemented full note-taking feature with CRUD operations.
-  - Added D1 migration for notes table (0002_add_notes_table.sql) with FK to books
-  - Created NoteRecord type in database.ts and NoteViewModel in api.ts
-  - Implemented NoteRepository with findByBookId, findById, create, update, delete, countByBookId
-  - Added API endpoints: GET/POST /api/books/:id/notes, PUT/DELETE /api/notes/:id
-  - Created notes-handler.ts with validation and error handling
-  - Updated books-handler to include actual noteCount and noteState (in_progress when notes exist)
-  - Added dbId to BookViewModel for proper note API calls
-  - Implemented frontend NoteModal component with:
-    - Note list display in page order with quote styling
-    - Add/Edit form with page number and content fields
-    - Delete confirmation
-    - Close on backdrop click or Escape key
-  - Added CSS styles for modal, notes list, forms, and buttons
-  - All 59 tests passing, linting clean
-  - Key pattern: Used database id (dbId) instead of charge_id for note API endpoints
-
-### Implementation Notes
-- Notes sorted by page_number ASC in repository
-- Modal closes on backdrop click with proper a11y (role="button", onKeyDown)
-- NoteState: 'not_started' (0 notes), 'in_progress' (>0 notes)
-- Nullable coalescing (record.id ?? 0) to avoid non-null assertion
-
-### Next Steps
-- Deploy migration: `wrangler d1 migrations apply knue-bookflow-db`
-- Test note creation/editing in production
-
-### Session 2025-11-23 (UI tweak)
-- Completed TASK-024 (SPEC-notes-002): moved note creation control to the top of NoteModal, added ordering helper with unit test (TEST-notes-ui-006), and adjusted spacing so users can start writing without scrolling past long histories.
-- Completed TASK-025 (SPEC-notes-002): removed the '(작성 예정)' placeholder on book cards when no notes exist, added helper + test (TEST-notes-ui-007) to keep the copy hidden.
-- Completed TASK-026 (SPEC-frontend-001): simplified filters by removing author/due-status/min-renew controls; only search and loan-state remain. Updated spec TEST-frontend-004 and added filterBooks helper + tests.
-- Addressed PR feedback (2025-11-23): removed noteLayout helper/ordering indirection; NoteModal now renders entry section followed by notes directly to reduce complexity.
-
-### Session 2025-11-23 (UI improvements)
-- Completed TASK-027 (SPEC-frontend-001): Frontend UI improvements
-  - Established pastel color design system:
-    - primary: #7EB8DA (pastel blue)
-    - secondary: #A8D5BA (pastel mint)
-    - success: #A8D5BA (pastel green)
-    - warning: #F5D89A (pastel yellow)
-    - error: #F4A7B9 (pastel pink)
-  - Added completion status (완독) toggle UI:
-    - Integrated existing updateReadStatus API
-    - Added CheckCircle icons and success color for completed state
-    - Toggle button below notes section in BookCard
-  - Updated main page statistics:
-    - Changed from dueStatus-based (연체/임박/여유) to reading progress-based
-    - New stats: 대여중, 독서중, 완료, 총
-    - 대여중: on_loan && !isRead && noteCount === 0
-    - 독서중: noteCount > 0 && !isRead
-    - 완료: isRead === true
-  - Fixed note edit button:
-    - Added scroll-to-top behavior when edit form opens
-    - Uses dialogContentRef with smooth scroll animation
-- All 68 tests passing
-- Branch: feature/frontend-ui-improvements
-
-### Session 2025-11-23 (Telegram note broadcast)
-- Completed TASK-028 (SPEC-notes-telegram-001): Daily Telegram reading note broadcast at 12:00 KST
-  - Added note_send_stats table (0004_note_send_stats.sql) to track per-note send_count/last_sent_at
-  - Implemented note-broadcast service with selection from lowest send_count, message format "title - author\np.xx\ncontent"
-  - Added TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to env types/config; new cron 0 3 * * * in wrangler
-  - Scheduled handler branches on event.cron between renewal (0 10) and note broadcast (0 3)
-  - Tests: selection fairness, formatting, skip when no notes, Telegram failure handling; `npm test` passing (73 tests)
-
-### Session 2025-11-23 (Stats filter + defaults)
-- Completed TASK-029 (SPEC-frontend-001): Updated top stats to 대여중/미완료/완료/총 with clickable cards that filter the grid,
-  introduced stat-based filtering in filterBooks, and set the initial loan-state filter to '대출 중' via shared defaultFilters.
-  Tests: `npm test -- filterBooks` (stat filters + default preset).
-  Pattern: keep shared defaults exported so acceptance requirements stay testable and in sync with UI state.
-
-### Session 2025-11-23 (Book Detail Page)
-- Completed TASK-030 (SPEC-book-detail-001): Created dedicated book detail page with two-column layout
-  - Added React Router (react-router-dom) for client-side navigation
-  - Created GET /api/books/:id endpoint returning single book with notes
-  - Implemented BookDetailPage component with:
-    - Left panel: Book info (cover, title, author, publisher, description, dates, status chips)
-    - Right panel: Notes list with full CRUD (add/edit/delete)
-    - Completion toggle (완독) button
-    - Back navigation to bookshelf
-  - Added handleGetBook in books-handler.ts using findById and findByBookId
-  - Refactored App.tsx: BookshelfPage component with Routes wrapper
-  - Clickable book covers and titles navigate to /books/:id
-  - Responsive layout: single column on mobile, two columns on desktop
-  - All 83 tests passing, lint clean
-  - Key patterns:
-    - Shared NoteItem type between App and BookDetailPage
-    - React Query cache invalidation for books and book detail queries
-    - dbId (database ID) used for routing and API calls
-
-### Session 2025-11-23 (Notes layout)
-- Completed TASK-031 (SPEC-book-detail-001): Removed inner scrollbar from book detail notes list so long notes expand page height; added NOTES_LIST_SX constant and layout test to prevent reintroducing fixed-height overflow.
-
-### Session 2025-11-23 (Aladin cover size)
-- Completed TASK-032 (SPEC-bookinfo-001): Added `Cover=Big` to Aladin ItemLookUp requests so we always fetch the largest cover image. Added a unit test to assert the parameter is present.
-
-### Session 2025-11-23 (Cover refresh)
-- Refreshed sync logic to re-fetch Aladin metadata when a stored book has a missing cover_url. BookRepository updates now coalesce new cover/description values on update. Added tests for cover refresh and update bindings.
-
-### Session 2025-11-23 (Return sync)
-- Completed TASK-034 (SPEC-return-001): Added discharge_date column via migration 0006, fetched paginated charge histories, matched returns by charge_id with ISBN fallback, and updated sync summary to report marked-returned count. Returned books now emit loanState=returned with daysLeft=0 and dueStatus=ok so they drop from the active loan view while remaining queryable.
-
-### Session 2025-11-26
-- Completed TASK-035 (SPEC-notes-telegram-002): Telegram note broadcast now uses MarkdownV2 formatting (bold title, italic author, escaped page line, blockquoted content), escapes all reserved characters including backslash/dot/dash, and sends requests with parse_mode=MarkdownV2 and link previews disabled. Added tests for formatting, escaping, and payload fields; `npm test -- --run src/services/__tests__/note-broadcast.test.ts` passing.
-- Completed TASK-036 (SPEC-notes-telegram-002): Refined formatting per review by centralizing the MarkdownV2 escape regex, adding an author fallback, tolerating missing page numbers, and ensuring multiline content is quoted line-by-line. Added tests for multiline content, page placeholder, and payload assertions; `npm test -- --run src/services/__tests__/note-broadcast.test.ts` passing.
-- Completed TASK-037 (SPEC-notes-telegram-002): Addressed review nits by removing redundant author nullish coalescing and skipping the content block when empty to avoid blank blockquotes. Added regression test for empty content; targeted test run remains green.
-
-### Session 2025-12-03
-- Completed TASK-038 (SPEC-maintenance-001): Added `wrangler build` to `.github/workflows/ci.yml` to ensure the Cloudflare Worker build process is validated during continuous integration.
-
-### Session 2025-12-11
-- Completed TASK-039 (SPEC-ci-002): Introduced React component smoke tests to CI.
-  - Problem: CI wasn't catching React/ReactDOM version mismatches (runtime error) because only logic unit tests were running.
-  - Solution: Installed `@testing-library/react` and `jsdom`. Configured Vitest Workspaces to separate Worker (Node) and Frontend (jsdom) environments.
-  - Outcome: `npm test` now runs both worker logic tests and a frontend `App` smoke test.
-
-### Session 2025-12-12
-- Completed TASK-065 (SPEC-frontend-001): Restored default loan-state filter to `on_loan` in the Bookshelf UI so the main page initially shows only currently borrowed books. Updated `filterBooks` unit test accordingly.
-
-### Session 2025-12-11 (governance tidy)
-- Completed TASK-040 (SPEC-governance-001): Compacted task/governance registries.
-  - Cleared backlog to only pending tasks (now empty), normalized done.yaml into a single completed_tasks list, and reset current.yaml to null.
-  - Added SPEC-governance-001 to codify maintenance/compaction behaviors.
-  - Ensured historical tasks 001-007 recorded with explicit "unknown" timestamps to avoid loss of traceability.
-
-### Session 2025-12-11 (library search tests)
-- Completed TASK-041 (SPEC-search-001): Added comprehensive integration tests for search handler.
-  - Created SPEC-search-001 with GWT acceptance tests for library book search API
-  - Added 18 integration tests in search-handler.test.ts:
-    - Parameter validation (query, max, offset) with edge cases (empty, NaN, boundaries)
-    - Error handling for API failures (500 responses)
-    - Response format verification (metadata, transformed fields)
-    - Cache headers (Cache-Control: public, max-age=300)
-    - Optional field handling (null author, missing ISBN)
-  - All 122 tests passing across project (73 worker tests, 49 frontend tests)
-  - Key patterns:
-    - Use async beforeEach for proper vi.mock module import isolation
-    - Test edge cases: empty strings, NaN values, boundary conditions
-    - Verify HTTP response headers in API integration tests
-    - Mock LibraryClient.searchBooks with vi.fn() and createLibraryClient factory
-
-### Session 2025-12-11 (PR review fixes)
-- Completed TASK-042: Applied PR review feedback from gemini-code-assist[bot] (PR #49).
-  - Fixed Material-UI prop usage: replaced `slotProps.input` with `InputProps` for TextField
-    - `slotProps.input` passes props to native input element, not the Input component
-    - `InputProps` correctly passes startAdornment/endAdornment to OutlinedInput
-  - Added URL parameter validation for page number with validatePageParam helper
-    - Validates parsed page is not NaN and greater than 0, defaults to 1 otherwise
-    - Prevents crashes from malicious/invalid URL params (page=abc, page=0, page=-1)
-  - Created SearchBooksPage.test.ts with 8 unit tests for validatePageParam
-    - Tests null, empty, non-numeric, zero, negative, valid positive, whitespace cases
-  - All 130 tests passing (122 worker/frontend + 8 new validation tests)
-  - Key learnings:
-    - Always validate user-supplied URL parameters with explicit checks
-    - Material-UI v5+ has different prop structures: slotProps vs component-specific props
-    - Extract validation logic to testable helper functions
-
-### Session 2025-12-11 (Planned loans)
-- Completed TASK-043 (SPEC-loan-plan-001): Added planned loans D1 table/migration 0007, repository, and /api/planned-loans POST/GET/DELETE with duplicate guard on libraryId and branch volume parsing.
-- Frontend: New /planned page listing planned items with removal, + buttons on Search/NewBooks pages, shared payload helpers, and branch availability summary.
-- Tests: Added planned-loans handler tests and payload builder tests; `npm test` now 139 passing.
-- Next: apply migration 0007 to production D1 and sanity-check planned list UI against live catalog data.
-
-### Session 2025-12-11 (Planned loans sync)
-- Completed TASK-044 (SPEC-loan-plan-001): processCharge now deletes planned loans by library biblio id after syncing charges, ensuring borrowed items drop from "대출 예정" automatically.
-- Added repo helper deleteByLibraryBiblioId and test TEST-loan-plan-006; full suite now 140 tests passing.
-
-### Session 2025-12-11 (Test Coverage)
-- Completed TASK-045 (SPEC-maintenance-001): Improved test coverage by identifying and testing uncovered modules.
-  - Identified `vitest --coverage` failure in worker environment (known issue with `node:inspector`).
-  - Removed duplicate test file `src/handlers/books-handler.test.ts` (covered by `src/handlers/__tests__/books-handler.test.ts`).
-  - Added unit tests for:
-    - `NewBooksHandler` (validation, transformation, regex parsing)
-    - `NotesHandler` (CRUD validation, error handling)
-    - `NoteRepository` (D1 integration, dynamic updates)
-    - `PlannedLoanRepository` (D1 integration)
-  - Result: Test count increased from 140 to 182, covering all major handlers and services.
-
-### Session 2025-12-11 (Bugfix - New Books)
-- Completed TASK-046 (SPEC-bugfix-001): Fixed `undefined(undefined)` display in New Books/Search lists by implementing robust mapping for `branchVolumes`.
-  - Issue: Library API inconsistently returns `name`/`volume` instead of `branchName`/`volumes` in some contexts.
-  - Fix: Updated `transformNewBook` (new-books-handler.ts) and `transformSearchBook` (search-handler.ts) to map both field sets to the internal schema.
-  - Tests: Added test cases for inconsistent `branchVolumes` structure in both handlers. 183 tests passing.
-
-### Session 2025-12-11 (Planned loans branch normalization)
-- Completed TASK-047 (SPEC-loan-plan-001): Normalized branch availability from New Books/Search to `branchId/branchName/volumes` and tolerated legacy `id/name/volume` payloads so planned-loan POST no longer fails with "branchId is required".
-  - Added `normalizeBranchVolumes` util, zod preprocessing in planned-loans handler, and acceptance test TEST-loan-plan-007.
-  - Branch volume strings (call numbers) now default to a single copy instead of being parsed as counts.
-  - Full suite passing: 186 tests (`npm test`).
-
-### Session 2025-12-11 (Monorepo Conversion)
-- Completed TASK-048 to TASK-053 (SPEC-arch-001): Transitioned project to NPM Workspace Monorepo.
-  - **Structure**:
-    - `packages/backend`: Worker logic (formerly `src`), migrations, wrangler config.
-    - `packages/frontend`: React app (formerly `frontend`), vite config.
-    - `packages/shared`: Unified type definitions (formerly `src/types/api.ts`).
-  - **Key Changes**:
-    - Centralized types in `packages/shared` eliminated manual duplication between frontend and backend.
-    - Refactored `src/types/library.ts` to rename conflicting `NewBooksResponse` -> `LibraryNewBooksResponse`.
-    - Updated `library-client.ts`, `sync-handler.ts`, `api.ts` to consume shared types.
-    - Root `package.json` now orchestrates workspaces using `npm run ... --workspaces`.
-    - CI/CD updated to run `npm ci` (once lockfile exists) and build/test via root scripts.
-  - **Action Required**: User must run `npm install` to link workspaces and generate `package-lock.json`.
-
-### Session 2025-12-11 (Dependency fix)
-- Completed TASK-056 (SPEC-maintenance-001): Declared `zod` as a runtime dependency in `packages/backend/package.json` to match handler validation usage and avoid `npm ci --omit=dev` breakage. Backend tests remain green (`npm test --workspace @knue-bookflow/backend`).
-
-### Session 2025-12-11 (Dependency audit)
-- Completed TASK-057 (SPEC-maintenance-001): Audited workspace dependencies against latest npm releases.
-  - Outdated (major): `zod` 3.25.76 → 4.1.13 (breaking changes expected).
-  - Outdated (minor/patch): `typescript` 5.7.2 → 5.9.3, `vitest` 3.2.4 → 4.0.15, `wrangler` 4.50.0 → 4.53.0, `@cloudflare/vitest-pool-workers` 0.10.11 → 0.10.14, `@cloudflare/workers-types` 4.20251205.0 → 4.20251211.0, `vite` 7.2.4 → 7.2.7, `@vitejs/plugin-react` 5.0.4 → 5.1.2, `@mui/material` 7.3.5 → 7.3.6, `clsx` 2.1.0 → 2.1.1.
-  - Up-to-date: React 19.2.1, React Router 7.10.1, TanStack Query 5.90.12, Emotion 11.14.x, Testing Library (dom/react), jsdom 27.3.0, Biome 2.3.8, Husky 9.1.7, Lint-staged 16.2.7.
-  - No upgrades applied; pending decision on zod v4 migration and TypeScript/Vitest bumps.
-
-### Session 2025-12-11 (Wrangler upgrade)
-- Completed TASK-058 (SPEC-maintenance-001): Verified Wrangler v4.53.0 release (changelog shows no breaking changes for Workers builds) and upgraded backend devDependency to `^4.53.0`. Backend suite stays green (`npm test --workspace @knue-bookflow/backend`).
-
-### Session 2025-12-11 (Deployment Fix)
-- Completed TASK-059 (SPEC-maintenance-001): Added `build:frontend` and `build:backend` scripts to root `package.json`.
-  - Issue: Deployment environment (likely Cloudflare Pages/Workers Assets) was configured to run `npm run build:frontend`, which was missing after monorepo migration.
-  - Fix: Added alias to `npm run build --workspace=@knue-bookflow/frontend`.
-  - Verified: `npm run build:frontend` builds successfully locally.
-- Completed TASK-060 (SPEC-maintenance-001): Updated deployment scripts for Monorepo.
-  - Issue: User's `npx wrangler deploy` and `npx wrangler d1 migrations` commands would fail from the root directory because `wrangler.toml` is located in `packages/backend`.
-  - Fix:
-    - Added a `db:migrate` script to `packages/backend/package.json` to encapsulate the D1 migration logic.
-    - Added root-level `deploy` and `db:migrate` scripts to `package.json` that correctly target the backend workspace.
-  - This provides a cleaner and more robust way to manage deployment and database migrations in the monorepo.
-
-### Session 2025-12-11 (Planned loans availability)
-- Completed TASK-061 (SPEC-loan-plan-002): Enriched planned-loan GET API with Pyxis `/8/biblios/{id}/items` lookup via `LibraryClient.getBiblioItems`, summarizing availability (availableItems/totalItems, earliestDueDate) with safe null fallback on errors. Availability now follows rule: if any copy is available → status `available` and due date omitted; otherwise status `loaned_out` with nearest due date.
-- Frontend PlannedLoansPage renders availability chips: `대출 가능 (x/y권)` when copies are ready, `대출 중 · 반납예정 YYYY-MM-DD` when all charged out, and a fallback chip for unknown availability.
-- Tests: `npm test -- packages/backend/src/handlers/__tests__/planned-loans-handler.test.ts packages/backend/src/services/__tests__/library-client.test.ts packages/frontend/src/pages/PlannedLoansPage.test.tsx`.
-
-### Session 2025-12-11 (Availability cache)
-- Completed TASK-062 (SPEC-loan-plan-002): Added cached availability fetcher with 5-minute TTL to reduce repeated Pyxis `/biblios/{id}/items` calls when rendering planned loans. Added createCachedFetcher helper and unit tests for cache hits/expiry. End-to-end tests remain green.
-
-### Session 2025-12-11 (Call number display check)
-- Completed TASK-063 (SPEC-loan-plan-001): Investigated missing 청구기호 in 대출 예정 목록. Root cause: legacy planned_loans rows were created before callNumber was stored; current pipeline already preserves callNumber when Pyxis sends it (non-numeric volume strings). No code change needed. Guidance: remove and re-add affected planned items so callNumber is persisted; future entries are unaffected.
-
-### Session 2025-12-11 (Call number preservation)
-- Completed TASK-064 (SPEC-loan-plan-001): Updated branch volume normalization to read explicit callNumber field from Pyxis branchVolumes, with fallback to non-numeric volume strings. Added tests for new-books and search handlers ensuring callNumber survives into planned-loan payloads. New planned loans now display 청구기호 when provided even alongside numeric volumes.
-
-### Session 2025-12-14 (New Books Pagination & Infinite Scroll)
-- Completed TASK-066 (SPEC-new-books-001): Implemented offset-based pagination for new books API with infinite scroll on frontend.
-  - **Backend changes**:
-    - Updated `LibraryClient.getNewBooks` to accept `offset` parameter and return full `LibraryNewBooksResponse` (including `totalCount`, `offset`, `max`)
-    - Updated `new-books-handler` to support `offset` query parameter with validation (>= 0)
-    - Added `hasMore` flag calculation: `offset + items.length < totalCount`
-    - Changed default `days` from 90 to 30, kept default `max` at 50
-    - Added comprehensive tests for pagination (offset validation, hasMore logic, etc.) - 18 tests passing
-  - **Frontend changes**:
-    - Migrated from `useQuery` to `useInfiniteQuery` in NewBooksPage
-    - Implemented infinite scroll using Intersection Observer API
-    - Changed default `days` filter from 90 to 30
-    - Merged all pages data and displays `totalCount` in meta info
-    - Shows loading spinner at bottom when fetching next page
-  - **Shared types**:
-    - Updated `NewBooksResponse.meta` to include `totalCount`, `offset`, `max`, `hasMore`
-  - **Result**: Users can now view all new books (100+ items) via infinite scroll instead of being limited to 100 books. Default view shows last 30 days instead of 90.
-  - All tests passing: 177 backend tests, 29 frontend tests
+## Recent Work (high-level)
+- 2025-11-22..11-26: audit + reliability hardening (TASK-011..TASK-037)
+- 2025-12-11: planned loans features + monorepo conversion (TASK-043..TASK-064)
+- 2025-12-14: new books pagination + infinite scroll (TASK-066)
+- 2025-12-16: dependency upgrades + compatibility fixes (TASK-067)
