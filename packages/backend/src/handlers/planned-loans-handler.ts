@@ -36,23 +36,35 @@ const branchSchema = z.object({
   callNumber: z.string().nullable().optional(),
 });
 
-const plannedLoanSchema = z.object({
-  libraryId: z
-    .number('libraryId is required')
-    .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
-  source: z.enum(['new_books', 'search'], 'source must be new_books or search'),
-  title: z.string('title is required').trim().min(1, 'title is required'),
-  author: z.string('author is required').trim().min(1, 'author is required'),
-  publisher: z.string().nullable().optional(),
-  year: z.string().nullable().optional(),
-  isbn: z.string().nullable().optional(),
-  coverUrl: z.string().nullable().optional(),
-  materialType: z.string().nullable().optional(),
-  branchVolumes: z
-    .preprocess((value) => normalizeBranchVolumes(value), z.array(branchSchema))
-    .optional()
-    .default([]),
-});
+const plannedLoanSchema = z
+  .object({
+    libraryId: z
+      .number('libraryId is required')
+      .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
+    source: z
+      .enum(['new_books', 'search'], {
+        error: 'source must be new_books or search',
+      })
+      .optional(),
+    title: z.string('title is required').trim().min(1, 'title is required'),
+    author: z.string('author is required').trim().min(1, 'author is required'),
+    publisher: z.string().nullable().optional(),
+    year: z.string().nullable().optional(),
+    isbn: z.string().nullable().optional(),
+    coverUrl: z.string().nullable().optional(),
+    materialType: z.string().nullable().optional(),
+    branchVolumes: z
+      .preprocess(
+        (value) => normalizeBranchVolumes(value),
+        z.array(branchSchema),
+      )
+      .optional()
+      .default([]),
+  })
+  .refine((data) => data.source !== undefined, {
+    path: ['source'],
+    message: 'source is required',
+  });
 
 function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {
   let branchVolumes: BranchAvailability[] = [];
@@ -221,8 +233,12 @@ function validatePayload(body: unknown): {
     return { error: message || 'Invalid request body' };
   }
 
+  if (parsed.data.source === undefined) {
+    return { error: 'source is required' };
+  }
+
   return {
-    payload: parsed.data,
+    payload: { ...parsed.data, source: parsed.data.source },
   };
 }
 
