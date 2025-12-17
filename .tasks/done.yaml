@@ -114,3 +114,17 @@ completed_tasks:
       - "npm run typecheck"
       - "npm run cf-typegen --workspace=@knue-bookflow/backend"
       - "npm run build:backend"
+  - id: TASK-068
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-17T09:05:00Z"
+    result: "Refactored tsconfig.base.json to remove environment-specific settings (DOM, jsx, workers-types). Verified correct settings in package-level tsconfigs and passed global typecheck."
+    test_refs:
+      - "npm run typecheck"
+  - id: TASK-069
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-17T09:20:00Z"
+    result: "Standardized backend vitest config with coverage, explicit includes, and globals enabled. Excluded index.ts barrel files from coverage."
+    test_refs:
+      - "npm test --workspace @knue-bookflow/backend -- --coverage"
