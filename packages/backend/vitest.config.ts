@@ -9,8 +9,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html'],
       exclude: [
-        'node_modules/',
-        'dist/',
+        '**/node_modules/**',
+        '**/dist/**',
         '**/*.test.ts',
         'src/types/',
         'src/**/index.ts',
