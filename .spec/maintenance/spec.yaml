@@ -26,3 +26,5 @@ dependencies:
 
 linked_tasks:
   - TASK-011
+  - TASK-068
+  - TASK-069
