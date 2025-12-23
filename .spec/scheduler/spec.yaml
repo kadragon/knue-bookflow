@@ -1,56 +1,47 @@
 spec_id: SPEC-scheduler-001
-title: "Cron Scheduled Execution"
+title: "Manual Workflow Trigger"
 description: |
-  Execute the book renewal workflow automatically at scheduled times
-  using Cloudflare Workers Cron Triggers.
+  Run the renewal workflow only when explicitly triggered (UI or POST /trigger).
+  The scheduled handler is reserved for the daily note broadcast.
 
 given_when_then:
-  - given: "Cron trigger fires at scheduled time"
-    when: "Worker scheduled handler is invoked"
-    then: "Complete renewal workflow is executed"
+  - given: "User presses the manual '갱신' button"
+    when: "Frontend issues POST /trigger"
+    then: "Workflow starts in background and response returns immediately"
 
-  - given: "Workflow execution starts"
-    when: "Handler runs"
-    then: "Login, fetch charges, process renewals, save data in sequence"
+  - given: "Manual trigger is invoked"
+    when: "Workflow runs"
+    then: "Login, fetch charges, process renewals, sync records, mark returns, log summary"
 
-  - given: "Any step in workflow fails"
-    when: "Error occurs"
-    then: "Error is logged and subsequent steps are skipped safely"
+  - given: "Scheduled cron fires for note broadcast"
+    when: "Handler receives NOTE_BROADCAST_CRON"
+    then: "Note broadcast runs and renewal workflow is not started"
 
-  - given: "Workflow completes successfully"
-    when: "All steps finish"
-    then: "Summary log is recorded"
+  - given: "Scheduled handler receives an unknown cron"
+    when: "No matching cron is found"
+    then: "Handler logs and skips renewal workflow"
 
 acceptance_tests:
   - id: TEST-scheduler-001
-    desc: "Cron trigger invokes scheduled handler"
+    desc: "Manual trigger starts the workflow and responds immediately"
   - id: TEST-scheduler-002
-    desc: "Workflow executes all steps in correct order"
+    desc: "Note broadcast cron does not start renewal workflow"
   - id: TEST-scheduler-003
-    desc: "Handle partial failures gracefully"
+    desc: "Workflow executes steps in correct order"
   - id: TEST-scheduler-004
-    desc: "Complete within Workers timeout limits"
+    desc: "Errors are logged and workflow aborts safely"
   - id: TEST-scheduler-005
-    desc: "Log execution summary"
+    desc: "Header exposes a single manual refresh control (no duplicate refresh icon)"
 
 technical_notes:
-  cron_expression: "0 10 * * *"  # 7 PM KST
-  workflow_steps:
-    1: Authenticate with library API
-    2: Fetch current charges
-    3: Identify renewal candidates
-    4: Process renewals
-    5: Detect new books
-    6: Fetch book info from Aladin
-    7: Save/update records in D1
-    8: Log summary
+  manual_trigger: "POST /trigger (Zero Trust protected)"
+  note_broadcast_cron: "0 3 * * *"
 
 dependencies:
-  - spec: "SPEC-auth-001"
-  - spec: "SPEC-charges-001"
   - spec: "SPEC-renewal-001"
-  - spec: "SPEC-bookinfo-001"
+  - spec: "SPEC-notes-telegram-001"
   - spec: "SPEC-storage-001"
 
 linked_tasks:
   - TASK-007
+  - TASK-070

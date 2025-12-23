@@ -23,6 +23,11 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 - Frontend tests run with `environment: 'jsdom'`.
 - Backend tests are Node-based unit tests (DB and env are mocked); `@cloudflare/vitest-pool-workers` removed because 0.10.x is not compatible with Vitest 4 pools.
 
+## Git Hooks
+- Using `simple-git-hooks` (replaced `husky` as of 2025-12-23) for pre-commit hooks.
+- Pre-commit runs: `lint-staged`, `typecheck`, and `test`.
+- Configuration is in `package.json` under `simple-git-hooks` field.
+
 ## Patterns
 - API client wrappers (LibraryClient / AladinClient)
 - Repository pattern for D1 access (BookRepository, NoteRepository, PlannedLoanRepository)
@@ -39,3 +44,4 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 - 2025-12-16: dependency upgrades + compatibility fixes (TASK-067)
 - 2025-12-17: refactored tsconfig structure to decouple environment settings (TASK-068)
 - 2025-12-17: standardized backend vitest config (coverage, globals, excludes) (TASK-069)
+- 2025-12-23: removed renewal cron, kept note broadcast cron, unified manual refresh control (TASK-070)
