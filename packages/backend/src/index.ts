@@ -176,7 +176,7 @@ export default {
     // Manual trigger endpoint (access controlled via Zero Trust)
     // POST only - triggering task has side effects, violates REST if GET allowed
     if (url.pathname === '/trigger' && request.method === 'POST') {
-      ctx.waitUntil(handleScheduledTask(env));
+      ctx.waitUntil(handleManualTrigger(env));
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -211,7 +211,7 @@ export default {
  * Main workflow handler for manual trigger
  * Orchestrates the complete book renewal process
  */
-async function handleScheduledTask(
+async function handleManualTrigger(
   env: Env,
   _event?: ScheduledEvent,
 ): Promise<void> {

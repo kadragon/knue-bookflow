@@ -18,7 +18,9 @@ mode = "smart"
 # Trace: SPEC-observability-001 / TASK-018
 
 # Cron Triggers
-# - Note broadcast: 03:00 UTC (12:00 KST)
+# Only the daily note broadcast is scheduled.
+# Renewal workflow is triggered manually via POST /trigger.
+# - Daily note broadcast: 0 3 * * * (03:00 UTC / 12:00 KST)
 [triggers]
 crons = ["0 3 * * *"]
 # Trace: SPEC-scheduler-001 / TASK-070
