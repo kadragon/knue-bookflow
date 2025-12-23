@@ -2,7 +2,7 @@
  * Aladin Open API Client
  * Fetches book metadata from Aladin's ItemLookUp API
  *
- * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-005, TASK-032
+ * Trace: spec_id: SPEC-bookinfo-001, SPEC-backend-refactor-001, task_id: TASK-005, TASK-032, TASK-072
  */
 
 import type {
@@ -22,9 +22,13 @@ export class AladinClient {
   /**
    * Look up book information by ISBN
    * @param isbn - Book ISBN (10 or 13 digits)
+   * @param timeoutMs - Abort timeout in milliseconds
    * @returns Book information or null if not found
    */
-  async lookupByIsbn(isbn: string): Promise<BookInfo | null> {
+  async lookupByIsbn(
+    isbn: string,
+    timeoutMs = 3000,
+  ): Promise<BookInfo | null> {
     if (!isbn) {
       console.log('[AladinClient] No ISBN provided, skipping lookup');
       return null;
@@ -43,8 +47,13 @@ export class AladinClient {
       Cover: 'Big',
     });
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      const response = await fetch(`${BASE_URL}/ItemLookUp.aspx?${params}`);
+      const response = await fetch(`${BASE_URL}/ItemLookUp.aspx?${params}`, {
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         console.error(`[AladinClient] API error: ${response.status}`);
@@ -75,12 +84,20 @@ export class AladinClient {
       console.log(`[AladinClient] Found book: ${bookInfo.title}`);
       return bookInfo;
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error(
+          `[AladinClient] Lookup timeout after ${timeoutMs}ms for ISBN ${cleanIsbn}`,
+        );
+        return null;
+      }
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       console.error(
         `[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`,
       );
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }
@@ -111,14 +128,29 @@ export function identifyNewBooks(
 export async function fetchNewBooksInfo(
   client: AladinClient,
   charges: Charge[],
+  concurrency = 10,
 ): Promise<ChargeWithBookInfo[]> {
   const results: ChargeWithBookInfo[] = [];
 
-  for (const charge of charges) {
-    const isbn = charge.biblio.isbn;
-    const bookInfo = await client.lookupByIsbn(isbn);
+  for (let i = 0; i < charges.length; i += concurrency) {
+    const batch = charges.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(async (charge) => {
+        try {
+          const isbn = charge.biblio.isbn;
+          const bookInfo = await client.lookupByIsbn(isbn);
+          return { charge, bookInfo };
+        } catch (error) {
+          console.error(
+            `[AladinClient] Lookup failed for charge ${charge.id}:`,
+            error,
+          );
+          return { charge, bookInfo: null };
+        }
+      }),
+    );
 
-    results.push({ charge, bookInfo });
+    results.push(...batchResults);
   }
 
   const foundCount = results.filter((r) => r.bookInfo !== null).length;

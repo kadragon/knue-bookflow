@@ -1,1 +1,14 @@
-task: null
+task:
+  id: TASK-075
+  spec_id: SPEC-backend-refactor-001
+  status: in_progress
+  title: "Phase 2: Resilient renewal + sync workflow"
+  description: |
+    Ensure renewal logs are preserved on partial sync failures and capture
+    errors via allSettled handling. Add tests.
+  started_at: "2025-12-23T00:00:00Z"
+  test_refs:
+    - TEST-backend-refactor-005
+  trace:
+    spec_id: SPEC-backend-refactor-001
+    task_id: TASK-075

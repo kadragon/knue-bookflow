@@ -2,7 +2,7 @@
  * Library-DB Sync Handler
  * Synchronizes all currently borrowed books from library with D1 database
  *
- * Trace: spec_id: SPEC-sync-001, SPEC-return-001, task_id: TASK-021, TASK-034
+ * Trace: spec_id: SPEC-sync-001, SPEC-return-001, SPEC-backend-refactor-001, task_id: TASK-021, TASK-034, TASK-073, TASK-074
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   createLibraryClient,
   createPlannedLoanRepository,
 } from '../services';
+import { LibraryApiError } from '../services/library-client';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
 import type { LibraryClient } from '../services/library-client';
@@ -26,6 +27,43 @@ import type {
 } from '../types';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
+type SyncErrorCode =
+  | 'AUTH_FAILED'
+  | 'LIBRARY_UNAVAILABLE'
+  | 'LIBRARY_ERROR'
+  | 'EXTERNAL_TIMEOUT'
+  | 'UNKNOWN';
+
+function classifySyncError(error: unknown): {
+  code: SyncErrorCode;
+  statusCode: number;
+  message: string;
+} {
+  if (error instanceof LibraryApiError) {
+    if (error.statusCode === 401) {
+      return { code: 'AUTH_FAILED', statusCode: 401, message: error.message };
+    }
+    if (error.statusCode >= 500) {
+      return {
+        code: 'LIBRARY_UNAVAILABLE',
+        statusCode: 503,
+        message: error.message,
+      };
+    }
+    return { code: 'LIBRARY_ERROR', statusCode: 502, message: error.message };
+  }
+
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return {
+      code: 'EXTERNAL_TIMEOUT',
+      statusCode: 504,
+      message: 'External request timed out',
+    };
+  }
+
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  return { code: 'UNKNOWN', statusCode: 500, message };
+}
 
 /**
  * Handle library-DB synchronization
@@ -74,15 +112,11 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
     // Step 3: Compare with DB and sync each charge in parallel
     console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
 
-    const results = await Promise.all(
-      charges.map((charge) =>
-        processCharge(
-          charge,
-          bookRepository,
-          aladinClient,
-          plannedLoanRepository,
-        ),
-      ),
+    const results = await processChargesWithPlanningCleanup(
+      charges,
+      bookRepository,
+      aladinClient,
+      plannedLoanRepository,
     );
 
     // Aggregate results
@@ -117,12 +151,11 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[SyncHandler] Sync failed: ${errorMessage}`);
+    const { code, statusCode, message } = classifySyncError(error);
+    console.error(`[SyncHandler] Sync failed (${code}): ${message}`);
 
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
+    return new Response(JSON.stringify({ error: code, message }), {
+      status: statusCode,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -160,12 +193,10 @@ export async function processCharge(
   charge: Charge,
   bookRepository: BookRepository,
   aladinClient: AladinClient,
-  plannedLoanRepository?: PlannedLoanRepository,
 ): Promise<SyncStatus> {
   const chargeId = String(charge.id);
   const existing = await bookRepository.findByChargeId(chargeId);
   const isbn = charge.biblio.isbn;
-  const biblioId = charge.biblio.id;
 
   if (!existing) {
     // Book not in DB - add with Aladin metadata
@@ -177,9 +208,6 @@ export async function processCharge(
     const record = createBookRecord(charge, bookInfo);
     await bookRepository.saveBook(record);
 
-    if (plannedLoanRepository) {
-      await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
-    }
     return 'added';
   }
 
@@ -218,17 +246,39 @@ export async function processCharge(
 
     await bookRepository.saveBook(record);
 
-    if (plannedLoanRepository) {
-      await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
-    }
     return 'updated';
   }
 
+  return 'unchanged';
+}
+
+/**
+ * Process charges and deduplicate planned loan deletions per biblio id
+ */
+export async function processChargesWithPlanningCleanup(
+  charges: Charge[],
+  bookRepository: BookRepository,
+  aladinClient: AladinClient,
+  plannedLoanRepository?: PlannedLoanRepository,
+): Promise<SyncStatus[]> {
+  const results = await Promise.all(
+    charges.map((charge) => processCharge(charge, bookRepository, aladinClient)),
+  );
+
   if (plannedLoanRepository) {
-    await plannedLoanRepository.deleteByLibraryBiblioId(biblioId);
+    const biblioIds = new Set<number>();
+    for (const charge of charges) {
+      biblioIds.add(charge.biblio.id);
+    }
+
+    await Promise.all(
+      Array.from(biblioIds).map((biblioId) =>
+        plannedLoanRepository.deleteByLibraryBiblioId(biblioId),
+      ),
+    );
   }
 
-  return 'unchanged';
+  return results;
 }
 
 /**

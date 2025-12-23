@@ -1,11 +1,15 @@
 /**
  * Aladin client tests
- * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-009, TASK-032
+ * Trace: spec_id: SPEC-bookinfo-001, SPEC-backend-refactor-001, task_id: TASK-009, TASK-032, TASK-072
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Charge } from '../../types';
-import { AladinClient, identifyNewBooks } from '../aladin-client';
+import {
+  AladinClient,
+  fetchNewBooksInfo,
+  identifyNewBooks,
+} from '../aladin-client';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -79,6 +83,7 @@ describe('AladinClient', () => {
       expect(bookInfo?.isbn13).toBe('9780132350884');
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('ttbkey=test-api-key'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
 
@@ -106,6 +111,7 @@ describe('AladinClient', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('Cover=Big'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
 
@@ -164,8 +170,109 @@ describe('AladinClient', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('ItemId=9780132350884'),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
+
+    it('should timeout and return null when lookup exceeds timeout', async () => {
+      vi.useFakeTimers();
+
+      mockFetch.mockImplementationOnce((_url: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          const signal = init?.signal as AbortSignal | undefined;
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              reject(new DOMException('Aborted', 'AbortError'));
+            });
+          }
+        });
+      });
+
+      const promise = client.lookupByIsbn('9780132350884', 50);
+      await vi.advanceTimersByTimeAsync(50);
+
+      const bookInfo = await promise;
+
+      expect(bookInfo).toBeNull();
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+
+      vi.useRealTimers();
+    });
+  });
+});
+
+describe('fetchNewBooksInfo', () => {
+  it('should limit concurrency and keep result order', async () => {
+    vi.useFakeTimers();
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const lookupByIsbn = vi.fn(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      inFlight -= 1;
+      return {
+        isbn: '9780132350884',
+        isbn13: '9780132350884',
+        title: 'Test',
+        author: 'Author',
+        publisher: 'Publisher',
+        pubDate: '2025-01-01',
+        description: 'Desc',
+        coverUrl: 'https://example.com/cover.jpg',
+        tableOfContents: null,
+      };
+    });
+
+    const mockClient = { lookupByIsbn } as unknown as AladinClient;
+    const charges = Array.from({ length: 25 }, (_value, index) =>
+      createMockCharge('2025-01-15', index + 1),
+    );
+
+    const promise = fetchNewBooksInfo(mockClient, charges, 10);
+    await vi.runAllTimersAsync();
+
+    const results = await promise;
+
+    expect(results).toHaveLength(25);
+    expect(results[0]?.charge.id).toBe(1);
+    expect(results[24]?.charge.id).toBe(25);
+    expect(maxInFlight).toBeLessThanOrEqual(10);
+
+    vi.useRealTimers();
+  });
+
+  it('should return null bookInfo for failed lookups', async () => {
+    const lookupByIsbn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        isbn: '1',
+        isbn13: '1',
+        title: 'Ok',
+        author: 'Author',
+        publisher: 'Publisher',
+        pubDate: '2025-01-01',
+        description: 'Desc',
+        coverUrl: 'https://example.com/cover.jpg',
+        tableOfContents: null,
+      })
+      .mockRejectedValueOnce(new Error('boom'));
+
+    const mockClient = { lookupByIsbn } as unknown as AladinClient;
+    const charges = [
+      createMockCharge('2025-01-15', 1),
+      createMockCharge('2025-01-15', 2),
+    ];
+
+    const results = await fetchNewBooksInfo(mockClient, charges, 10);
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.bookInfo).not.toBeNull();
+    expect(results[1]?.bookInfo).toBeNull();
   });
 });
 

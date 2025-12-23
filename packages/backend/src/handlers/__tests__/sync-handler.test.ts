@@ -1,14 +1,99 @@
 /**
  * Sync handler tests
- * Trace: spec_id: SPEC-bookinfo-001, task_id: TASK-032
+ * Trace: spec_id: SPEC-bookinfo-001, SPEC-backend-refactor-001, task_id: TASK-032, TASK-073, TASK-074
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AladinClient } from '../../services/aladin-client';
 import type { BookRepository } from '../../services/book-repository';
 import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
 import type { Charge, ChargeHistory } from '../../types';
-import { processCharge, processChargeHistory } from '../sync-handler';
+import type { Env } from '../../types';
+import { LibraryApiError } from '../../services/library-client';
+import {
+  handleSyncBooks,
+  processCharge,
+  processChargeHistory,
+  processChargesWithPlanningCleanup,
+} from '../sync-handler';
+
+const mockLibraryClient = {
+  login: vi.fn(),
+  getCharges: vi.fn(),
+  getChargeHistories: vi.fn(),
+};
+const mockAladinClient = {
+  lookupByIsbn: vi.fn(),
+};
+const mockBookRepository = {
+  findByChargeId: vi.fn(),
+  findByIsbn: vi.fn(),
+  saveBook: vi.fn(),
+};
+const mockPlannedLoanRepository = {
+  deleteByLibraryBiblioId: vi.fn(),
+};
+
+vi.mock('../../services', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../services')>();
+  return {
+    ...actual,
+    createLibraryClient: () => mockLibraryClient,
+    createAladinClient: () => mockAladinClient,
+    createBookRepository: () => mockBookRepository,
+    createPlannedLoanRepository: () => mockPlannedLoanRepository,
+  };
+});
+
+const baseEnv: Env = {
+  LIBRARY_USER_ID: 'user',
+  LIBRARY_PASSWORD: 'pass',
+  ALADIN_API_KEY: 'key',
+  DB: {} as D1Database,
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('handleSyncBooks error classification', () => {
+  it('returns AUTH_FAILED when library auth fails', async () => {
+    mockLibraryClient.login.mockRejectedValueOnce(
+      new LibraryApiError('Unauthorized', 401),
+    );
+
+    const response = await handleSyncBooks(baseEnv);
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe('AUTH_FAILED');
+    expect(body.message).toBe('Unauthorized');
+  });
+
+  it('returns LIBRARY_UNAVAILABLE when upstream is down', async () => {
+    mockLibraryClient.login.mockRejectedValueOnce(
+      new LibraryApiError('Service down', 503),
+    );
+
+    const response = await handleSyncBooks(baseEnv);
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error).toBe('LIBRARY_UNAVAILABLE');
+    expect(body.message).toBe('Service down');
+  });
+
+  it('returns UNKNOWN for unexpected errors', async () => {
+    mockLibraryClient.login.mockRejectedValueOnce(new Error('boom'));
+
+    const response = await handleSyncBooks(baseEnv);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe('UNKNOWN');
+    expect(body.message).toBe('boom');
+  });
+});
 
 function createMockCharge(overrides: Partial<Charge> = {}): Charge {
   const defaultBiblio = {
@@ -200,25 +285,15 @@ describe('processCharge', () => {
     expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 
-  it('deletes planned loan when loaned book appears (TEST-loan-plan-006)', async () => {
+  it('does not delete planned loans within processCharge (handled in batch cleanup)', async () => {
     const charge = createMockCharge({ id: 777 });
 
     const mockBookRepository = createMockBookRepository(null);
     const mockAladinClient = createMockAladinClient(null);
-    const plannedRepo = {
-      deleteByLibraryBiblioId: vi.fn().mockResolvedValue(true),
-    } as unknown as PlannedLoanRepository;
 
-    await processCharge(
-      charge,
-      mockBookRepository,
-      mockAladinClient,
-      plannedRepo,
-    );
+    await processCharge(charge, mockBookRepository, mockAladinClient);
 
-    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(
-      charge.biblio.id,
-    );
+    expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 
   it('returns unchanged when Aladin returns null for metadata recovery', async () => {
@@ -310,6 +385,33 @@ describe('processCharge', () => {
         description: mockAladinResponse.description,
       }),
     );
+  });
+});
+
+describe('processChargesWithPlanningCleanup', () => {
+  it('deduplicates planned loan deletions by biblio id', async () => {
+    const charges = [
+      createMockCharge({ id: 1, biblio: { id: 99, isbn: '9781' } }),
+      createMockCharge({ id: 2, biblio: { id: 99, isbn: '9781' } }),
+      createMockCharge({ id: 3, biblio: { id: 100, isbn: '9782' } }),
+    ];
+
+    const mockBookRepository = createMockBookRepository(null);
+    const mockAladinClient = createMockAladinClient(null);
+    const plannedRepo = {
+      deleteByLibraryBiblioId: vi.fn().mockResolvedValue(true),
+    } as unknown as PlannedLoanRepository;
+
+    await processChargesWithPlanningCleanup(
+      charges,
+      mockBookRepository,
+      mockAladinClient,
+      plannedRepo,
+    );
+
+    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledTimes(2);
+    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(99);
+    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(100);
   });
 });
 
