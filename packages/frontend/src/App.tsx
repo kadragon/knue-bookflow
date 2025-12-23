@@ -8,7 +8,6 @@ import {
   Edit as EditIcon,
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
-  Refresh as RefreshIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
 import {
@@ -63,7 +62,7 @@ import NewBooksPage from './pages/NewBooksPage';
 import PlannedLoansPage from './pages/PlannedLoansPage';
 import SearchBooksPage from './pages/SearchBooksPage';
 
-// Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023, TASK-029
+// Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-scheduler-001, task_id: TASK-019, TASK-023, TASK-029, TASK-070
 
 type DueStatus = 'overdue' | 'due_soon' | 'ok';
 type LoanState = 'on_loan' | 'returned';
@@ -774,7 +773,7 @@ function ShelfStats({
 function BookshelfPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, refetch } = useBooks();
+  const { data, isLoading, isError } = useBooks();
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -867,6 +866,7 @@ function BookshelfPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070 */}
       <Header
         title="Bookshelf"
         actions={
@@ -880,13 +880,6 @@ function BookshelfPage() {
             >
               갱신
             </Button>
-            <IconButton
-              onClick={() => refetch()}
-              disabled={isLoading}
-              color="inherit"
-            >
-              <RefreshIcon />
-            </IconButton>
           </Stack>
         }
       />

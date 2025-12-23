@@ -32,4 +32,21 @@ describe('App Component', () => {
     // Check for the "Bookshelf" title which is in the App component
     expect(screen.getByText('Bookshelf')).toBeDefined();
   });
+
+  it('shows a single manual refresh control', () => {
+    const queryClient = createTestQueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ThemeProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: '갱신' })).toBeDefined();
+    expect(screen.queryByTestId('RefreshIcon')).toBeNull();
+  });
 });

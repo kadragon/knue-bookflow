@@ -18,10 +18,10 @@ mode = "smart"
 # Trace: SPEC-observability-001 / TASK-018
 
 # Cron Triggers
-# - Renewal workflow: 10:00 UTC (19:00 KST)
 # - Note broadcast: 03:00 UTC (12:00 KST)
 [triggers]
-crons = ["0 10 * * *", "0 3 * * *"]
+crons = ["0 3 * * *"]
+# Trace: SPEC-scheduler-001 / TASK-070
 
 # D1 Database binding
 [[d1_databases]]

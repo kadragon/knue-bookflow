@@ -40,28 +40,22 @@ import {
 } from './services';
 import type { CreateNoteRequest, Env, UpdateNoteRequest } from './types';
 
-const RENEWAL_CRON = '0 10 * * *';
-
 export default {
   /**
-   * Cron Trigger Handler - Executes daily at scheduled time
-   * Performs the complete book renewal workflow
+   * Cron Trigger Handler - Notes broadcast only
    */
   async scheduled(
     event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
       ctx.waitUntil(handleNoteBroadcast(env));
     } else {
-      if (event.cron && event.cron !== RENEWAL_CRON) {
-        console.warn(
-          `[BookFlow] Unknown cron '${event.cron}', running renewal workflow by default`,
-        );
-      }
-      // Handles renewal cron, manual triggers, and unknown crons as a fallback.
-      ctx.waitUntil(handleScheduledTask(env, event));
+      console.warn(
+        `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
+      );
     }
   },
 
@@ -214,7 +208,7 @@ export default {
 };
 
 /**
- * Main workflow handler for scheduled task
+ * Main workflow handler for manual trigger
  * Orchestrates the complete book renewal process
  */
 async function handleScheduledTask(
@@ -223,7 +217,7 @@ async function handleScheduledTask(
 ): Promise<void> {
   const startTime = Date.now();
   console.log(
-    `[BookFlow] Starting scheduled task at ${new Date().toISOString()}`,
+    `[BookFlow] Starting workflow run at ${new Date().toISOString()}`,
   );
 
   // Initialize services

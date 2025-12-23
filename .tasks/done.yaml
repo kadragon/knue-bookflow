@@ -128,3 +128,10 @@ completed_tasks:
     result: "Standardized backend vitest config with coverage, explicit includes, and globals enabled. Excluded index.ts barrel files from coverage."
     test_refs:
       - "npm test --workspace @knue-bookflow/backend -- --coverage"
+  - id: TASK-070
+    spec_id: SPEC-scheduler-001
+    status: completed
+    completed_at: "2025-12-23T14:11:00Z"
+    result: "Removed the renewal cron trigger, kept note broadcast cron, and unified the UI to a single manual '갱신' control."
+    test_refs:
+      - "npm test --workspace @knue-bookflow/frontend -- App.test.tsx"
