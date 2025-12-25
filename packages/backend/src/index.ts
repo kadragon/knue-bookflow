@@ -219,9 +219,7 @@ async function handleManualTrigger(
 ): Promise<void> {
   const startTime = Date.now();
   const logDebug = createDebugLogger(isDebugEnabled(env));
-  logDebug(
-    `[BookFlow] Starting workflow run at ${new Date().toISOString()}`,
-  );
+  logDebug(`[BookFlow] Starting workflow run at ${new Date().toISOString()}`);
 
   // Initialize services
   const libraryClient = createLibraryClient();

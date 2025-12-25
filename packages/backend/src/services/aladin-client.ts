@@ -28,7 +28,10 @@ export class AladinClient {
     { value: BookInfo | null; expiresAt: number }
   >();
 
-  constructor(private apiKey: string, private cacheTtlMs = ALADIN_CACHE_TTL_MS) {}
+  constructor(
+    private apiKey: string,
+    private cacheTtlMs = ALADIN_CACHE_TTL_MS,
+  ) {}
 
   /**
    * Look up book information by ISBN

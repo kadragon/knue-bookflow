@@ -6,10 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AladinClient } from '../../services/aladin-client';
 import type { BookRepository } from '../../services/book-repository';
-import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
-import type { Charge, ChargeHistory } from '../../types';
-import type { Env } from '../../types';
 import { LibraryApiError } from '../../services/library-client';
+import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
+import type { Charge, ChargeHistory, Env } from '../../types';
 import {
   handleSyncBooks,
   processCharge,

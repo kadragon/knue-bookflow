@@ -4,7 +4,6 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Card,
@@ -17,7 +16,6 @@ import {
   Pagination,
   Stack,
   TextField,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -230,7 +228,7 @@ function validatePageParam(pageStr: string | null): number {
 }
 
 export default function SearchBooksPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const queryParam = searchParams.get('q') || '';

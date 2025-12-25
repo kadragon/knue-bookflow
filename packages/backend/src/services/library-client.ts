@@ -18,7 +18,6 @@ import type {
   LibrarySearchBooksResponse,
   LoginRequest,
   LoginResponse,
-  NewBook,
   RenewalResponse,
   SessionData,
 } from '../types';

@@ -12,10 +12,10 @@ import {
   createLibraryClient,
   createPlannedLoanRepository,
 } from '../services';
-import { LibraryApiError } from '../services/library-client';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
 import type { LibraryClient } from '../services/library-client';
+import { LibraryApiError } from '../services/library-client';
 import type { PlannedLoanRepository } from '../services/planned-loan-repository';
 import type {
   BookInfo,
@@ -262,7 +262,9 @@ export async function processChargesWithPlanningCleanup(
   plannedLoanRepository?: PlannedLoanRepository,
 ): Promise<SyncStatus[]> {
   const results = await Promise.all(
-    charges.map((charge) => processCharge(charge, bookRepository, aladinClient)),
+    charges.map((charge) =>
+      processCharge(charge, bookRepository, aladinClient),
+    ),
   );
 
   if (plannedLoanRepository) {

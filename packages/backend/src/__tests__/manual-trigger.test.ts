@@ -31,7 +31,8 @@ vi.mock('../services', async (importOriginal) => {
 });
 
 vi.mock('../handlers/sync-handler', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../handlers/sync-handler')>();
+  const actual =
+    await importOriginal<typeof import('../handlers/sync-handler')>();
   return {
     ...actual,
     processCharge: mockProcessCharge,

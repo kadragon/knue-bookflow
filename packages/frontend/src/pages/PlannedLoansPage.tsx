@@ -4,9 +4,7 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
-  AppBar,
   Box,
-  Button,
   Card,
   CardContent,
   CardMedia,
@@ -14,8 +12,6 @@ import {
   CircularProgress,
   Container,
   IconButton,
-  Stack,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -202,7 +198,7 @@ function PlannedLoanCard({
 }
 
 export default function PlannedLoansPage() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const queryClient = useQueryClient();
   const [snackbar, setSnackbar] = useState<{
     open: boolean;

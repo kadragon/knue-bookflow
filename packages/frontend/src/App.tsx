@@ -1,6 +1,4 @@
 import {
-  AutoStories as AutoStoriesIcon,
-  BookmarkAdd as BookmarkAddIcon,
   CheckCircle as CheckCircleIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
@@ -8,11 +6,9 @@ import {
   Edit as EditIcon,
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
-  Search as SearchIcon,
 } from '@mui/icons-material';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Card,
@@ -31,7 +27,6 @@ import {
   Snackbar,
   Stack,
   TextField,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

@@ -9,7 +9,9 @@ export function isDebugEnabled(env?: Pick<Env, 'DEBUG'>): boolean {
   return env?.DEBUG === 'true';
 }
 
-export function createDebugLogger(enabled: boolean): (...args: unknown[]) => void {
+export function createDebugLogger(
+  enabled: boolean,
+): (...args: unknown[]) => void {
   return (...args: unknown[]): void => {
     if (enabled) {
       console.log(...args);

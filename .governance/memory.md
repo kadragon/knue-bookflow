@@ -38,6 +38,7 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 - D1 provisioning/migrations/secrets should be verified in the target environment before production deploy.
 
 ## Recent Work (high-level)
+- 2025-12-25: fixed Biome lint issues by removing unused imports/vars and the non-null assertion in BookDetailModal; lint now passes. (TASK-080)
 - 2025-11-22..11-26: audit + reliability hardening (TASK-011..TASK-037)
 - 2025-12-11: planned loans features + monorepo conversion (TASK-043..TASK-064)
 - 2025-12-14: new books pagination + infinite scroll (TASK-066)
