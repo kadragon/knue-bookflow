@@ -8,7 +8,7 @@
 
 import { createLibraryClient } from '../services';
 import type { NewBook } from '../types';
-import { normalizeBranchVolumes } from '../utils';
+import { normalizeBranchVolumes, parsePaginationParams } from '../utils';
 
 /**
  * Format date to YYYY-MM-DD
@@ -91,44 +91,32 @@ export interface NewBooksQuery {
  */
 export async function handleNewBooksApi(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const daysParam = url.searchParams.get('days');
-  const maxParam = url.searchParams.get('max');
-  const offsetParam = url.searchParams.get('offset');
+  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-077
+  const pagination = parsePaginationParams(url.searchParams, {
+    days: {
+      default: 30,
+      min: 1,
+      max: 365,
+      errorMessage: 'Invalid days parameter (1-365)',
+    },
+    max: {
+      default: 50,
+      min: 1,
+      max: 100,
+      errorMessage: 'Invalid max parameter (1-100)',
+    },
+    offset: {
+      default: 0,
+      min: 0,
+      errorMessage: 'Invalid offset parameter (must be >= 0)',
+    },
+  });
 
-  const days = daysParam ? parseInt(daysParam, 10) : 30;
-  const max = maxParam ? parseInt(maxParam, 10) : 50;
-  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
-
-  // Validate parameters
-  if (Number.isNaN(days) || days < 1 || days > 365) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid days parameter (1-365)' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+  if ('response' in pagination) {
+    return pagination.response;
   }
 
-  if (Number.isNaN(max) || max < 1 || max > 100) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid max parameter (1-100)' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
-  }
-
-  if (Number.isNaN(offset) || offset < 0) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid offset parameter (must be >= 0)' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
-  }
+  const { days = 30, max = 50, offset = 0 } = pagination.values;
 
   try {
     const libraryClient = createLibraryClient();

@@ -1,4 +1,34 @@
 completed_tasks:
+  - id: TASK-079
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T06:30:00Z"
+    result: "Centralized shared constants, gated debug logging via env.DEBUG, and added per-instance Aladin ISBN cache (1h TTL). Updated date utils and handlers to use constants; added tests for constants, debug logger, and Aladin cache TTL behavior."
+    test_refs: []
+  - id: TASK-078
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:55:51Z"
+    result: "Centralized renewal logging in renewal-service helper, updated manual workflow to use it, and added tests for consolidated logging."
+    test_refs: []
+  - id: TASK-077
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:34:51Z"
+    result: "Extracted shared pagination parsing utility, adopted it in new-books and search handlers, and added unit tests for defaults and invalid parameters."
+    test_refs: []
+  - id: TASK-076
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:31:30Z"
+    result: "Defaulted findByIsbn to limit 10 with a SQL LIMIT clause, updated return-history fallback to pass limit, and adjusted tests for bind expectations."
+    test_refs: []
+  - id: TASK-075
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:10:17Z"
+    result: "Updated manual workflow sync step to use allSettled, log sync failures, and continue to return processing even when some syncs fail; added manual trigger test to ensure renewals are logged on partial sync failure."
+    test_refs: []
   - id: TASK-074
     spec_id: SPEC-backend-refactor-001
     status: completed

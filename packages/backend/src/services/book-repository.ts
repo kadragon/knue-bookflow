@@ -126,10 +126,13 @@ export class BookRepository {
    * Find a book record by ISBN
    * @param isbn - ISBN to search for
    */
-  async findByIsbn(isbn: string): Promise<BookRecord[]> {
+  async findByIsbn(isbn: string, limit = 10): Promise<BookRecord[]> {
+    // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
     const result = await this.db
-      .prepare('SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC')
-      .bind(isbn)
+      .prepare(
+        'SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC LIMIT ?',
+      )
+      .bind(isbn, limit)
       .all<BookRecord>();
 
     return result.results;

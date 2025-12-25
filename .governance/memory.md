@@ -50,3 +50,8 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 - 2025-12-23: implemented Aladin lookup timeout and bounded concurrency (10) for new-books metadata lookup; added tests for timeout, concurrency, and failure handling. Test run failed due to duplicate --configLoader flag. (TASK-072)
 - 2025-12-23: deduplicated planned loan deletions by batching unique biblio ids after sync charge processing; added tests. (TASK-073)
 - 2025-12-23: added sync error classification with codes/statuses and tests validating auth/library/unknown responses. (TASK-074)
+- 2025-12-24: manual renewal workflow now uses allSettled for sync, logs sync failures, and keeps return processing running; added manual trigger test to confirm renewals log on partial sync failure. (TASK-075)
+- 2025-12-24: findByIsbn now defaults to 10 results (SQL LIMIT) with updated return-history fallback and tests. (TASK-076)
+- 2025-12-24: shared pagination parser added and adopted by new-books/search handlers with unit tests. (TASK-077)
+- 2025-12-24: centralized renewal logging in renewal-service helper and added tests. (TASK-078)
+- 2025-12-24: centralized shared constants (dates, renewal defaults, cache settings), added DEBUG-gated logger, and added per-instance Aladin lookup cache (1h TTL); updated handlers/services/date utils to use constants and added tests for constants/logger/cache TTL. (TASK-079)

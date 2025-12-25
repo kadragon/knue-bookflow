@@ -2,7 +2,7 @@
  * Book Renewal Service
  * Determines which books are eligible for renewal and processes them
  *
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004, TASK-012
+ * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-012, TASK-079
  */
 
 import type {
@@ -11,14 +11,19 @@ import type {
   RenewalConfig,
   RenewalResult,
 } from '../types';
-import { isWithinDays } from '../utils';
+import {
+  DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+  DEFAULT_RENEWAL_MAX_COUNT,
+  isWithinDays,
+} from '../utils';
+import type { BookRepository } from './book-repository';
 import { LibraryApiError, type LibraryClient } from './library-client';
 
 export type { RenewalCandidate, RenewalConfig, RenewalResult };
 
 const DEFAULT_CONFIG: RenewalConfig = {
-  maxRenewCount: 0, // Only renew if never renewed before
-  daysBeforeDue: 2, // Renew when 2 days or less before due date
+  maxRenewCount: DEFAULT_RENEWAL_MAX_COUNT,
+  daysBeforeDue: DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
 };
 
 /**
@@ -113,6 +118,26 @@ export async function processRenewals(
   );
 
   return results;
+}
+
+/**
+ * Persist renewal results to the repository.
+ */
+export async function logRenewalResults(
+  bookRepository: BookRepository,
+  results: RenewalResult[],
+): Promise<void> {
+  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-078
+  for (const result of results) {
+    await bookRepository.logRenewal({
+      charge_id: String(result.chargeId),
+      action: 'renewal_attempt',
+      status: result.success ? 'success' : 'failure',
+      message: result.success
+        ? `Renewed until ${result.newDueDate}`
+        : result.errorMessage || 'Unknown error',
+    });
+  }
 }
 
 /**

@@ -499,6 +499,7 @@ describe('processChargeHistory', () => {
     expect(status).toBe('returned');
     expect(mockBookRepository.findByIsbn).toHaveBeenCalledWith(
       history.biblio.isbn,
+      10,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
       expect.objectContaining({

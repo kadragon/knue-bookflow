@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker environment bindings
- * Trace: spec_id: N/A, task_id: TASK-001
+ * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-001, TASK-079
  */
 
 export interface Env {
@@ -19,4 +19,5 @@ export interface Env {
 
   // Non-secret environment variables
   ENVIRONMENT: string;
+  DEBUG?: string;
 }

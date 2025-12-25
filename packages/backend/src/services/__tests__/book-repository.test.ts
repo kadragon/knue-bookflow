@@ -307,8 +307,9 @@ describe('BookRepository', () => {
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC',
+        'SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC LIMIT ?',
       );
+      expect(mockBind).toHaveBeenCalledWith('9781234567890', 10);
     });
 
     it('should return empty array when no records found', async () => {
@@ -322,6 +323,7 @@ describe('BookRepository', () => {
       const result = await repository.findByIsbn('nonexistent');
 
       expect(result).toHaveLength(0);
+      expect(mockBind).toHaveBeenCalledWith('nonexistent', 10);
     });
   });
 

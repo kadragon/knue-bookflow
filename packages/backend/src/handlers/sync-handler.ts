@@ -321,7 +321,8 @@ export async function processChargeHistory(
 
   // ISBN fallback with chargeDate comparison for data consistency
   if (!existing && history.biblio.isbn) {
-    const matches = await bookRepository.findByIsbn(history.biblio.isbn);
+    // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
+    const matches = await bookRepository.findByIsbn(history.biblio.isbn, 10);
     // Find exact match by chargeDate to avoid matching different loan cycles
     existing =
       matches.find((m) => m.charge_date === history.chargeDate) ?? null;

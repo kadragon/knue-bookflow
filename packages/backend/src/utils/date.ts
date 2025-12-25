@@ -1,11 +1,9 @@
 /**
  * Date utility functions
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-004, TASK-015
+ * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079
  */
 
-const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
-
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { DAY_MS, KST_OFFSET_MINUTES } from './constants';
 
 function zoneDayNumber(ms: number, offsetMinutes: number): number {
   return Math.floor((ms + offsetMinutes * 60 * 1000) / DAY_MS);
@@ -18,9 +16,8 @@ function zoneDayNumber(ms: number, offsetMinutes: number): number {
  * @returns Number of days difference
  */
 export function daysBetween(date1: Date, date2: Date): number {
-  const oneDay = 24 * 60 * 60 * 1000; // milliseconds in a day
   const diffMs = date2.getTime() - date1.getTime();
-  return Math.round(diffMs / oneDay);
+  return Math.round(diffMs / DAY_MS);
 }
 
 /**

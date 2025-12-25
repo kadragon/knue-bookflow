@@ -201,6 +201,90 @@ describe('AladinClient', () => {
 
       vi.useRealTimers();
     });
+
+    it('should cache successful lookups within TTL', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          item: [
+            {
+              title: 'Cached Book',
+              author: 'Author',
+              publisher: 'Publisher',
+              pubDate: '2024-01-01',
+              description: 'Desc',
+              isbn: '111',
+              isbn13: '111',
+              cover: 'https://example.com/cover.jpg',
+              categoryName: 'Category',
+            },
+          ],
+        }),
+      });
+
+      const cachedClient = new AladinClient('test-api-key', 1000);
+      const first = await cachedClient.lookupByIsbn('111');
+      const second = await cachedClient.lookupByIsbn('111');
+
+      expect(first).not.toBeNull();
+      expect(second).not.toBeNull();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refetch after cache TTL expires', async () => {
+      vi.useFakeTimers();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            item: [
+              {
+                title: 'First',
+                author: 'Author',
+                publisher: 'Publisher',
+                pubDate: '2024-01-01',
+                description: 'Desc',
+                isbn: '222',
+                isbn13: '222',
+                cover: 'https://example.com/cover.jpg',
+                categoryName: 'Category',
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            item: [
+              {
+                title: 'Second',
+                author: 'Author',
+                publisher: 'Publisher',
+                pubDate: '2024-01-02',
+                description: 'Desc',
+                isbn: '222',
+                isbn13: '222',
+                cover: 'https://example.com/cover.jpg',
+                categoryName: 'Category',
+              },
+            ],
+          }),
+        });
+
+      const cachedClient = new AladinClient('test-api-key', 10);
+      const first = await cachedClient.lookupByIsbn('222');
+
+      await vi.advanceTimersByTimeAsync(11);
+
+      const second = await cachedClient.lookupByIsbn('222');
+
+      expect(first?.title).toBe('First');
+      expect(second?.title).toBe('Second');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
   });
 });
 
