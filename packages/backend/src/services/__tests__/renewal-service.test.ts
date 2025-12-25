@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Charge, RenewalResult } from '../../types';
+import type { BookRepository } from '../book-repository';
 import {
   checkAndRenewBooks,
   identifyRenewalCandidates,
@@ -74,10 +75,17 @@ describe('renewal service', () => {
 
       const mockRepository = {
         logRenewal: vi.fn().mockResolvedValue(undefined),
+        db: undefined,
+        saveBook: vi.fn(),
+        updateReadStatus: vi.fn(),
+        findByChargeId: vi.fn(),
+        findByIsbn: vi.fn(),
+        findMostRecentByIsbn: vi.fn(),
+        findAllUnread: vi.fn(),
       };
 
       await logRenewalResults(
-        mockRepository as { logRenewal: (log: unknown) => Promise<void> },
+        mockRepository as unknown as BookRepository,
         results,
       );
 

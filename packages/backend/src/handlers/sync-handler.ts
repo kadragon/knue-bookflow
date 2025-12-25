@@ -2,7 +2,7 @@
  * Library-DB Sync Handler
  * Synchronizes all currently borrowed books from library with D1 database
  *
- * Trace: spec_id: SPEC-sync-001, SPEC-return-001, SPEC-backend-refactor-001, task_id: TASK-021, TASK-034, TASK-073, TASK-074
+ * Trace: spec_id: SPEC-sync-001, SPEC-return-001, SPEC-backend-refactor-001, task_id: TASK-021, TASK-034, TASK-073, TASK-074, TASK-081
  */
 
 import {
@@ -25,6 +25,7 @@ import type {
   SyncResponse,
   SyncSummary,
 } from '../types';
+import { ALADIN_LOOKUP_CONCURRENCY } from '../utils';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
 type SyncErrorCode =
@@ -260,12 +261,23 @@ export async function processChargesWithPlanningCleanup(
   bookRepository: BookRepository,
   aladinClient: AladinClient,
   plannedLoanRepository?: PlannedLoanRepository,
+  options?: { concurrency?: number },
 ): Promise<SyncStatus[]> {
-  const results = await Promise.all(
-    charges.map((charge) =>
-      processCharge(charge, bookRepository, aladinClient),
-    ),
+  const batchSize = Math.max(
+    1,
+    options?.concurrency ?? ALADIN_LOOKUP_CONCURRENCY,
   );
+  const results: SyncStatus[] = [];
+
+  for (let i = 0; i < charges.length; i += batchSize) {
+    const batch = charges.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((charge) =>
+        processCharge(charge, bookRepository, aladinClient),
+      ),
+    );
+    results.push(...batchResults);
+  }
 
   if (plannedLoanRepository) {
     const biblioIds = new Set<number>();
@@ -324,7 +336,7 @@ export async function processChargeHistory(
   // ISBN fallback with chargeDate comparison for data consistency
   if (!existing && history.biblio.isbn) {
     // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
-    const matches = await bookRepository.findByIsbn(history.biblio.isbn, 10);
+    const matches = await bookRepository.findByIsbn(history.biblio.isbn);
     // Find exact match by chargeDate to avoid matching different loan cycles
     existing =
       matches.find((m) => m.charge_date === history.chargeDate) ?? null;

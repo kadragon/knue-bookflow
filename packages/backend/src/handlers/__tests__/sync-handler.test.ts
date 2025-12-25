@@ -1,6 +1,6 @@
 /**
  * Sync handler tests
- * Trace: spec_id: SPEC-bookinfo-001, SPEC-backend-refactor-001, task_id: TASK-032, TASK-073, TASK-074
+ * Trace: spec_id: SPEC-bookinfo-001, SPEC-backend-refactor-001, task_id: TASK-032, TASK-073, TASK-074, TASK-081
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,9 +46,13 @@ vi.mock('../../services', async (importOriginal) => {
 
 const baseEnv: Env = {
   LIBRARY_USER_ID: 'user',
-  LIBRARY_PASSWORD: 'pass',
-  ALADIN_API_KEY: 'key',
+  LIBRARY_PASSWORD: 'pass' as never,
+  ALADIN_API_KEY: 'key' as never,
   DB: {} as D1Database,
+  ASSETS: {} as Fetcher,
+  TELEGRAM_BOT_TOKEN: 'token',
+  TELEGRAM_CHAT_ID: 'chatid',
+  ENVIRONMENT: 'test',
 };
 
 beforeEach(() => {
@@ -62,7 +66,7 @@ describe('handleSyncBooks error classification', () => {
     );
 
     const response = await handleSyncBooks(baseEnv);
-    const body = await response.json();
+    const body = (await response.json()) as { error: string; message: string };
 
     expect(response.status).toBe(401);
     expect(body.error).toBe('AUTH_FAILED');
@@ -75,18 +79,44 @@ describe('handleSyncBooks error classification', () => {
     );
 
     const response = await handleSyncBooks(baseEnv);
-    const body = await response.json();
+    const body = (await response.json()) as { error: string; message: string };
 
     expect(response.status).toBe(503);
     expect(body.error).toBe('LIBRARY_UNAVAILABLE');
     expect(body.message).toBe('Service down');
   });
 
+  it('returns LIBRARY_ERROR when library responds with 4xx', async () => {
+    mockLibraryClient.login.mockRejectedValueOnce(
+      new LibraryApiError('Bad request', 400),
+    );
+
+    const response = await handleSyncBooks(baseEnv);
+    const body = (await response.json()) as { error: string; message: string };
+
+    expect(response.status).toBe(502);
+    expect(body.error).toBe('LIBRARY_ERROR');
+    expect(body.message).toBe('Bad request');
+  });
+
+  it('returns EXTERNAL_TIMEOUT for abort errors', async () => {
+    mockLibraryClient.login.mockRejectedValueOnce(
+      new DOMException('Aborted', 'AbortError'),
+    );
+
+    const response = await handleSyncBooks(baseEnv);
+    const body = (await response.json()) as { error: string; message: string };
+
+    expect(response.status).toBe(504);
+    expect(body.error).toBe('EXTERNAL_TIMEOUT');
+    expect(body.message).toBe('External request timed out');
+  });
+
   it('returns UNKNOWN for unexpected errors', async () => {
     mockLibraryClient.login.mockRejectedValueOnce(new Error('boom'));
 
     const response = await handleSyncBooks(baseEnv);
-    const body = await response.json();
+    const body = (await response.json()) as { error: string; message: string };
 
     expect(response.status).toBe(500);
     expect(body.error).toBe('UNKNOWN');
@@ -390,9 +420,33 @@ describe('processCharge', () => {
 describe('processChargesWithPlanningCleanup', () => {
   it('deduplicates planned loan deletions by biblio id', async () => {
     const charges = [
-      createMockCharge({ id: 1, biblio: { id: 99, isbn: '9781' } }),
-      createMockCharge({ id: 2, biblio: { id: 99, isbn: '9781' } }),
-      createMockCharge({ id: 3, biblio: { id: 100, isbn: '9782' } }),
+      createMockCharge({
+        id: 1,
+        biblio: {
+          id: 99,
+          isbn: '9781',
+          titleStatement: 'Book 1',
+          thumbnail: null,
+        },
+      }),
+      createMockCharge({
+        id: 2,
+        biblio: {
+          id: 99,
+          isbn: '9781',
+          titleStatement: 'Book 1',
+          thumbnail: null,
+        },
+      }),
+      createMockCharge({
+        id: 3,
+        biblio: {
+          id: 100,
+          isbn: '9782',
+          titleStatement: 'Book 2',
+          thumbnail: null,
+        },
+      }),
     ];
 
     const mockBookRepository = createMockBookRepository(null);
@@ -498,7 +552,6 @@ describe('processChargeHistory', () => {
     expect(status).toBe('returned');
     expect(mockBookRepository.findByIsbn).toHaveBeenCalledWith(
       history.biblio.isbn,
-      10,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
       expect.objectContaining({

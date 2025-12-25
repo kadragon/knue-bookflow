@@ -1,4 +1,12 @@
 completed_tasks:
+  - id: TASK-081
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-25T13:50:55Z"
+    result: "Aligned sync error classification coverage (AUTH/LIBRARY_ERROR/LIBRARY_UNAVAILABLE/EXTERNAL_TIMEOUT/UNKNOWN), batched sync processing with bounded concurrency for manual triggers and sync cleanup, and removed explicit ISBN fallback limit to rely on repository default."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/sync-handler.test.ts packages/backend/src/__tests__/manual-trigger.test.ts"
+      - "npm run lint"
   - id: TASK-080
     spec_id: SPEC-maintenance-001
     status: completed

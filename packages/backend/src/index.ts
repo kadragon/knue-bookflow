@@ -2,7 +2,7 @@
  * KNUE BookFlow - Cloudflare Worker Entry Point
  * Automatic book renewal system for Korea National University of Education library
  *
- * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023, TASK-079
+ * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023, TASK-079, TASK-081
  */
 
 import { handleGetBookByIsbn } from './handlers/aladin-handler';
@@ -39,8 +39,17 @@ import {
   NOTE_BROADCAST_CRON,
   type RenewalResult,
 } from './services';
-import type { CreateNoteRequest, Env, UpdateNoteRequest } from './types';
-import { createDebugLogger, isDebugEnabled } from './utils';
+import type {
+  Charge,
+  CreateNoteRequest,
+  Env,
+  UpdateNoteRequest,
+} from './types';
+import {
+  ALADIN_LOOKUP_CONCURRENCY,
+  createDebugLogger,
+  isDebugEnabled,
+} from './utils';
 
 export default {
   /**
@@ -256,17 +265,10 @@ async function handleManualTrigger(
     // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-075
     logDebug('[BookFlow] Step 5: Syncing books with database...');
 
-    const syncResults = await Promise.allSettled(
-      charges.map((charge) =>
-        processCharge(charge, bookRepository, aladinClient),
-      ),
-    );
-
-    const syncStatuses = syncResults.flatMap((result) =>
-      result.status === 'fulfilled' ? [result.value] : [],
-    );
-    const syncErrors = syncResults.flatMap((result) =>
-      result.status === 'rejected' ? [result.reason] : [],
+    const { syncStatuses, syncErrors } = await processChargesInBatches(
+      charges,
+      bookRepository,
+      aladinClient,
     );
 
     for (const error of syncErrors) {
@@ -320,6 +322,39 @@ async function handleManualTrigger(
 
     throw error;
   }
+}
+
+type SyncStatus = Awaited<ReturnType<typeof processCharge>>;
+
+async function processChargesInBatches(
+  charges: Charge[],
+  bookRepository: ReturnType<typeof createBookRepository>,
+  aladinClient: ReturnType<typeof createAladinClient>,
+  concurrency = ALADIN_LOOKUP_CONCURRENCY,
+): Promise<{ syncStatuses: SyncStatus[]; syncErrors: unknown[] }> {
+  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-081
+  const batchSize = Math.max(1, concurrency);
+  const syncStatuses: SyncStatus[] = [];
+  const syncErrors: unknown[] = [];
+
+  for (let i = 0; i < charges.length; i += batchSize) {
+    const batch = charges.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map((charge) =>
+        processCharge(charge, bookRepository, aladinClient),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        syncStatuses.push(result.value);
+      } else {
+        syncErrors.push(result.reason);
+      }
+    }
+  }
+
+  return { syncStatuses, syncErrors };
 }
 
 /**
