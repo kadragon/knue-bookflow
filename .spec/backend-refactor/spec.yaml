@@ -1,0 +1,80 @@
+spec_id: SPEC-backend-refactor-001
+title: "Backend Refactoring & Reliability Hardening"
+description: |
+  Implement prioritized backend refactors to improve performance, reliability,
+  and maintainability. Changes must be verified with tests and aligned to
+  bounded concurrency (10), timeout safety, error classification, and
+  consistent utilities.
+
+given_when_then:
+  - given: "Backend sync operations process multiple ISBN lookups"
+    when: "ISBN metadata lookups are executed"
+    then: "Lookups use bounded concurrency (10) with safe failure handling"
+
+  - given: "External APIs may be slow or unavailable"
+    when: "Aladin lookups are executed"
+    then: "Requests enforce a timeout and fail gracefully without blocking"
+
+  - given: "Planned loan cleanup runs during sync"
+    when: "Multiple charges reference the same biblio"
+    then: "Planned loan deletion is deduplicated and executed once per biblio"
+
+  - given: "Sync and renewal workflows include multiple external steps"
+    when: "Partial failures occur"
+    then: "Errors are classified, logged, and successful steps are preserved"
+
+  - given: "Repository queries may return large result sets"
+    when: "findByIsbn is called from sync workflows"
+    then: "Results are limited to the most recent 10 records by default"
+
+  - given: "Handlers parse pagination parameters"
+    when: "Handlers validate days/max/offset"
+    then: "Validation uses a shared utility with consistent rules"
+
+  - given: "Logging happens in high-frequency paths"
+    when: "Debug logging is configured"
+    then: "Logs are gated by a DEBUG flag to reduce noise"
+
+acceptance_tests:
+  - id: TEST-backend-refactor-001
+    desc: "Batch ISBN lookups execute with bounded concurrency (10) and tolerate per-item failures"
+  - id: TEST-backend-refactor-002
+    desc: "Aladin API lookups time out and return null without blocking the request"
+  - id: TEST-backend-refactor-003
+    desc: "Planned loan deletions occur once per biblio id in a sync run"
+  - id: TEST-backend-refactor-004
+    desc: "Sync handler returns classified error codes/statuses for known failure types"
+  - id: TEST-backend-refactor-005
+    desc: "Renewal + sync workflow records renewals even if sync partially fails"
+  - id: TEST-backend-refactor-006
+    desc: "findByIsbn defaults to 10 results and callers honor the limit"
+  - id: TEST-backend-refactor-007
+    desc: "Pagination parsing is centralized and used by applicable handlers"
+  - id: TEST-backend-refactor-008
+    desc: "Renewal logging occurs in a single, consistent location"
+  - id: TEST-backend-refactor-009
+    desc: "Shared constants and date utilities replace scattered magic values"
+  - id: TEST-backend-refactor-010
+    desc: "Debug logging is conditional via env.DEBUG"
+  - id: TEST-backend-refactor-011
+    desc: "Aladin client caches ISBN lookups within a run with a TTL"
+
+dependencies:
+  - governance: "memory.md"
+  - governance: "coding-style.md"
+  - governance: "patterns.md"
+
+linked_tasks:
+  - TASK-071
+  - TASK-072
+  - TASK-073
+  - TASK-074
+  - TASK-075
+  - TASK-076
+  - TASK-077
+  - TASK-078
+  - TASK-079
+
+trace:
+  spec_id: SPEC-backend-refactor-001
+  task_id: TASK-071

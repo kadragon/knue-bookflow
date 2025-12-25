@@ -2,8 +2,8 @@
  * Planned Loans Handler
  * Manage borrow-later list from search/new books
  *
- * Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002
- *        task_id: TASK-043, TASK-047, TASK-061, TASK-067
+ * Trace: spec_id: SPEC-loan-plan-001, SPEC-loan-plan-002, SPEC-backend-refactor-001
+ *        task_id: TASK-043, TASK-047, TASK-061, TASK-067, TASK-079
  *        spec_id: SPEC-deps-001
  */
 
@@ -22,7 +22,11 @@ import type {
   PlannedLoanRecord,
   PlannedLoanViewModel,
 } from '../types';
-import { normalizeBranchVolumes } from '../utils';
+import {
+  AVAILABILITY_TTL_MS,
+  MAX_AVAILABILITY_CACHE_SIZE,
+  normalizeBranchVolumes,
+} from '../utils';
 
 type PlannedRepo = Pick<
   PlannedLoanRepository,
@@ -99,9 +103,6 @@ type AvailabilityFetcher = (
   libraryId: number,
 ) => Promise<PlannedLoanAvailability | null>;
 
-const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_CACHE_SIZE = 500; // Limit cache size to prevent memory issues
-
 /**
  * Summarize availability for a biblio's items
  * Rules:
@@ -167,7 +168,7 @@ function clearAvailabilityCache(): void {
 function createCachedFetcher(
   baseFetcher: AvailabilityFetcher,
   ttlMs: number = AVAILABILITY_TTL_MS,
-  maxSize: number = MAX_CACHE_SIZE,
+  maxSize: number = MAX_AVAILABILITY_CACHE_SIZE,
   cache: Map<
     number,
     { value: PlannedLoanAvailability | null; expiresAt: number }

@@ -2,8 +2,8 @@
  * Library Search API Handler
  * Handles requests for searching books in KNUE library
  *
- * Trace: spec_id: SPEC-search-001
- *        task_id: TASK-search
+ * Trace: spec_id: SPEC-search-001, SPEC-backend-refactor-001
+ *        task_id: TASK-search, TASK-079
  */
 
 import { createLibraryClient } from '../services';
@@ -12,7 +12,12 @@ import type {
   PlannedLoanAvailability,
   SearchBook,
 } from '../types';
-import { normalizeBranchVolumes } from '../utils';
+import {
+  AVAILABILITY_TTL_MS,
+  MAX_AVAILABILITY_CACHE_SIZE,
+  normalizeBranchVolumes,
+  parsePaginationParams,
+} from '../utils';
 
 /**
  * Parse publication string to extract publisher and year
@@ -95,9 +100,6 @@ function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
   };
 }
 
-const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_CACHE_SIZE = 500;
-
 // Module-level cache for availability data
 const availabilityCache = new Map<
   number,
@@ -128,7 +130,7 @@ function createAvailabilityFetcher(): AvailabilityFetcher {
       const value = summarizeAvailability(items);
 
       // Implement simple LRU: remove oldest entry if cache is full
-      if (availabilityCache.size >= MAX_CACHE_SIZE) {
+      if (availabilityCache.size >= MAX_AVAILABILITY_CACHE_SIZE) {
         const oldestKey = availabilityCache.keys().next().value;
         if (oldestKey !== undefined) {
           availabilityCache.delete(oldestKey);
@@ -194,8 +196,6 @@ export async function handleSearchBooksApi(
 ): Promise<Response> {
   const url = new URL(request.url);
   const query = url.searchParams.get('query');
-  const maxParam = url.searchParams.get('max');
-  const offsetParam = url.searchParams.get('offset');
 
   // Validate query parameter
   if (!query || query.trim() === '') {
@@ -208,29 +208,26 @@ export async function handleSearchBooksApi(
     );
   }
 
-  const max = maxParam ? parseInt(maxParam, 10) : 20;
-  const offset = offsetParam ? parseInt(offsetParam, 10) : 0;
+  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-077
+  const pagination = parsePaginationParams(url.searchParams, {
+    max: {
+      default: 20,
+      min: 1,
+      max: 100,
+      errorMessage: 'Invalid max parameter (1-100)',
+    },
+    offset: {
+      default: 0,
+      min: 0,
+      errorMessage: 'Invalid offset parameter (>= 0)',
+    },
+  });
 
-  // Validate parameters
-  if (Number.isNaN(max) || max < 1 || max > 100) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid max parameter (1-100)' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+  if ('response' in pagination) {
+    return pagination.response;
   }
 
-  if (Number.isNaN(offset) || offset < 0) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid offset parameter (>= 0)' }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
-  }
+  const { max = 20, offset = 0 } = pagination.values;
 
   try {
     const libraryClient = createLibraryClient();

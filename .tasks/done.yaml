@@ -1,4 +1,76 @@
 completed_tasks:
+  - id: TASK-081
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-25T13:50:55Z"
+    result: "Aligned sync error classification coverage (AUTH/LIBRARY_ERROR/LIBRARY_UNAVAILABLE/EXTERNAL_TIMEOUT/UNKNOWN), batched sync processing with bounded concurrency for manual triggers and sync cleanup, and removed explicit ISBN fallback limit to rely on repository default."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/sync-handler.test.ts packages/backend/src/__tests__/manual-trigger.test.ts"
+      - "npm run lint"
+  - id: TASK-080
+    spec_id: SPEC-maintenance-001
+    status: completed
+    completed_at: "2025-12-25T13:40:45Z"
+    result: "Resolved Biome lint issues by applying unsafe fixes for unused imports/variables and removing the non-null assertion in BookDetailModal; lint now passes."
+    test_refs:
+      - "npm run lint"
+  - id: TASK-079
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T06:30:00Z"
+    result: "Centralized shared constants, gated debug logging via env.DEBUG, and added per-instance Aladin ISBN cache (1h TTL). Updated date utils and handlers to use constants; added tests for constants, debug logger, and Aladin cache TTL behavior."
+    test_refs: []
+  - id: TASK-078
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:55:51Z"
+    result: "Centralized renewal logging in renewal-service helper, updated manual workflow to use it, and added tests for consolidated logging."
+    test_refs: []
+  - id: TASK-077
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:34:51Z"
+    result: "Extracted shared pagination parsing utility, adopted it in new-books and search handlers, and added unit tests for defaults and invalid parameters."
+    test_refs: []
+  - id: TASK-076
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:31:30Z"
+    result: "Defaulted findByIsbn to limit 10 with a SQL LIMIT clause, updated return-history fallback to pass limit, and adjusted tests for bind expectations."
+    test_refs: []
+  - id: TASK-075
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-24T05:10:17Z"
+    result: "Updated manual workflow sync step to use allSettled, log sync failures, and continue to return processing even when some syncs fail; added manual trigger test to ensure renewals are logged on partial sync failure."
+    test_refs: []
+  - id: TASK-074
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-23T00:00:00Z"
+    result: "Added sync error classification (auth/library/unavailable/timeout/unknown) and updated sync handler response format; added tests validating error codes and statuses."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/sync-handler.test.ts"
+  - id: TASK-073
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-23T00:00:00Z"
+    result: "Deduplicated planned loan deletions by adding batch cleanup for unique biblio ids after charge processing; removed per-charge deletions from processCharge; added tests for dedupe behavior."
+    test_refs:
+      - "npm test -- packages/backend/src/handlers/__tests__/sync-handler.test.ts"
+  - id: TASK-072
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-23T00:00:00Z"
+    result: "Added bounded concurrency (10) to fetchNewBooksInfo with per-item failure handling, and added AbortController timeout support to Aladin lookups; expanded Aladin client tests for timeout, concurrency, and failure handling."
+    test_refs:
+      - "npm test -- --configLoader runner packages/backend/src/services/__tests__/aladin-client.test.ts (failed: duplicate --configLoader)"
+  - id: TASK-071
+    spec_id: SPEC-backend-refactor-001
+    status: completed
+    completed_at: "2025-12-23T00:00:00Z"
+    result: "Baseline validation complete: confirmed sequential Aladin lookups in fetchNewBooksInfo, unbounded Promise.all in sync/manual workflows, redundant planned loan deletions, generic sync errors, and findByIsbn used only for return history fallback with chargeDate matching; no explicit rate limiting or timeout policy found."
+    test_refs: []
   - id: TASK-053
     spec_id: SPEC-arch-001
     status: completed

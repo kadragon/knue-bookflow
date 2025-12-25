@@ -5,7 +5,6 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
-  AppBar,
   Box,
   Button,
   Card,
@@ -21,12 +20,10 @@ import {
   Select,
   Stack,
   TextField,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getNewBooks, type NewBookItem, type NewBooksResponse } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';

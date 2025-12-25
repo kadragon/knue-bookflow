@@ -5,7 +5,7 @@
  */
 
 import { createAladinClient } from '../services';
-import type { BookInfo, Env } from '../types';
+import type { Env } from '../types';
 import { jsonResponse } from '../utils';
 
 /**

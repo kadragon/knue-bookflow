@@ -1,3 +1,4 @@
+// Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
 import { Close as CloseIcon } from '@mui/icons-material';
 import {
   Box,
@@ -52,7 +53,12 @@ export function BookDetailModal({ isbn, onClose }: BookDetailModalProps) {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['book-detail', isbn],
-    queryFn: () => getBookByIsbn(isbn!),
+    queryFn: () => {
+      if (!isbn) {
+        throw new Error('ISBN is required');
+      }
+      return getBookByIsbn(isbn);
+    },
     enabled: !!isbn,
     staleTime: 1000 * 60 * 30, // 30 minutes
   });

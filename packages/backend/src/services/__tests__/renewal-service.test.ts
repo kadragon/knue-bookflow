@@ -4,10 +4,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Charge } from '../../types';
+import type { Charge, RenewalResult } from '../../types';
+import type { BookRepository } from '../book-repository';
 import {
   checkAndRenewBooks,
   identifyRenewalCandidates,
+  logRenewalResults,
   processRenewals,
   type RenewalConfig,
 } from '../renewal-service';
@@ -52,6 +54,57 @@ function createMockCharge(
 }
 
 describe('renewal service', () => {
+  describe('logRenewalResults', () => {
+    // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-078
+    it('logs each renewal result using the repository', async () => {
+      const results: RenewalResult[] = [
+        {
+          chargeId: 1,
+          title: 'First',
+          success: true,
+          newDueDate: '2025-01-20',
+          newRenewCount: 1,
+        },
+        {
+          chargeId: 2,
+          title: 'Second',
+          success: false,
+          errorMessage: 'Denied',
+        },
+      ];
+
+      const mockRepository = {
+        logRenewal: vi.fn().mockResolvedValue(undefined),
+        db: undefined,
+        saveBook: vi.fn(),
+        updateReadStatus: vi.fn(),
+        findByChargeId: vi.fn(),
+        findByIsbn: vi.fn(),
+        findMostRecentByIsbn: vi.fn(),
+        findAllUnread: vi.fn(),
+      };
+
+      await logRenewalResults(
+        mockRepository as unknown as BookRepository,
+        results,
+      );
+
+      expect(mockRepository.logRenewal).toHaveBeenCalledTimes(2);
+      expect(mockRepository.logRenewal).toHaveBeenCalledWith({
+        charge_id: '1',
+        action: 'renewal_attempt',
+        status: 'success',
+        message: 'Renewed until 2025-01-20',
+      });
+      expect(mockRepository.logRenewal).toHaveBeenCalledWith({
+        charge_id: '2',
+        action: 'renewal_attempt',
+        status: 'failure',
+        message: 'Denied',
+      });
+    });
+  });
+
   describe('identifyRenewalCandidates', () => {
     beforeEach(() => {
       vi.useFakeTimers();

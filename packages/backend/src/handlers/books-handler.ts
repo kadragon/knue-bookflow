@@ -2,7 +2,7 @@
  * Books API handler
  * Serves normalized book list for the bookshelf frontend
  *
- * Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, task_id: TASK-019, TASK-023
+ * Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-backend-refactor-001, task_id: TASK-019, TASK-023, TASK-079
  */
 
 import { createBookRepository } from '../services/book-repository';
@@ -14,11 +14,9 @@ import type {
   Env,
   NoteState,
 } from '../types';
+import { DUE_SOON_DAYS, KST_OFFSET_MINUTES } from '../utils';
 
 export type { BookViewModel, DueStatus };
-
-const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
-const DUE_SOON_DAYS = 3;
 
 function zoneDayNumber(ms: number, offsetMinutes: number): number {
   return Math.floor((ms + offsetMinutes * 60 * 1000) / (24 * 60 * 60 * 1000));

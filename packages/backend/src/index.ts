@@ -2,7 +2,7 @@
  * KNUE BookFlow - Cloudflare Worker Entry Point
  * Automatic book renewal system for Korea National University of Education library
  *
- * Trace: task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023
+ * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-001, TASK-007, TASK-012, TASK-016, TASK-023, TASK-079, TASK-081
  */
 
 import { handleGetBookByIsbn } from './handlers/aladin-handler';
@@ -35,10 +35,21 @@ import {
   createAladinClient,
   createBookRepository,
   createLibraryClient,
+  logRenewalResults,
   NOTE_BROADCAST_CRON,
   type RenewalResult,
 } from './services';
-import type { CreateNoteRequest, Env, UpdateNoteRequest } from './types';
+import type {
+  Charge,
+  CreateNoteRequest,
+  Env,
+  UpdateNoteRequest,
+} from './types';
+import {
+  ALADIN_LOOKUP_CONCURRENCY,
+  createDebugLogger,
+  isDebugEnabled,
+} from './utils';
 
 export default {
   /**
@@ -216,9 +227,8 @@ async function handleManualTrigger(
   _event?: ScheduledEvent,
 ): Promise<void> {
   const startTime = Date.now();
-  console.log(
-    `[BookFlow] Starting workflow run at ${new Date().toISOString()}`,
-  );
+  const logDebug = createDebugLogger(isDebugEnabled(env));
+  logDebug(`[BookFlow] Starting workflow run at ${new Date().toISOString()}`);
 
   // Initialize services
   const libraryClient = createLibraryClient();
@@ -229,57 +239,56 @@ async function handleManualTrigger(
 
   try {
     // Step 1: Authenticate with library API
-    console.log('[BookFlow] Step 1: Authenticating...');
+    logDebug('[BookFlow] Step 1: Authenticating...');
     await libraryClient.login({
       loginId: env.LIBRARY_USER_ID,
       password: env.LIBRARY_PASSWORD,
     });
 
     // Step 2: Fetch current charges
-    console.log('[BookFlow] Step 2: Fetching charges...');
+    logDebug('[BookFlow] Step 2: Fetching charges...');
     const charges = await libraryClient.getCharges();
 
     if (charges.length === 0) {
-      console.log('[BookFlow] No borrowed books found. Task complete.');
+      logDebug('[BookFlow] No borrowed books found. Task complete.');
       return;
     }
 
     // Step 3-4: Check and process renewals (charges already fetched)
-    console.log('[BookFlow] Step 3-4: Processing renewals...');
+    logDebug('[BookFlow] Step 3-4: Processing renewals...');
     renewalResults = await checkAndRenewBooks(libraryClient, charges);
 
     // Log renewal results to database
-    for (const result of renewalResults) {
-      await bookRepository.logRenewal({
-        charge_id: String(result.chargeId),
-        action: 'renewal_attempt',
-        status: result.success ? 'success' : 'failure',
-        message: result.success
-          ? `Renewed until ${result.newDueDate}`
-          : result.errorMessage || 'Unknown error',
-      });
-    }
+    await logRenewalResults(bookRepository, renewalResults);
 
     // Step 5: Sync all books with database
-    console.log('[BookFlow] Step 5: Syncing books with database...');
+    // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-075
+    logDebug('[BookFlow] Step 5: Syncing books with database...');
 
-    const syncStatuses = await Promise.all(
-      charges.map((charge) =>
-        processCharge(charge, bookRepository, aladinClient),
-      ),
+    const { syncStatuses, syncErrors } = await processChargesInBatches(
+      charges,
+      bookRepository,
+      aladinClient,
     );
+
+    for (const error of syncErrors) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[BookFlow] Sync failed: ${errorMessage}`);
+    }
 
     const addedCount = syncStatuses.filter((s) => s === 'added').length;
     const updatedCount = syncStatuses.filter((s) => s === 'updated').length;
+    const syncFailureCount = syncErrors.length;
 
     // Step 6: Fetch charge histories to mark returned books
-    console.log('[BookFlow] Step 6: Fetching charge histories...');
+    logDebug('[BookFlow] Step 6: Fetching charge histories...');
     const returnedCount = await fetchAndProcessReturns(
       libraryClient,
       bookRepository,
     );
     if (returnedCount > 0) {
-      console.log(`[BookFlow] Marked ${returnedCount} books as returned`);
+      logDebug(`[BookFlow] Marked ${returnedCount} books as returned`);
     }
 
     // Step 7: Log summary
@@ -287,16 +296,17 @@ async function handleManualTrigger(
     const successCount = renewalResults.filter((r) => r.success).length;
     const failCount = renewalResults.filter((r) => !r.success).length;
 
-    console.log('[BookFlow] === Task Summary ===');
-    console.log(`[BookFlow] Total charges: ${charges.length}`);
-    console.log(`[BookFlow] Books added: ${addedCount}`);
-    console.log(`[BookFlow] Books updated: ${updatedCount}`);
-    console.log(`[BookFlow] Marked returned: ${returnedCount}`);
-    console.log(`[BookFlow] Renewals attempted: ${renewalResults.length}`);
-    console.log(`[BookFlow] Renewals succeeded: ${successCount}`);
-    console.log(`[BookFlow] Renewals failed: ${failCount}`);
-    console.log(`[BookFlow] Duration: ${duration}ms`);
-    console.log('[BookFlow] Task completed successfully');
+    logDebug('[BookFlow] === Task Summary ===');
+    logDebug(`[BookFlow] Total charges: ${charges.length}`);
+    logDebug(`[BookFlow] Books added: ${addedCount}`);
+    logDebug(`[BookFlow] Books updated: ${updatedCount}`);
+    logDebug(`[BookFlow] Sync failures: ${syncFailureCount}`);
+    logDebug(`[BookFlow] Marked returned: ${returnedCount}`);
+    logDebug(`[BookFlow] Renewals attempted: ${renewalResults.length}`);
+    logDebug(`[BookFlow] Renewals succeeded: ${successCount}`);
+    logDebug(`[BookFlow] Renewals failed: ${failCount}`);
+    logDebug(`[BookFlow] Duration: ${duration}ms`);
+    logDebug('[BookFlow] Task completed successfully');
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
@@ -312,6 +322,39 @@ async function handleManualTrigger(
 
     throw error;
   }
+}
+
+type SyncStatus = Awaited<ReturnType<typeof processCharge>>;
+
+async function processChargesInBatches(
+  charges: Charge[],
+  bookRepository: ReturnType<typeof createBookRepository>,
+  aladinClient: ReturnType<typeof createAladinClient>,
+  concurrency = ALADIN_LOOKUP_CONCURRENCY,
+): Promise<{ syncStatuses: SyncStatus[]; syncErrors: unknown[] }> {
+  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-081
+  const batchSize = Math.max(1, concurrency);
+  const syncStatuses: SyncStatus[] = [];
+  const syncErrors: unknown[] = [];
+
+  for (let i = 0; i < charges.length; i += batchSize) {
+    const batch = charges.slice(i, i + batchSize);
+    const results = await Promise.allSettled(
+      batch.map((charge) =>
+        processCharge(charge, bookRepository, aladinClient),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        syncStatuses.push(result.value);
+      } else {
+        syncErrors.push(result.reason);
+      }
+    }
+  }
+
+  return { syncStatuses, syncErrors };
 }
 
 /**
