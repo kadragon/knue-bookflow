@@ -1,4 +1,11 @@
 completed_tasks:
+  - id: TASK-083
+    spec_id: SPEC-renewal-001
+    status: completed
+    completed_at: "2025-12-30T07:53:40Z"
+    result: "Guarded date normalization against nullish inputs to avoid sync crashes and added tests."
+    test_refs:
+      - "npm test -- packages/backend/src/utils/__tests__/date.test.ts"
   - id: TASK-082
     spec_id: SPEC-renewal-001
     status: completed

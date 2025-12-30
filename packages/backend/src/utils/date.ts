@@ -1,6 +1,6 @@
 /**
  * Date utility functions
- * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079, TASK-082
+ * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079, TASK-082, TASK-083
  */
 
 import { DAY_MS, KST_OFFSET_MINUTES } from './constants';
@@ -13,10 +13,13 @@ function zoneDayNumber(ms: number, offsetMinutes: number): number {
  * Normalize date strings to YYYY-MM-DD when possible.
  * Accepts values like "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", or ISO timestamps.
  */
-export function normalizeDateString(value: string): string {
+export function normalizeDateString(value: string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
   const trimmed = value.trim();
   const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : value;
+  return match ? match[1] : trimmed;
 }
 
 /**

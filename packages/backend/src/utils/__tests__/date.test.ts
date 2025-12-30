@@ -1,6 +1,6 @@
 /**
  * Date utility tests
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-015, TASK-082
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-015, TASK-082, TASK-083
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -117,6 +117,11 @@ describe('date utilities', () => {
     it('should return original string when not matching', () => {
       expect(normalizeDateString('')).toBe('');
       expect(normalizeDateString('invalid')).toBe('invalid');
+    });
+
+    it('should return empty string for nullish values', () => {
+      expect(normalizeDateString(null)).toBe('');
+      expect(normalizeDateString(undefined)).toBe('');
     });
   });
 });
