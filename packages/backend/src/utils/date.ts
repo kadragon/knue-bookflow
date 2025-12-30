@@ -1,12 +1,22 @@
 /**
  * Date utility functions
- * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079
+ * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079, TASK-082
  */
 
 import { DAY_MS, KST_OFFSET_MINUTES } from './constants';
 
 function zoneDayNumber(ms: number, offsetMinutes: number): number {
   return Math.floor((ms + offsetMinutes * 60 * 1000) / DAY_MS);
+}
+
+/**
+ * Normalize date strings to YYYY-MM-DD when possible.
+ * Accepts values like "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss", or ISO timestamps.
+ */
+export function normalizeDateString(value: string): string {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : value;
 }
 
 /**
@@ -32,7 +42,8 @@ export function isWithinDays(
   days: number,
   offsetMinutes = KST_OFFSET_MINUTES,
 ): boolean {
-  const targetMs = new Date(`${dateString}T00:00:00Z`).getTime();
+  const normalized = normalizeDateString(dateString);
+  const targetMs = new Date(`${normalized}T00:00:00Z`).getTime();
   const target = zoneDayNumber(targetMs, offsetMinutes);
   const today = zoneDayNumber(Date.now(), offsetMinutes);
 
@@ -50,7 +61,8 @@ export function isToday(
   dateString: string,
   offsetMinutes = KST_OFFSET_MINUTES,
 ): boolean {
-  const targetMs = new Date(`${dateString}T00:00:00Z`).getTime();
+  const normalized = normalizeDateString(dateString);
+  const targetMs = new Date(`${normalized}T00:00:00Z`).getTime();
   const target = zoneDayNumber(targetMs, offsetMinutes);
   const today = zoneDayNumber(Date.now(), offsetMinutes);
 

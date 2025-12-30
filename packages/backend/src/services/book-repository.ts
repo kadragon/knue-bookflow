@@ -2,7 +2,7 @@
  * Book Repository
  * Data access layer for D1 database operations
  *
- * Trace: spec_id: SPEC-storage-001, SPEC-return-001, task_id: TASK-006, TASK-034
+ * Trace: spec_id: SPEC-storage-001, SPEC-return-001, task_id: TASK-006, TASK-034, TASK-082
  */
 
 import type {
@@ -12,6 +12,7 @@ import type {
   ChargeHistory,
   RenewalLog,
 } from '../types';
+import { normalizeDateString } from '../utils/date';
 
 export class BookRepository {
   constructor(private db: D1Database) {}
@@ -208,6 +209,8 @@ export function createBookRecord(
   charge: Charge | ChargeHistory,
   bookInfo?: BookInfo | null,
 ): BookRecord {
+  const normalizedChargeDate = normalizeDateString(charge.chargeDate);
+  const normalizedDueDate = normalizeDateString(charge.dueDate);
   return {
     charge_id: String(charge.id),
     isbn: charge.biblio.isbn || bookInfo?.isbn || '',
@@ -218,8 +221,8 @@ export function createBookRecord(
     cover_url: bookInfo?.coverUrl || null,
     description: bookInfo?.description || null,
     pub_date: bookInfo?.pubDate || null,
-    charge_date: charge.chargeDate,
-    due_date: charge.dueDate,
+    charge_date: normalizedChargeDate,
+    due_date: normalizedDueDate,
     discharge_date:
       'dischargeDate' in charge ? (charge.dischargeDate ?? null) : null,
     renew_count: charge.renewCnt ?? 0,
