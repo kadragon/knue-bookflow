@@ -1,4 +1,11 @@
 completed_tasks:
+  - id: TASK-082
+    spec_id: SPEC-renewal-001
+    status: completed
+    completed_at: "2025-12-30T06:35:55Z"
+    result: "Normalized charge/due date strings to YYYY-MM-DD during persistence so renewal eligibility checks handle 'YYYY-MM-DD HH:mm:ss' formats; added normalization tests."
+    test_refs:
+      - "npm test -- packages/backend/src/utils/__tests__/date.test.ts packages/backend/src/services/__tests__/book-repository.test.ts"
   - id: TASK-081
     spec_id: SPEC-backend-refactor-001
     status: completed

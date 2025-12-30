@@ -1,6 +1,6 @@
 /**
  * Book repository tests
- * Trace: spec_id: SPEC-storage-001, task_id: TASK-009
+ * Trace: spec_id: SPEC-storage-001, task_id: TASK-009, TASK-082
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -549,6 +549,19 @@ describe('createBookRecord', () => {
     const record = createBookRecord(charge, bookInfo);
 
     expect(record.isbn).toBe('9999999999');
+  });
+
+  it('should normalize charge and due dates to YYYY-MM-DD', () => {
+    const charge = createMockCharge({
+      id: 202,
+      chargeDate: '2025-12-01 00:00:00',
+      dueDate: '2025-12-31 00:00:00',
+    });
+
+    const record = createBookRecord(charge);
+
+    expect(record.charge_date).toBe('2025-12-01');
+    expect(record.due_date).toBe('2025-12-31');
   });
 });
 

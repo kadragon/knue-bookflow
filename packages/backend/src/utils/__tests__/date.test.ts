@@ -1,6 +1,6 @@
 /**
  * Date utility tests
- * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-015
+ * Trace: spec_id: SPEC-renewal-001, task_id: TASK-009, TASK-015, TASK-082
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import {
   getTodayString,
   isToday,
   isWithinDays,
+  normalizeDateString,
 } from '../date';
 
 describe('date utilities', () => {
@@ -97,6 +98,25 @@ describe('date utilities', () => {
 
     it('should return today as YYYY-MM-DD', () => {
       expect(getTodayString()).toBe('2025-01-16');
+    });
+  });
+
+  describe('normalizeDateString', () => {
+    it('should keep YYYY-MM-DD as-is', () => {
+      expect(normalizeDateString('2025-12-31')).toBe('2025-12-31');
+    });
+
+    it('should normalize timestamp with space separator', () => {
+      expect(normalizeDateString('2025-12-31 00:00:00')).toBe('2025-12-31');
+    });
+
+    it('should normalize ISO timestamp', () => {
+      expect(normalizeDateString('2025-12-31T00:00:00Z')).toBe('2025-12-31');
+    });
+
+    it('should return original string when not matching', () => {
+      expect(normalizeDateString('')).toBe('');
+      expect(normalizeDateString('invalid')).toBe('invalid');
     });
   });
 });
