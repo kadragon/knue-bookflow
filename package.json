@@ -2,17 +2,18 @@
   "name": "knue-bookflow-monorepo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.2.20",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@knue-bookflow/backend",
-    "dev:frontend": "npm run dev --workspace=@knue-bookflow/frontend",
-    "build:frontend": "npm run build --workspace=@knue-bookflow/frontend",
-    "build:backend": "npm run build --workspace=@knue-bookflow/backend",
-    "deploy": "npm run deploy --workspace=@knue-bookflow/backend",
-    "db:migrate": "npm run db:migrate --workspace=@knue-bookflow/backend",
-    "build": "npm run build -w @knue-bookflow/shared && npm run build -w @knue-bookflow/frontend && npm run build -w @knue-bookflow/backend",
+    "dev": "bun --cwd packages/backend run dev",
+    "dev:frontend": "bun --cwd packages/frontend run dev",
+    "build:frontend": "bun --cwd packages/frontend run build",
+    "build:backend": "bun --cwd packages/backend run build",
+    "deploy": "bun --cwd packages/backend run deploy",
+    "db:migrate": "bun --cwd packages/backend run db:migrate",
+    "build": "bun --cwd packages/shared run build && bun --cwd packages/frontend run build && bun --cwd packages/backend run build",
     "test": "vitest --run --configLoader runner",
     "lint": "biome check .",
     "typecheck": "tsc --build",
@@ -26,7 +27,7 @@
     ]
   },
   "simple-git-hooks": {
-    "pre-commit": "npx lint-staged && npm run typecheck && npm run test"
+    "pre-commit": "bunx lint-staged && bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
