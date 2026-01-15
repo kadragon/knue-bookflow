@@ -13,6 +13,10 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 
 ## Architecture & Data Flow
 
+## Governance Notes
+- Governance/spec/task folders were compacted into this AGENTS.md; SDD/spec references removed.
+- Package management standardized on Bun (bun.lock, CI, Dependabot).
+
 ## Tasks
 Active/Backlog: None
 
