@@ -67,9 +67,9 @@ function classifySyncError(error: unknown): {
 }
 
 /**
- * Handle library-DB synchronization
+ * Core sync logic - can be called from HTTP handler or cron
  */
-export async function handleSyncBooks(env: Env): Promise<Response> {
+export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   const libraryClient = createLibraryClient();
   const aladinClient = createAladinClient(env.ALADIN_API_KEY);
   const bookRepository = createBookRepository(env.DB);
@@ -83,67 +83,70 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
     returned: 0,
   };
 
+  // Step 1: Authenticate with library API
+  console.log('[SyncHandler] Authenticating with library...');
+  await libraryClient.login({
+    loginId: env.LIBRARY_USER_ID,
+    password: env.LIBRARY_PASSWORD,
+  });
+
+  // Step 2: Fetch all current charges
+  console.log('[SyncHandler] Fetching all charges...');
+  const charges = await libraryClient.getCharges();
+  summary.total_charges = charges.length;
+
+  if (charges.length === 0) {
+    console.log('[SyncHandler] No borrowed books found');
+    return summary;
+  }
+
+  // Step 3: Compare with DB and sync each charge in parallel
+  console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
+
+  const results = await processChargesWithPlanningCleanup(
+    charges,
+    bookRepository,
+    aladinClient,
+    plannedLoanRepository,
+  );
+
+  // Aggregate results
+  for (const status of results) {
+    summary[status]++;
+  }
+
+  // Step 4: Fetch charge histories to mark returned books
+  console.log('[SyncHandler] Fetching charge histories...');
+  summary.returned = await fetchAndProcessReturns(
+    libraryClient,
+    bookRepository,
+  );
+  if (summary.returned > 0) {
+    console.log(`[SyncHandler] Marked ${summary.returned} books as returned`);
+  }
+
+  console.log('[SyncHandler] === Sync Summary ===');
+  console.log(`[SyncHandler] Total charges: ${summary.total_charges}`);
+  console.log(`[SyncHandler] Added: ${summary.added}`);
+  console.log(`[SyncHandler] Updated: ${summary.updated}`);
+  console.log(`[SyncHandler] Unchanged: ${summary.unchanged}`);
+  console.log(`[SyncHandler] Marked returned: ${summary.returned}`);
+
+  return summary;
+}
+
+/**
+ * Handle library-DB synchronization (HTTP endpoint)
+ */
+export async function handleSyncBooks(env: Env): Promise<Response> {
   try {
-    // Step 1: Authenticate with library API
-    console.log('[SyncHandler] Authenticating with library...');
-    await libraryClient.login({
-      loginId: env.LIBRARY_USER_ID,
-      password: env.LIBRARY_PASSWORD,
-    });
-
-    // Step 2: Fetch all current charges
-    console.log('[SyncHandler] Fetching all charges...');
-    const charges = await libraryClient.getCharges();
-    summary.total_charges = charges.length;
-
-    if (charges.length === 0) {
-      console.log('[SyncHandler] No borrowed books found');
-      return new Response(
-        JSON.stringify({
-          message: 'Sync completed - no books to sync',
-          summary,
-        } as SyncResponse),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    // Step 3: Compare with DB and sync each charge in parallel
-    console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
-
-    const results = await processChargesWithPlanningCleanup(
-      charges,
-      bookRepository,
-      aladinClient,
-      plannedLoanRepository,
-    );
-
-    // Aggregate results
-    for (const status of results) {
-      summary[status]++;
-    }
-
-    // Step 4: Fetch charge histories to mark returned books
-    console.log('[SyncHandler] Fetching charge histories...');
-    summary.returned = await fetchAndProcessReturns(
-      libraryClient,
-      bookRepository,
-    );
-    if (summary.returned > 0) {
-      console.log(`[SyncHandler] Marked ${summary.returned} books as returned`);
-    }
-
-    console.log('[SyncHandler] === Sync Summary ===');
-    console.log(`[SyncHandler] Total charges: ${summary.total_charges}`);
-    console.log(`[SyncHandler] Added: ${summary.added}`);
-    console.log(`[SyncHandler] Updated: ${summary.updated}`);
-    console.log(`[SyncHandler] Unchanged: ${summary.unchanged}`);
-    console.log(`[SyncHandler] Marked returned: ${summary.returned}`);
+    const summary = await syncBooksCore(env);
 
     const response: SyncResponse = {
-      message: 'Sync completed successfully',
+      message:
+        summary.total_charges === 0
+          ? 'Sync completed - no books to sync'
+          : 'Sync completed successfully',
       summary,
     };
 
