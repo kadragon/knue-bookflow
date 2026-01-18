@@ -125,13 +125,6 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
     console.log(`[SyncHandler] Marked ${summary.returned} books as returned`);
   }
 
-  console.log('[SyncHandler] === Sync Summary ===');
-  console.log(`[SyncHandler] Total charges: ${summary.total_charges}`);
-  console.log(`[SyncHandler] Added: ${summary.added}`);
-  console.log(`[SyncHandler] Updated: ${summary.updated}`);
-  console.log(`[SyncHandler] Unchanged: ${summary.unchanged}`);
-  console.log(`[SyncHandler] Marked returned: ${summary.returned}`);
-
   return summary;
 }
 
@@ -141,6 +134,8 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
 export async function handleSyncBooks(env: Env): Promise<Response> {
   try {
     const summary = await syncBooksCore(env);
+
+    console.log('[SyncHandler] Sync completed with summary:', summary);
 
     const response: SyncResponse = {
       message:
@@ -156,7 +151,7 @@ export async function handleSyncBooks(env: Env): Promise<Response> {
     });
   } catch (error) {
     const { code, statusCode, message } = classifySyncError(error);
-    console.error(`[SyncHandler] Sync failed (${code}): ${message}`);
+    console.error(`[SyncHandler] Sync failed (${code}):`, error);
 
     return new Response(JSON.stringify({ error: code, message }), {
       status: statusCode,

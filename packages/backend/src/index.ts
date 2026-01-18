@@ -392,11 +392,8 @@ async function handleScheduledSync(env: Env): Promise<void> {
 
   try {
     const summary = await syncBooksCore(env);
-    console.log(
-      `[ScheduledSync] Sync completed: ${summary.added} added, ${summary.updated} updated, ${summary.returned} returned`,
-    );
+    console.log('[ScheduledSync] Sync completed with summary:', summary);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[ScheduledSync] Sync failed: ${message}`);
+    console.error('[ScheduledSync] Sync failed:', error);
   }
 }
