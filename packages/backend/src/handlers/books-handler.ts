@@ -13,6 +13,7 @@ import type {
   DueStatus,
   Env,
   NoteState,
+  ReadStatus,
 } from '../types';
 import { DUE_SOON_DAYS, KST_OFFSET_MINUTES } from '../utils';
 
@@ -35,6 +36,20 @@ function computeDaysLeft(
   );
   const today = zoneDayNumber(now.getTime(), offsetMinutes);
   return dueDay - today;
+}
+
+function toReadStatus(value?: number | null): ReadStatus {
+  if (value === 1) {
+    return 'finished';
+  }
+  if (value === 2) {
+    return 'abandoned';
+  }
+  return 'unread';
+}
+
+function isReadStatus(value: unknown): value is ReadStatus {
+  return value === 'unread' || value === 'finished' || value === 'abandoned';
 }
 
 export function deriveBookViewModel(
@@ -82,7 +97,7 @@ export function deriveBookViewModel(
     loanState: isReturned ? 'returned' : 'on_loan',
     noteCount,
     noteState,
-    isRead: Boolean(record.is_read ?? 0),
+    readStatus: toReadStatus(record.is_read ?? 0),
   };
 }
 
@@ -139,13 +154,13 @@ export async function handleUpdateReadStatus(
   bookRepo: BookRepo = createBookRepository(env.DB),
 ): Promise<Response> {
   try {
-    const body = (await request.json()) as { isRead: boolean };
+    const body = (await request.json()) as { readStatus?: unknown };
 
-    if (typeof body.isRead !== 'boolean') {
+    if (!isReadStatus(body.readStatus)) {
       return new Response('Invalid request body', { status: 400 });
     }
 
-    await bookRepo.updateReadStatus(bookId, body.isRead);
+    await bookRepo.updateReadStatus(bookId, body.readStatus);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' },

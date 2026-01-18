@@ -50,6 +50,11 @@ describe('deriveBookViewModel', () => {
     expect(view.noteState).toBe('in_progress');
   });
 
+  it('maps abandoned when is_read is 2', () => {
+    const view = deriveBookViewModel({ ...base, is_read: 2 }, 0);
+    expect(view.readStatus).toBe('abandoned');
+  });
+
   it('includes dbId from record', () => {
     const view = deriveBookViewModel(base, 0);
     expect(view.dbId).toBe(1);

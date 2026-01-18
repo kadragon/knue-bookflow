@@ -9,6 +9,7 @@ import {
   ArrowBack as ArrowBackIcon,
   CheckCircle as CheckCircleIcon,
   CheckCircleOutline as CheckCircleOutlineIcon,
+  Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
@@ -16,6 +17,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonGroup,
   Chip,
   CircularProgress,
   Container,
@@ -41,6 +43,7 @@ import {
   deleteNote,
   getBook,
   type NoteItem,
+  type ReadStatus,
   updateNote,
   updateReadStatus,
 } from '../api';
@@ -105,9 +108,12 @@ function BookInfoPanel({
   isUpdating,
 }: {
   book: BookItem;
-  onReadStatusChange: (isRead: boolean) => void;
+  onReadStatusChange: (readStatus: ReadStatus) => void;
   isUpdating: boolean;
 }) {
+  const isFinished = book.readStatus === 'finished';
+  const isAbandoned = book.readStatus === 'abandoned';
+
   return (
     <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
       <Stack spacing={3}>
@@ -242,19 +248,32 @@ function BookInfoPanel({
         )}
 
         {/* Completion Toggle */}
-        <Button
-          fullWidth
-          variant={book.isRead ? 'contained' : 'outlined'}
-          size="large"
-          onClick={() => onReadStatusChange(!book.isRead)}
-          startIcon={
-            book.isRead ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
-          }
-          color={book.isRead ? 'success' : 'inherit'}
-          disabled={isUpdating}
-        >
-          {book.isRead ? '완독' : '완독 표시'}
-        </Button>
+        <ButtonGroup fullWidth size="large">
+          <Button
+            variant={isFinished ? 'contained' : 'outlined'}
+            onClick={() =>
+              onReadStatusChange(isFinished ? 'unread' : 'finished')
+            }
+            startIcon={
+              isFinished ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
+            }
+            color={isFinished ? 'success' : 'inherit'}
+            disabled={isUpdating}
+          >
+            {isFinished ? '완독' : '완독 표시'}
+          </Button>
+          <Button
+            variant={isAbandoned ? 'contained' : 'outlined'}
+            onClick={() =>
+              onReadStatusChange(isAbandoned ? 'unread' : 'abandoned')
+            }
+            startIcon={<CloseIcon />}
+            color={isAbandoned ? 'warning' : 'inherit'}
+            disabled={isUpdating}
+          >
+            {isAbandoned ? '중단됨' : '중단(포기) 표시'}
+          </Button>
+        </ButtonGroup>
       </Stack>
     </Paper>
   );
@@ -524,7 +543,8 @@ export default function BookDetailPage() {
   });
 
   const readStatusMutation = useMutation({
-    mutationFn: (isRead: boolean) => updateReadStatus(bookId, isRead),
+    mutationFn: (readStatus: ReadStatus) =>
+      updateReadStatus(bookId, readStatus),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['book', bookId] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
@@ -532,13 +552,13 @@ export default function BookDetailPage() {
     onError: () => {
       setNotification({
         type: 'error',
-        message: '완독 상태 변경에 실패했습니다.',
+        message: '독서 상태 변경에 실패했습니다.',
       });
     },
   });
 
-  const handleReadStatusChange = (isRead: boolean) => {
-    readStatusMutation.mutate(isRead);
+  const handleReadStatusChange = (readStatus: ReadStatus) => {
+    readStatusMutation.mutate(readStatus);
   };
 
   const handleNotesChanged = () => {

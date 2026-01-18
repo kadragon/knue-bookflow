@@ -10,6 +10,7 @@ import type {
   BookRecord,
   Charge,
   ChargeHistory,
+  ReadStatus,
   RenewalLog,
 } from '../types';
 import { normalizeDateString } from '../utils/date';
@@ -91,10 +92,12 @@ export class BookRepository {
   /**
    * Update the read status of a book
    * @param id - Database ID of the book
-   * @param isRead - New read status
+   * @param readStatus - New read status
    */
-  async updateReadStatus(id: number, isRead: boolean): Promise<void> {
+  async updateReadStatus(id: number, readStatus: ReadStatus): Promise<void> {
     const now = new Date().toISOString();
+    const value =
+      readStatus === 'finished' ? 1 : readStatus === 'abandoned' ? 2 : 0;
     await this.db
       .prepare(
         `UPDATE books SET
@@ -102,11 +105,11 @@ export class BookRepository {
           updated_at = ?
         WHERE id = ?`,
       )
-      .bind(isRead ? 1 : 0, now, id)
+      .bind(value, now, id)
       .run();
 
     console.log(
-      `[BookRepository] Updated read status for book ${id}: ${isRead}`,
+      `[BookRepository] Updated read status for book ${id}: ${readStatus}`,
     );
   }
 

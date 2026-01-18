@@ -10,14 +10,14 @@ describe('filterBooks', () => {
       title: 'Clean Code',
       author: 'Robert Martin',
       loanState: 'on_loan' as const,
-      isRead: false,
+      readStatus: 'unread' as const,
     },
     {
       id: 'B2',
       title: 'Refactoring',
       author: 'Martin Fowler',
       loanState: 'returned' as const,
-      isRead: true,
+      readStatus: 'finished' as const,
     },
   ];
 
@@ -55,6 +55,26 @@ describe('filterBooks', () => {
     };
     const result = filterBooks(items, filters);
     expect(result).toEqual([items[1]]);
+  });
+
+  it('includes abandoned books in completed stat', () => {
+    const withAbandoned = [
+      ...items,
+      {
+        id: 'C3',
+        title: 'Retry',
+        author: 'Jean Author',
+        loanState: 'returned' as const,
+        readStatus: 'abandoned' as const,
+      },
+    ];
+    const filters: Filters = {
+      search: '',
+      loanState: 'all',
+      stat: 'completed',
+    };
+    const result = filterBooks(withAbandoned, filters);
+    expect(result.map((item) => item.id)).toEqual(['B2', 'C3']);
   });
 
   it('returns all items when filters are neutral', () => {
@@ -104,7 +124,7 @@ describe('filterBooks', () => {
         title: 'Clean Architecture',
         author: 'Robert Martin',
         loanState: 'on_loan' as const,
-        isRead: true,
+        readStatus: 'finished' as const,
       },
     ];
     const filters: Filters = {

@@ -1,4 +1,5 @@
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-026, TASK-029, TASK-065
+import type { ReadStatus } from '@knue-bookflow/shared';
 
 export type LoanState = 'on_loan' | 'returned';
 export type StatFilter = 'none' | 'on_loan' | 'incomplete' | 'completed';
@@ -8,7 +9,7 @@ export interface BookListItem {
   title: string;
   author: string;
   loanState: LoanState;
-  isRead: boolean;
+  readStatus: ReadStatus;
 }
 
 export interface Filters {
@@ -51,11 +52,11 @@ export function filterBooks<T extends BookListItem>(
       return false;
     }
 
-    if (filters.stat === 'incomplete' && book.isRead) {
+    if (filters.stat === 'incomplete' && book.readStatus !== 'unread') {
       return false;
     }
 
-    if (filters.stat === 'completed' && !book.isRead) {
+    if (filters.stat === 'completed' && book.readStatus === 'unread') {
       return false;
     }
 
