@@ -1,6 +1,4 @@
 import {
-  CheckCircle as CheckCircleIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
@@ -34,17 +32,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import {
   type ApiResponse,
+  type BookItem,
   createNote,
+  type DueStatus,
   deleteNote,
   getBooks,
   getNotes,
+  type LoanState,
   type NoteItem,
+  type ReadStatus,
   triggerWorkflow,
   updateNote,
   updateReadStatus,
 } from './api';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Header } from './components/Header';
+import { ReadStatusButtonGroup } from './components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from './constants';
 import {
   defaultFilters,
@@ -58,28 +61,6 @@ import PlannedLoansPage from './pages/PlannedLoansPage';
 import SearchBooksPage from './pages/SearchBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-scheduler-001, task_id: TASK-019, TASK-023, TASK-029, TASK-070
-
-type DueStatus = 'overdue' | 'due_soon' | 'ok';
-type LoanState = 'on_loan' | 'returned';
-
-interface BookItem {
-  id: string;
-  dbId: number;
-  title: string;
-  author: string;
-  publisher: string | null;
-  coverUrl: string | null;
-  description: string | null;
-  chargeDate: string;
-  dueDate: string;
-  renewCount: number;
-  daysLeft: number;
-  dueStatus: DueStatus;
-  loanState: LoanState;
-  noteCount: number;
-  noteState: 'not_started' | 'in_progress' | 'completed';
-  isRead: boolean;
-}
 
 const DUE_STATUS_LABEL: Record<DueStatus, string> = {
   overdue: '연체',
@@ -159,7 +140,7 @@ function BookCard({
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
-  onReadStatusChange: (book: BookItem, isRead: boolean) => void;
+  onReadStatusChange: (book: BookItem, readStatus: ReadStatus) => void;
   onBookClick: (book: BookItem) => void;
 }) {
   return (
@@ -297,18 +278,13 @@ function BookCard({
               {book.noteCount > 0 ? '보기' : '작성'}
             </Button>
           </Box>
-          <Button
-            fullWidth
-            variant={book.isRead ? 'contained' : 'outlined'}
-            size="small"
-            onClick={() => onReadStatusChange(book, !book.isRead)}
-            startIcon={
-              book.isRead ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
+          <ReadStatusButtonGroup
+            readStatus={book.readStatus}
+            onReadStatusChange={(newStatus) =>
+              onReadStatusChange(book, newStatus)
             }
-            color={book.isRead ? 'success' : 'inherit'}
-          >
-            {book.isRead ? '완독' : '완독 표시'}
-          </Button>
+            size="small"
+          />
         </Box>
       </CardContent>
     </Card>
@@ -665,7 +641,7 @@ function ShelfStats({
       if (book.loanState === 'on_loan') {
         onLoan += 1;
       }
-      if (!book.isRead) {
+      if (book.readStatus === 'unread') {
         incomplete += 1;
       } else {
         completed += 1;
@@ -691,7 +667,7 @@ function ShelfStats({
       },
       {
         key: 'completed' as StatFilter,
-        label: '완료',
+        label: '완료/중단',
         value: stats.completed,
         color: 'success.main',
       },
@@ -811,21 +787,26 @@ function BookshelfPage() {
   };
 
   const readStatusMutation = useMutation({
-    mutationFn: ({ bookId, isRead }: { bookId: number; isRead: boolean }) =>
-      updateReadStatus(bookId, isRead),
+    mutationFn: ({
+      bookId,
+      readStatus,
+    }: {
+      bookId: number;
+      readStatus: ReadStatus;
+    }) => updateReadStatus(bookId, readStatus),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] });
     },
     onError: () => {
       setNotification({
         type: 'error',
-        message: '완독 상태 변경에 실패했습니다.',
+        message: '독서 상태 변경에 실패했습니다.',
       });
     },
   });
 
-  const handleReadStatusChange = (book: BookItem, isRead: boolean) => {
-    readStatusMutation.mutate({ bookId: book.dbId, isRead });
+  const handleReadStatusChange = (book: BookItem, readStatus: ReadStatus) => {
+    readStatusMutation.mutate({ bookId: book.dbId, readStatus });
   };
 
   const triggerMutation = useMutation({

@@ -19,6 +19,11 @@ export type DueStatus = 'overdue' | 'due_soon' | 'ok';
 export type LoanState = 'on_loan' | 'returned';
 
 /**
+ * Book reading status
+ */
+export type ReadStatus = 'unread' | 'finished' | 'abandoned';
+
+/**
  * Note completion state
  */
 export type NoteState = 'not_started' | 'in_progress' | 'completed';
@@ -45,7 +50,7 @@ export interface BookViewModel {
   loanState: LoanState;
   noteCount: number;
   noteState: NoteState;
-  isRead: boolean;
+  readStatus: ReadStatus;
 }
 
 /** Alias for compatibility with legacy Frontend types */
@@ -55,7 +60,7 @@ export type BookItem = BookViewModel;
  * Update read status request body
  */
 export interface UpdateReadStatusRequest {
-  isRead: boolean;
+  readStatus: ReadStatus;
 }
 
 /**

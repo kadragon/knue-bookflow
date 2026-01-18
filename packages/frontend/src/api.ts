@@ -7,6 +7,8 @@ import type {
   BookItem,
   BranchVolume,
   CatalogBookItem,
+  DueStatus,
+  LoanState,
   NewBookItem,
   NewBooksResponse,
   NoteItem,
@@ -15,6 +17,7 @@ import type {
   PlannedLoanItem,
   PlannedLoanPayload,
   PlannedLoansResponse,
+  ReadStatus,
   SearchBookItem,
   SearchBooksResponse,
   SyncResponse,
@@ -28,6 +31,8 @@ export type {
   BookItem,
   BranchVolume,
   CatalogBookItem,
+  DueStatus,
+  LoanState,
   NewBookItem,
   NewBooksResponse,
   NoteItem,
@@ -36,6 +41,7 @@ export type {
   PlannedLoanItem,
   PlannedLoanPayload,
   PlannedLoansResponse,
+  ReadStatus,
   SearchBookItem,
   SearchBooksResponse,
   SyncResponse,
@@ -64,7 +70,7 @@ export const getBook = async (bookId: number): Promise<BookDetailResponse> => {
 
 export const updateReadStatus = async (
   bookId: number,
-  isRead: boolean,
+  readStatus: ReadStatus,
 ): Promise<{ success: boolean }> => {
   const res = await fetch(`/api/books/${bookId}/read-status`, {
     method: 'PATCH',
@@ -72,7 +78,7 @@ export const updateReadStatus = async (
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ isRead }),
+    body: JSON.stringify({ readStatus }),
   });
 
   if (!res.ok) {

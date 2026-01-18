@@ -7,8 +7,6 @@
 
 import {
   ArrowBack as ArrowBackIcon,
-  CheckCircle as CheckCircleIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
@@ -41,10 +39,12 @@ import {
   deleteNote,
   getBook,
   type NoteItem,
+  type ReadStatus,
   updateNote,
   updateReadStatus,
 } from '../api';
 import { Header } from '../components/Header';
+import { ReadStatusButtonGroup } from '../components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { NOTES_LIST_SX } from './bookDetailLayout';
 
@@ -105,7 +105,7 @@ function BookInfoPanel({
   isUpdating,
 }: {
   book: BookItem;
-  onReadStatusChange: (isRead: boolean) => void;
+  onReadStatusChange: (readStatus: ReadStatus) => void;
   isUpdating: boolean;
 }) {
   return (
@@ -242,19 +242,12 @@ function BookInfoPanel({
         )}
 
         {/* Completion Toggle */}
-        <Button
-          fullWidth
-          variant={book.isRead ? 'contained' : 'outlined'}
+        <ReadStatusButtonGroup
+          readStatus={book.readStatus}
+          onReadStatusChange={onReadStatusChange}
           size="large"
-          onClick={() => onReadStatusChange(!book.isRead)}
-          startIcon={
-            book.isRead ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
-          }
-          color={book.isRead ? 'success' : 'inherit'}
           disabled={isUpdating}
-        >
-          {book.isRead ? '완독' : '완독 표시'}
-        </Button>
+        />
       </Stack>
     </Paper>
   );
@@ -524,7 +517,8 @@ export default function BookDetailPage() {
   });
 
   const readStatusMutation = useMutation({
-    mutationFn: (isRead: boolean) => updateReadStatus(bookId, isRead),
+    mutationFn: (readStatus: ReadStatus) =>
+      updateReadStatus(bookId, readStatus),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['book', bookId] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
@@ -532,13 +526,13 @@ export default function BookDetailPage() {
     onError: () => {
       setNotification({
         type: 'error',
-        message: '완독 상태 변경에 실패했습니다.',
+        message: '독서 상태 변경에 실패했습니다.',
       });
     },
   });
 
-  const handleReadStatusChange = (isRead: boolean) => {
-    readStatusMutation.mutate(isRead);
+  const handleReadStatusChange = (readStatus: ReadStatus) => {
+    readStatusMutation.mutate(readStatus);
   };
 
   const handleNotesChanged = () => {
