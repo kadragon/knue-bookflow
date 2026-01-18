@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
@@ -236,6 +236,9 @@ export default function SearchBooksPage() {
   const [searchInput, setSearchInput] = useState(queryParam);
   const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
+  // 이전 검색어 추적 (페이지네이션과 새 검색 구분용)
+  const prevQueryRef = useRef(queryParam);
+
   // Sync input when URL changes (e.g. back button)
   useEffect(() => {
     setSearchInput(queryParam);
@@ -250,8 +253,16 @@ export default function SearchBooksPage() {
     placeholderData: keepPreviousData,
   });
 
-  // 새 검색어로 검색 중일 때 (페이지네이션이 아닌 경우)
-  const isNewSearchLoading = isFetching && isPlaceholderData;
+  // 새 검색어로 검색 중일 때만 로딩 표시 (페이지네이션 제외)
+  const isQueryChanged = prevQueryRef.current !== queryParam;
+  const isNewSearchLoading = isFetching && isPlaceholderData && isQueryChanged;
+
+  // 데이터 fetch 완료 후 이전 검색어 업데이트
+  useEffect(() => {
+    if (!isFetching) {
+      prevQueryRef.current = queryParam;
+    }
+  }, [isFetching, queryParam]);
 
   const {
     mutate: planMutate,
