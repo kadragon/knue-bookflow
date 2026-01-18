@@ -243,12 +243,15 @@ export default function SearchBooksPage() {
 
   const offset = (pageParam - 1) * MAX_RESULTS_PER_PAGE;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, isFetching, isPlaceholderData } = useQuery({
     queryKey: ['search', queryParam, offset],
     queryFn: () => searchBooks(queryParam, MAX_RESULTS_PER_PAGE, offset),
     enabled: !!queryParam.trim(),
     placeholderData: keepPreviousData,
   });
+
+  // 새 검색어로 검색 중일 때 (페이지네이션이 아닌 경우)
+  const isNewSearchLoading = isFetching && isPlaceholderData;
 
   const {
     mutate: planMutate,
@@ -329,7 +332,7 @@ export default function SearchBooksPage() {
           </Box>
         )}
 
-        {isLoading && (
+        {(isLoading || isNewSearchLoading) && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
@@ -341,7 +344,7 @@ export default function SearchBooksPage() {
           </Alert>
         )}
 
-        {data && (
+        {data && !isNewSearchLoading && (
           <>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
