@@ -33,7 +33,7 @@ describe('scheduled handler', () => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  it('should handle note broadcast cron and trigger broadcast', async () => {
+  it('should handle note broadcast cron and trigger broadcast and sync', async () => {
     const mockEvent = {
       cron: NOTE_BROADCAST_CRON,
       scheduledTime: Date.now(),
@@ -41,9 +41,8 @@ describe('scheduled handler', () => {
 
     await worker.scheduled(mockEvent, mockEnv, mockCtx);
 
-    expect(mockCtx.waitUntil).toHaveBeenCalledOnce();
-    // Note: consoleWarnSpy may be called by the broadcast handler itself
-    // (e.g., missing credentials), which is expected behavior
+    // Should call waitUntil twice: once for broadcast, once for sync
+    expect(mockCtx.waitUntil).toHaveBeenCalledTimes(2);
   });
 
   it('should log warning for unknown cron and skip renewal workflow', async () => {

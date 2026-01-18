@@ -28,6 +28,7 @@ import {
   fetchAndProcessReturns,
   handleSyncBooks,
   processCharge,
+  syncBooksCore,
 } from './handlers/sync-handler';
 import {
   broadcastDailyNote,
@@ -53,7 +54,7 @@ import {
 
 export default {
   /**
-   * Cron Trigger Handler - Notes broadcast only
+   * Cron Trigger Handler - Notes broadcast and sync
    */
   async scheduled(
     event: ScheduledEvent,
@@ -63,6 +64,7 @@ export default {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
       ctx.waitUntil(handleNoteBroadcast(env));
+      ctx.waitUntil(handleScheduledSync(env));
     } else {
       console.warn(
         `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
@@ -377,5 +379,21 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
+  }
+}
+
+/**
+ * Scheduled sync handler - syncs books from library to DB
+ */
+async function handleScheduledSync(env: Env): Promise<void> {
+  console.log(
+    `[ScheduledSync] Starting scheduled sync at ${new Date().toISOString()}`,
+  );
+
+  try {
+    const summary = await syncBooksCore(env);
+    console.log('[ScheduledSync] Sync completed with summary:', summary);
+  } catch (error) {
+    console.error('[ScheduledSync] Sync failed:', error);
   }
 }
