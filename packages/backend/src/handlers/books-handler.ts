@@ -16,6 +16,7 @@ import type {
   ReadStatus,
 } from '../types';
 import { DUE_SOON_DAYS, KST_OFFSET_MINUTES } from '../utils';
+import { isReadStatus, toReadStatus } from '../utils/read-status';
 
 export type { BookViewModel, DueStatus };
 
@@ -36,20 +37,6 @@ function computeDaysLeft(
   );
   const today = zoneDayNumber(now.getTime(), offsetMinutes);
   return dueDay - today;
-}
-
-function toReadStatus(value?: number | null): ReadStatus {
-  if (value === 1) {
-    return 'finished';
-  }
-  if (value === 2) {
-    return 'abandoned';
-  }
-  return 'unread';
-}
-
-function isReadStatus(value: unknown): value is ReadStatus {
-  return value === 'unread' || value === 'finished' || value === 'abandoned';
 }
 
 export function deriveBookViewModel(

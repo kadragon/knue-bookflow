@@ -14,6 +14,7 @@ import type {
   RenewalLog,
 } from '../types';
 import { normalizeDateString } from '../utils/date';
+import { fromReadStatus } from '../utils/read-status';
 
 export class BookRepository {
   constructor(private db: D1Database) {}
@@ -96,8 +97,7 @@ export class BookRepository {
    */
   async updateReadStatus(id: number, readStatus: ReadStatus): Promise<void> {
     const now = new Date().toISOString();
-    const value =
-      readStatus === 'finished' ? 1 : readStatus === 'abandoned' ? 2 : 0;
+    const value = fromReadStatus(readStatus);
     await this.db
       .prepare(
         `UPDATE books SET

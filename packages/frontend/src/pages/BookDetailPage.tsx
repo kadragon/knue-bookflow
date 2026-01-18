@@ -7,9 +7,6 @@
 
 import {
   ArrowBack as ArrowBackIcon,
-  CheckCircle as CheckCircleIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
-  Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
@@ -17,7 +14,6 @@ import {
   Alert,
   Box,
   Button,
-  ButtonGroup,
   Chip,
   CircularProgress,
   Container,
@@ -48,6 +44,7 @@ import {
   updateReadStatus,
 } from '../api';
 import { Header } from '../components/Header';
+import { ReadStatusButtonGroup } from '../components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
 import { NOTES_LIST_SX } from './bookDetailLayout';
 
@@ -111,9 +108,6 @@ function BookInfoPanel({
   onReadStatusChange: (readStatus: ReadStatus) => void;
   isUpdating: boolean;
 }) {
-  const isFinished = book.readStatus === 'finished';
-  const isAbandoned = book.readStatus === 'abandoned';
-
   return (
     <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
       <Stack spacing={3}>
@@ -248,32 +242,12 @@ function BookInfoPanel({
         )}
 
         {/* Completion Toggle */}
-        <ButtonGroup fullWidth size="large">
-          <Button
-            variant={isFinished ? 'contained' : 'outlined'}
-            onClick={() =>
-              onReadStatusChange(isFinished ? 'unread' : 'finished')
-            }
-            startIcon={
-              isFinished ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
-            }
-            color={isFinished ? 'success' : 'inherit'}
-            disabled={isUpdating}
-          >
-            {isFinished ? '완독' : '완독 표시'}
-          </Button>
-          <Button
-            variant={isAbandoned ? 'contained' : 'outlined'}
-            onClick={() =>
-              onReadStatusChange(isAbandoned ? 'unread' : 'abandoned')
-            }
-            startIcon={<CloseIcon />}
-            color={isAbandoned ? 'warning' : 'inherit'}
-            disabled={isUpdating}
-          >
-            {isAbandoned ? '중단됨' : '중단(포기) 표시'}
-          </Button>
-        </ButtonGroup>
+        <ReadStatusButtonGroup
+          readStatus={book.readStatus}
+          onReadStatusChange={onReadStatusChange}
+          size="large"
+          disabled={isUpdating}
+        />
       </Stack>
     </Paper>
   );

@@ -1,6 +1,4 @@
 import {
-  CheckCircle as CheckCircleIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
@@ -11,7 +9,6 @@ import {
   Alert,
   Box,
   Button,
-  ButtonGroup,
   Card,
   CardContent,
   CardMedia,
@@ -50,6 +47,7 @@ import {
 } from './api';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Header } from './components/Header';
+import { ReadStatusButtonGroup } from './components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from './constants';
 import {
   defaultFilters,
@@ -145,9 +143,6 @@ function BookCard({
   onReadStatusChange: (book: BookItem, readStatus: ReadStatus) => void;
   onBookClick: (book: BookItem) => void;
 }) {
-  const isFinished = book.readStatus === 'finished';
-  const isAbandoned = book.readStatus === 'abandoned';
-
   return (
     <Card
       variant="outlined"
@@ -283,30 +278,13 @@ function BookCard({
               {book.noteCount > 0 ? '보기' : '작성'}
             </Button>
           </Box>
-          <ButtonGroup fullWidth size="small">
-            <Button
-              variant={isFinished ? 'contained' : 'outlined'}
-              onClick={() =>
-                onReadStatusChange(book, isFinished ? 'unread' : 'finished')
-              }
-              startIcon={
-                isFinished ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />
-              }
-              color={isFinished ? 'success' : 'inherit'}
-            >
-              {isFinished ? '완독' : '완독 표시'}
-            </Button>
-            <Button
-              variant={isAbandoned ? 'contained' : 'outlined'}
-              onClick={() =>
-                onReadStatusChange(book, isAbandoned ? 'unread' : 'abandoned')
-              }
-              startIcon={<CloseIcon />}
-              color={isAbandoned ? 'warning' : 'inherit'}
-            >
-              {isAbandoned ? '중단됨' : '중단(포기) 표시'}
-            </Button>
-          </ButtonGroup>
+          <ReadStatusButtonGroup
+            readStatus={book.readStatus}
+            onReadStatusChange={(newStatus) =>
+              onReadStatusChange(book, newStatus)
+            }
+            size="small"
+          />
         </Box>
       </CardContent>
     </Card>
