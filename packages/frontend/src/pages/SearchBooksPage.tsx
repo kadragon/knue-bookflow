@@ -18,8 +18,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { SearchBookItem } from '../api';
 import { searchBooks } from '../api';
@@ -236,9 +236,6 @@ export default function SearchBooksPage() {
   const [searchInput, setSearchInput] = useState(queryParam);
   const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
 
-  // 이전 검색어 추적 (페이지네이션과 새 검색 구분용)
-  const prevQueryRef = useRef(queryParam);
-
   // Sync input when URL changes (e.g. back button)
   useEffect(() => {
     setSearchInput(queryParam);
@@ -246,23 +243,20 @@ export default function SearchBooksPage() {
 
   const offset = (pageParam - 1) * MAX_RESULTS_PER_PAGE;
 
-  const { data, isLoading, isError, isFetching, isPlaceholderData } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['search', queryParam, offset],
     queryFn: () => searchBooks(queryParam, MAX_RESULTS_PER_PAGE, offset),
     enabled: !!queryParam.trim(),
-    placeholderData: keepPreviousData,
+    placeholderData: (previousData, previousQuery) => {
+      const previousQueryParam = previousQuery?.queryKey[1];
+      // 새 검색어인 경우 placeholderData를 사용하지 않아 isLoading 상태가 되도록 함
+      if (queryParam !== previousQueryParam) {
+        return undefined;
+      }
+      // 페이지네이션인 경우 이전 데이터를 유지
+      return previousData;
+    },
   });
-
-  // 새 검색어로 검색 중일 때만 로딩 표시 (페이지네이션 제외)
-  const isQueryChanged = prevQueryRef.current !== queryParam;
-  const isNewSearchLoading = isFetching && isPlaceholderData && isQueryChanged;
-
-  // 데이터 fetch 완료 후 이전 검색어 업데이트
-  useEffect(() => {
-    if (!isFetching) {
-      prevQueryRef.current = queryParam;
-    }
-  }, [isFetching, queryParam]);
 
   const {
     mutate: planMutate,
@@ -343,7 +337,7 @@ export default function SearchBooksPage() {
           </Box>
         )}
 
-        {(isLoading || isNewSearchLoading) && (
+        {isLoading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
           </Box>
@@ -355,7 +349,7 @@ export default function SearchBooksPage() {
           </Alert>
         )}
 
-        {data && !isNewSearchLoading && (
+        {data && (
           <>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
