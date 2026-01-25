@@ -13,13 +13,13 @@
   },
   "dependencies": {
     "@knue-bookflow/shared": "*",
-    "zod": "^4.3.5"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260117.0",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@cloudflare/workers-types": "^4.20260124.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.7.2",
-    "vitest": "^4.0.16",
-    "wrangler": "^4.58.0"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.60.0"
   }
 }
