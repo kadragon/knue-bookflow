@@ -64,6 +64,7 @@ export default {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
       ctx.waitUntil(handleNoteBroadcast(env));
+      console.log('[ScheduledSync] Triggered by cron; starting scheduled sync');
       ctx.waitUntil(handleScheduledSync(env));
     } else {
       console.warn(
@@ -393,7 +394,47 @@ async function handleScheduledSync(env: Env): Promise<void> {
   try {
     const summary = await syncBooksCore(env);
     console.log('[ScheduledSync] Sync completed with summary:', summary);
+    console.log(
+      `[ScheduledSync] Summary total=${summary.total_charges} added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`,
+    );
   } catch (error) {
     console.error('[ScheduledSync] Sync failed:', error);
+    await sendScheduledSyncAlert(env, error);
+  }
+}
+
+async function sendScheduledSyncAlert(env: Env, error: unknown): Promise<void> {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+    console.warn(
+      '[ScheduledSync] Telegram credentials missing; skipping alert',
+    );
+    return;
+  }
+
+  const message =
+    error instanceof Error ? error.message : 'Unknown scheduled sync error';
+  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: env.TELEGRAM_CHAT_ID,
+        text: `[ScheduledSync] Sync failed: ${message}`,
+        disable_web_page_preview: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text().catch(() => '');
+      console.error(
+        `[ScheduledSync] Telegram alert failed: ${response.status} ${response.statusText} ${details}`,
+      );
+    }
+  } catch (alertError) {
+    const alertMessage =
+      alertError instanceof Error ? alertError.message : 'Unknown error';
+    console.error(`[ScheduledSync] Telegram alert failed: ${alertMessage}`);
   }
 }
