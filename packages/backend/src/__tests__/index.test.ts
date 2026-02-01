@@ -133,18 +133,10 @@ describe('scheduled handler', () => {
     const pending = collectWaitUntilPromises();
     await Promise.allSettled(pending);
 
-    const summaryLogs: string[] = [];
-    const logCalls = consoleLogSpy.mock.calls as Array<[unknown, ...unknown[]]>;
-    for (const call of logCalls) {
-      const message = String(call[0]);
-      if (message.includes('[ScheduledSync] Summary')) {
-        summaryLogs.push(message);
-      }
-    }
-    expect(summaryLogs.length).toBeGreaterThan(0);
-    const lastSummary = summaryLogs.at(-1);
-    expect(String(lastSummary)).toMatch(
-      /\[ScheduledSync\] Summary total=\d+ added=\d+ updated=\d+ unchanged=\d+ returned=\d+/,
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\[ScheduledSync\] Summary total=\d+ added=\d+ updated=\d+ unchanged=\d+ returned=\d+/,
+      ),
     );
   });
 

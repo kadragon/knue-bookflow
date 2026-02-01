@@ -393,7 +393,6 @@ async function handleScheduledSync(env: Env): Promise<void> {
 
   try {
     const summary = await syncBooksCore(env);
-    console.log('[ScheduledSync] Sync completed with summary:', summary);
     console.log(
       `[ScheduledSync] Summary total=${summary.total_charges} added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`,
     );
