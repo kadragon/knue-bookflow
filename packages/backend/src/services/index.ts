@@ -10,3 +10,4 @@ export * from './note-broadcast';
 export * from './note-repository';
 export * from './planned-loan-repository';
 export * from './renewal-service';
+export * from './telegram-message-repository';

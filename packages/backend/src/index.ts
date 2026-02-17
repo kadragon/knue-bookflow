@@ -31,6 +31,10 @@ import {
   syncBooksCore,
 } from './handlers/sync-handler';
 import {
+  createTelegramWebhookDeps,
+  handleTelegramWebhook,
+} from './handlers/telegram-webhook-handler';
+import {
   broadcastDailyNote,
   checkAndRenewBooks,
   createAladinClient,
@@ -185,6 +189,15 @@ export default {
       if (request.method === 'DELETE') {
         return handleDeleteNote(env, noteId);
       }
+    }
+
+    // Telegram webhook endpoint
+    if (url.pathname === '/webhook/telegram' && request.method === 'POST') {
+      return handleTelegramWebhook(
+        request,
+        env,
+        createTelegramWebhookDeps(env, env.DB as D1Database),
+      );
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)

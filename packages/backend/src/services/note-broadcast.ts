@@ -4,6 +4,7 @@
  */
 
 import type { BookRecord, Env, NoteRecord } from '../types';
+import { createTelegramMessageRepository } from './telegram-message-repository';
 
 const MARKDOWN_V2_SPECIAL_CHARS = /([_*[\]()~`>#+\-=|{}.!\\])/g;
 
@@ -24,6 +25,9 @@ export interface NoteBroadcastDeps {
   repository?: NoteBroadcastRepository;
   fetchFn?: typeof fetch;
   randomFn?: () => number;
+  telegramMessageRepository?: {
+    save(telegramMessageId: number, noteId: number): Promise<void>;
+  };
 }
 
 interface NoteCandidateRow {
@@ -189,7 +193,7 @@ async function sendTelegramMessage(
   chatId: string,
   text: string,
   fetchFn: typeof fetch,
-): Promise<boolean> {
+): Promise<number | null> {
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const response = await fetchFn(url, {
@@ -210,10 +214,11 @@ async function sendTelegramMessage(
     console.error(
       `[NoteBroadcast] Telegram send failed: ${response.status} ${response.statusText} ${details}`,
     );
-    return false;
+    return null;
   }
 
-  return true;
+  const data = await response.json<{ result: { message_id: number } }>();
+  return data.result.message_id;
 }
 
 export async function broadcastDailyNote(
@@ -224,6 +229,9 @@ export async function broadcastDailyNote(
     deps.repository ?? createNoteBroadcastRepository(env.DB as D1Database);
   const fetchFn = deps.fetchFn ?? fetch;
   const randomFn = deps.randomFn ?? Math.random;
+  const telegramMessageRepository =
+    deps.telegramMessageRepository ??
+    createTelegramMessageRepository(env.DB as D1Database);
 
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
     console.warn('[NoteBroadcast] Telegram credentials missing; skipping send');
@@ -239,19 +247,20 @@ export async function broadcastDailyNote(
   }
 
   const message = formatNoteMessage(candidate);
-  const sent = await sendTelegramMessage(
+  const messageId = await sendTelegramMessage(
     env.TELEGRAM_BOT_TOKEN,
     env.TELEGRAM_CHAT_ID,
     message,
     fetchFn,
   );
 
-  if (!sent) {
+  if (messageId === null) {
     return false;
   }
 
   if (candidate.note.id) {
     await repository.incrementSendCount(candidate.note.id);
+    await telegramMessageRepository.save(messageId, candidate.note.id);
   }
   return true;
 }
