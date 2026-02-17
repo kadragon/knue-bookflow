@@ -317,6 +317,37 @@ describe('broadcastDailyNote', () => {
     expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
   });
 
+  it('does not increment send count when mapping save fails', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 1234 } }),
+    });
+
+    const candidate = createCandidate({
+      note: { id: 10, book_id: 1, page_number: 1, content: 'test' },
+    });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockRejectedValue(new Error('D1 error')),
+      findNoteIdByMessageId: vi.fn(),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    });
+
+    expect(sent).toBe(false);
+    expect(repository.incrementSendCount).not.toHaveBeenCalled();
+  });
+
   it('stores telegram_message_id -> note_id mapping after successful send', async () => {
     const MESSAGE_ID = 7777;
     const mockFetch = vi.fn().mockResolvedValue({

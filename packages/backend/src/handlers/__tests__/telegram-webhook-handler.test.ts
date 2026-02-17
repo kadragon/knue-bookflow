@@ -178,6 +178,37 @@ describe('handleTelegramWebhook', () => {
     expect(updateNote).not.toHaveBeenCalled();
   });
 
+  it('returns 200 even when sendConfirmation throws (best-effort)', async () => {
+    const req = makeRequest(
+      {
+        update_id: 8,
+        message: {
+          message_id: 700,
+          chat: { id: 12345 },
+          text: 'fixed note',
+          reply_to_message: { message_id: 888 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(55);
+    const updateNote = vi
+      .fn()
+      .mockResolvedValue({ id: 55, content: 'fixed note' });
+    const sendConfirmation = vi
+      .fn()
+      .mockRejectedValue(new Error('network error'));
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      sendConfirmation,
+    });
+
+    expect(res.status).toBe(200);
+    expect(updateNote).toHaveBeenCalled();
+  });
+
   it('returns 200 when message comes from wrong chat', async () => {
     const req = makeRequest(
       {

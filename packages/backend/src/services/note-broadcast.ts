@@ -259,8 +259,16 @@ export async function broadcastDailyNote(
   }
 
   if (candidate.note.id) {
+    // Save mapping first. If it fails, skip incrementSendCount to keep
+    // both writes consistent (no mapping → no send count increment).
+    try {
+      await telegramMessageRepository.save(messageId, candidate.note.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[NoteBroadcast] Failed to save message mapping: ${msg}`);
+      return false;
+    }
     await repository.incrementSendCount(candidate.note.id);
-    await telegramMessageRepository.save(messageId, candidate.note.id);
   }
   return true;
 }

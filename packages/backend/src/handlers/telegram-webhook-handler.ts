@@ -61,7 +61,14 @@ export async function handleTelegramWebhook(
 
   const updated = await deps.updateNote(noteId, message.text);
   if (updated) {
-    await deps.sendConfirmation(`✅ Note updated:\n${updated.content}`);
+    try {
+      await deps.sendConfirmation(`✅ Note updated:\n${updated.content}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[TelegramWebhook] Confirmation send failed (best-effort): ${msg}`,
+      );
+    }
   }
 
   return new Response('OK', { status: 200 });
