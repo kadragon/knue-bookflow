@@ -168,6 +168,31 @@ describe('PlannedLoanRepository', () => {
       );
     });
   });
+
+  describe('deleteByLibraryBiblioIds', () => {
+    it('should return 0 and skip query when ids are empty', async () => {
+      const result = await repository.deleteByLibraryBiblioIds([]);
+      expect(result).toBe(0);
+      expect(mockDb.prepare).not.toHaveBeenCalled();
+    });
+
+    it('should delete by IN clause and return affected rows', async () => {
+      const mockBind = vi.fn().mockReturnValue({
+        run: vi.fn().mockResolvedValue({ meta: { changes: 2 } }),
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+
+      const result = await repository.deleteByLibraryBiblioIds([123, 456]);
+
+      expect(result).toBe(2);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'DELETE FROM planned_loans WHERE library_biblio_id IN (?, ?)',
+      );
+      expect(mockBind).toHaveBeenCalledWith(123, 456);
+    });
+  });
 });
 
 describe('createPlannedLoanRepository', () => {

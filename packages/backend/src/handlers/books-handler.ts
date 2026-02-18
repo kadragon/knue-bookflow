@@ -13,7 +13,6 @@ import type {
   DueStatus,
   Env,
   NoteState,
-  ReadStatus,
 } from '../types';
 import { DUE_SOON_DAYS, KST_OFFSET_MINUTES } from '../utils';
 import { isReadStatus, toReadStatus } from '../utils/read-status';
@@ -130,7 +129,10 @@ export async function handleBooksApi(
   });
 
   return new Response(JSON.stringify({ items: view }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=30',
+    },
   });
 }
 
@@ -206,7 +208,10 @@ export async function handleGetBook(
         notes: notesView,
       }),
       {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=30',
+        },
       },
     );
   } catch (error) {

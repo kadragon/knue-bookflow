@@ -53,7 +53,10 @@ export async function handleGetNotes(
   const viewModels = notes.map(toNoteViewModel);
 
   return new Response(JSON.stringify({ notes: viewModels }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=15',
+    },
   });
 }
 

@@ -3,6 +3,7 @@ import type { BookRecord, Env } from '../../types';
 import {
   deriveBookViewModel,
   handleBooksApi,
+  handleGetBook,
   sortBooks,
 } from '../books-handler';
 
@@ -178,6 +179,7 @@ describe('handleBooksApi', () => {
     };
 
     const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
@@ -231,6 +233,7 @@ describe('handleBooksApi', () => {
     };
 
     const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
@@ -238,5 +241,47 @@ describe('handleBooksApi', () => {
 
     expect(first.noteCount).toBe(3);
     expect(first.noteState).toBe('in_progress');
+  });
+
+  it('returns cache headers for single book endpoint', async () => {
+    const fakeBookRepo = {
+      findById: async () =>
+        ({
+          id: 1,
+          charge_id: '1',
+          isbn: 'a',
+          isbn13: null,
+          title: 'Book',
+          author: 'A',
+          publisher: null,
+          cover_url: null,
+          description: null,
+          pub_date: null,
+          charge_date: '2025-11-02',
+          due_date: '2025-11-12',
+          renew_count: 0,
+          is_read: 0,
+        }) satisfies BookRecord,
+      updateReadStatus: async () => {},
+    } as const;
+
+    const fakeNoteRepo = {
+      findByBookId: async () => [],
+    } as const;
+
+    const env: Env = {
+      DB: null as unknown as D1Database,
+      ASSETS: { fetch: async () => new Response('') } as unknown as Fetcher,
+      LIBRARY_USER_ID: '',
+      LIBRARY_PASSWORD: '',
+      ALADIN_API_KEY: '',
+      TELEGRAM_BOT_TOKEN: '',
+      TELEGRAM_CHAT_ID: '',
+      ENVIRONMENT: 'test',
+    };
+
+    const response = await handleGetBook(env, 1, fakeBookRepo, fakeNoteRepo);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
   });
 });

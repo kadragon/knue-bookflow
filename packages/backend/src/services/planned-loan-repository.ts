@@ -81,6 +81,22 @@ export class PlannedLoanRepository {
 
     return result.meta.changes > 0;
   }
+
+  async deleteByLibraryBiblioIds(libraryBiblioIds: number[]): Promise<number> {
+    if (libraryBiblioIds.length === 0) {
+      return 0;
+    }
+
+    const placeholders = libraryBiblioIds.map(() => '?').join(', ');
+    const result = await this.db
+      .prepare(
+        `DELETE FROM planned_loans WHERE library_biblio_id IN (${placeholders})`,
+      )
+      .bind(...libraryBiblioIds)
+      .run();
+
+    return result.meta.changes;
+  }
 }
 
 export function createPlannedLoanRepository(

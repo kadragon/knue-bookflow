@@ -205,7 +205,7 @@ export async function processCharge(
 
     const bookInfo = await fetchBookInfo(isbn, aladinClient, 'new book');
     const record = createBookRecord(charge, bookInfo);
-    await bookRepository.saveBook(record);
+    await bookRepository.saveBook(record, null);
 
     return 'added';
   }
@@ -243,7 +243,7 @@ export async function processCharge(
       record.pub_date = existing.pub_date;
     }
 
-    await bookRepository.saveBook(record);
+    await bookRepository.saveBook(record, existing);
 
     return 'updated';
   }
@@ -282,12 +282,7 @@ export async function processChargesWithPlanningCleanup(
     for (const charge of charges) {
       biblioIds.add(charge.biblio.id);
     }
-
-    await Promise.all(
-      Array.from(biblioIds).map((biblioId) =>
-        plannedLoanRepository.deleteByLibraryBiblioId(biblioId),
-      ),
-    );
+    await plannedLoanRepository.deleteByLibraryBiblioIds(Array.from(biblioIds));
   }
 
   return results;
@@ -334,10 +329,10 @@ export async function processChargeHistory(
   // ISBN fallback with chargeDate comparison for data consistency
   if (!existing && history.biblio.isbn) {
     // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
-    const matches = await bookRepository.findByIsbn(history.biblio.isbn);
-    // Find exact match by chargeDate to avoid matching different loan cycles
-    existing =
-      matches.find((m) => m.charge_date === history.chargeDate) ?? null;
+    existing = await bookRepository.findByIsbnAndChargeDate(
+      history.biblio.isbn,
+      history.chargeDate,
+    );
     if (existing) {
       console.log(
         `[SyncHandler] Matched return ${chargeId} via ISBN fallback: ${history.biblio.isbn}`,
@@ -364,7 +359,7 @@ export async function processChargeHistory(
   };
 
   try {
-    await bookRepository.saveBook(recordToUpdate);
+    await bookRepository.saveBook(recordToUpdate, existing);
     return 'returned';
   } catch (error) {
     console.error(

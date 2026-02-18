@@ -253,6 +253,53 @@ describe('BookRepository', () => {
         returnedRecord.charge_id,
       );
     });
+
+    it('should skip lookup and update when existing record is provided', async () => {
+      const existingRecord = createMockBookRecord({ charge_id: '123' });
+      const updatedRecord = createMockBookRecord({
+        charge_id: '123',
+        due_date: '2025-01-22',
+      });
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBindUpdate,
+      });
+
+      await repository.saveBook(updatedRecord, existingRecord);
+
+      expect(mockDb.prepare).toHaveBeenCalledTimes(1);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE books SET'),
+      );
+      expect(mockBindUpdate).toHaveBeenCalledWith(
+        updatedRecord.due_date,
+        updatedRecord.discharge_date ?? null,
+        updatedRecord.renew_count,
+        updatedRecord.is_read ?? null,
+        updatedRecord.cover_url ?? null,
+        updatedRecord.description ?? null,
+        expect.any(String),
+        updatedRecord.charge_id,
+      );
+    });
+
+    it('should skip lookup and insert when existing record is explicitly null', async () => {
+      const record = createMockBookRecord({ charge_id: '123' });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindInsert = vi.fn().mockReturnValue({ run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBindInsert,
+      });
+
+      await repository.saveBook(record, null);
+
+      expect(mockDb.prepare).toHaveBeenCalledTimes(1);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO books'),
+      );
+    });
   });
 
   describe('findByChargeId', () => {
@@ -324,6 +371,49 @@ describe('BookRepository', () => {
 
       expect(result).toHaveLength(0);
       expect(mockBind).toHaveBeenCalledWith('nonexistent', 10);
+    });
+  });
+
+  describe('findByIsbnAndChargeDate', () => {
+    it('should return book record when found', async () => {
+      const mockRecord = createMockBookRecord({
+        isbn: '9781234567890',
+        charge_date: '2025-01-01',
+      });
+
+      const mockBind = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(mockRecord),
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+
+      const result = await repository.findByIsbnAndChargeDate(
+        '9781234567890',
+        '2025-01-01',
+      );
+
+      expect(result).toEqual(mockRecord);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'SELECT * FROM books WHERE isbn = ? AND charge_date = ? LIMIT 1',
+      );
+      expect(mockBind).toHaveBeenCalledWith('9781234567890', '2025-01-01');
+    });
+
+    it('should return null when not found', async () => {
+      const mockBind = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(null),
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+
+      const result = await repository.findByIsbnAndChargeDate(
+        '9781234567890',
+        '2025-01-01',
+      );
+
+      expect(result).toBeNull();
     });
   });
 

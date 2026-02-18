@@ -49,6 +49,7 @@ describe('Notes Handler', () => {
 
       const response = await handleGetNotes(env, 1);
       expect(response.status).toBe(200);
+      expect(response.headers.get('Cache-Control')).toBe('public, max-age=15');
 
       const body = (await response.json()) as {
         notes: NoteViewModel[];

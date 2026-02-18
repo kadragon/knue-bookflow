@@ -23,11 +23,17 @@ export class BookRepository {
    * Save or update a book record
    * @param record - Book record to save
    */
-  async saveBook(record: BookRecord): Promise<void> {
+  async saveBook(
+    record: BookRecord,
+    existingRecord?: BookRecord | null,
+  ): Promise<void> {
     const now = new Date().toISOString();
 
-    // Check if record exists
-    const existing = await this.findByChargeId(record.charge_id);
+    // Reuse pre-fetched record when available to avoid duplicate read.
+    const existing =
+      existingRecord === undefined
+        ? await this.findByChargeId(record.charge_id)
+        : existingRecord;
 
     if (existing) {
       // Update existing record
@@ -140,6 +146,23 @@ export class BookRepository {
       .all<BookRecord>();
 
     return result.results;
+  }
+
+  /**
+   * Find a book record by ISBN and charge date
+   * @param isbn - ISBN to search for
+   * @param chargeDate - Charge date to match
+   */
+  async findByIsbnAndChargeDate(
+    isbn: string,
+    chargeDate: string,
+  ): Promise<BookRecord | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM books WHERE isbn = ? AND charge_date = ? LIMIT 1')
+      .bind(isbn, chargeDate)
+      .first<BookRecord>();
+
+    return result || null;
   }
 
   /**
