@@ -514,6 +514,8 @@ export default function BookDetailPage() {
     queryKey: ['book', bookId],
     queryFn: () => getBook(bookId),
     enabled: bookId > 0,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const readStatusMutation = useMutation({

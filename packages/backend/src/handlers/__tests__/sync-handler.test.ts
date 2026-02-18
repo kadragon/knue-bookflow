@@ -27,10 +27,12 @@ const mockAladinClient = {
 const mockBookRepository = {
   findByChargeId: vi.fn(),
   findByIsbn: vi.fn(),
+  findByIsbnAndChargeDate: vi.fn(),
   saveBook: vi.fn(),
 };
 const mockPlannedLoanRepository = {
   deleteByLibraryBiblioId: vi.fn(),
+  deleteByLibraryBiblioIds: vi.fn(),
 };
 
 vi.mock('../../services', async (importOriginal) => {
@@ -249,6 +251,7 @@ describe('processCharge', () => {
       expect.objectContaining({
         cover_url: 'https://covers.aladin.co.kr/Big/9781234567890.jpg',
       }),
+      expect.anything(),
     );
   });
 
@@ -413,6 +416,7 @@ describe('processCharge', () => {
         cover_url: mockAladinResponse.coverUrl,
         description: mockAladinResponse.description,
       }),
+      null,
     );
   });
 });
@@ -452,7 +456,7 @@ describe('processChargesWithPlanningCleanup', () => {
     const mockBookRepository = createMockBookRepository(null);
     const mockAladinClient = createMockAladinClient(null);
     const plannedRepo = {
-      deleteByLibraryBiblioId: vi.fn().mockResolvedValue(true),
+      deleteByLibraryBiblioIds: vi.fn().mockResolvedValue(2),
     } as unknown as PlannedLoanRepository;
 
     await processChargesWithPlanningCleanup(
@@ -462,9 +466,10 @@ describe('processChargesWithPlanningCleanup', () => {
       plannedRepo,
     );
 
-    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledTimes(2);
-    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(99);
-    expect(plannedRepo.deleteByLibraryBiblioId).toHaveBeenCalledWith(100);
+    expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledTimes(1);
+    expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledWith([
+      99, 100,
+    ]);
   });
 });
 
@@ -496,6 +501,7 @@ describe('processChargeHistory', () => {
     const mockBookRepository = {
       findByChargeId: vi.fn().mockResolvedValue(existingRecord),
       findByIsbn: vi.fn(),
+      findByIsbnAndChargeDate: vi.fn(),
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
@@ -507,6 +513,7 @@ describe('processChargeHistory', () => {
         charge_id: String(history.id),
         discharge_date: '2025-09-16 00:00:00',
       }),
+      existingRecord,
     );
   });
 
@@ -543,24 +550,27 @@ describe('processChargeHistory', () => {
 
     const mockBookRepository = {
       findByChargeId: vi.fn().mockResolvedValue(null),
-      findByIsbn: vi.fn().mockResolvedValue([existingRecord]),
+      findByIsbn: vi.fn(),
+      findByIsbnAndChargeDate: vi.fn().mockResolvedValue(existingRecord),
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
     const status = await processChargeHistory(history, mockBookRepository);
 
     expect(status).toBe('returned');
-    expect(mockBookRepository.findByIsbn).toHaveBeenCalledWith(
+    expect(mockBookRepository.findByIsbnAndChargeDate).toHaveBeenCalledWith(
       history.biblio.isbn,
+      history.chargeDate,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
       expect.objectContaining({
         discharge_date: '2025-09-17 00:00:00',
       }),
+      existingRecord,
     );
   });
 
-  it('skips ISBN match when chargeDate does not match', async () => {
+  it('skips when ISBN+chargeDate fallback has no match', async () => {
     const history = createMockChargeHistory({
       id: 888,
       chargeDate: '2025-01-01',
@@ -573,27 +583,10 @@ describe('processChargeHistory', () => {
       },
     });
 
-    const existingRecord = {
-      id: 13,
-      charge_id: 'other',
-      isbn: '9780000000003',
-      isbn13: null,
-      title: 'Different Loan Cycle',
-      author: 'Author',
-      publisher: 'Publisher',
-      cover_url: null,
-      description: null,
-      pub_date: null,
-      charge_date: '2025-06-01', // Different chargeDate - should not match
-      due_date: '2025-06-15',
-      discharge_date: null,
-      renew_count: 0,
-      is_read: 0,
-    };
-
     const mockBookRepository = {
       findByChargeId: vi.fn().mockResolvedValue(null),
-      findByIsbn: vi.fn().mockResolvedValue([existingRecord]),
+      findByIsbn: vi.fn(),
+      findByIsbnAndChargeDate: vi.fn().mockResolvedValue(null),
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
@@ -629,6 +622,7 @@ describe('processChargeHistory', () => {
     const mockBookRepository = {
       findByChargeId: vi.fn().mockResolvedValue(existingRecord),
       findByIsbn: vi.fn(),
+      findByIsbnAndChargeDate: vi.fn(),
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 

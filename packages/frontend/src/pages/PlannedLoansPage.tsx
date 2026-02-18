@@ -210,7 +210,8 @@ export default function PlannedLoansPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['planned-loans'],
     queryFn: getPlannedLoans,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const deleteMutation = useMutation({

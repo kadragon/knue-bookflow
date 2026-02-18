@@ -168,6 +168,54 @@ describe('PlannedLoanRepository', () => {
       );
     });
   });
+
+  describe('deleteByLibraryBiblioIds', () => {
+    it('should return 0 and skip query when ids are empty', async () => {
+      const result = await repository.deleteByLibraryBiblioIds([]);
+      expect(result).toBe(0);
+      expect(mockDb.prepare).not.toHaveBeenCalled();
+      expect(mockDb.batch).not.toHaveBeenCalled();
+    });
+
+    it('should delete by IN clause via db.batch and return total affected rows', async () => {
+      const fakeStatement = {} as D1PreparedStatement;
+      const mockBind = vi.fn().mockReturnValue(fakeStatement);
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { meta: { changes: 2 } },
+      ]);
+
+      const result = await repository.deleteByLibraryBiblioIds([123, 456]);
+
+      expect(result).toBe(2);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'DELETE FROM planned_loans WHERE library_biblio_id IN (?, ?)',
+      );
+      expect(mockBind).toHaveBeenCalledWith(123, 456);
+      expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement]);
+    });
+
+    it('should chunk ids into batches of 999 when exceeding D1 parameter limit', async () => {
+      const ids = Array.from({ length: 1500 }, (_, i) => i + 1);
+      const fakeStatement = {} as D1PreparedStatement;
+      const mockBind = vi.fn().mockReturnValue(fakeStatement);
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { meta: { changes: 999 } },
+        { meta: { changes: 501 } },
+      ]);
+
+      const result = await repository.deleteByLibraryBiblioIds(ids);
+
+      expect(result).toBe(1500);
+      expect(mockDb.prepare).toHaveBeenCalledTimes(2);
+      expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement, fakeStatement]);
+    });
+  });
 });
 
 describe('createPlannedLoanRepository', () => {

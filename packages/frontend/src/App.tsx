@@ -38,7 +38,6 @@ import {
   deleteNote,
   getBooks,
   getNotes,
-  type LoanState,
   type NoteItem,
   type ReadStatus,
   triggerWorkflow,
@@ -105,6 +104,8 @@ function useBooks() {
   return useQuery<ApiResponse>({
     queryKey: ['books'],
     queryFn: getBooks,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -356,6 +357,8 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
   } = useQuery({
     queryKey: ['notes', book.dbId],
     queryFn: () => getNotes(book.dbId),
+    staleTime: 15 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const notes = notesData?.notes || [];
