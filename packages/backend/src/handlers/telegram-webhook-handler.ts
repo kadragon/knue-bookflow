@@ -39,7 +39,13 @@ export async function handleTelegramWebhook(
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const update = await request.json<TelegramUpdate>();
+  let update: TelegramUpdate;
+  try {
+    update = await request.json<TelegramUpdate>();
+  } catch (error) {
+    console.error('[TelegramWebhook] Failed to parse request body:', error);
+    return new Response('Bad Request: Invalid JSON body', { status: 400 });
+  }
   const message = update.message;
 
   // Ignore non-message updates, wrong chat, no text, non-reply messages

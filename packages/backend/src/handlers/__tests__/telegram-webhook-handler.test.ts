@@ -209,6 +209,23 @@ describe('handleTelegramWebhook', () => {
     expect(updateNote).toHaveBeenCalled();
   });
 
+  it('returns 400 when request body is not valid JSON', async () => {
+    const req = new Request('https://example.com/webhook/telegram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Bot-Api-Secret-Token': 'my-secret',
+      },
+      body: 'not-json{{{',
+    });
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId: vi.fn(),
+      updateNote: vi.fn(),
+      sendConfirmation: vi.fn(),
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('returns 200 when message comes from wrong chat', async () => {
     const req = makeRequest(
       {

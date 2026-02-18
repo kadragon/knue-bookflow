@@ -5,25 +5,20 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TelegramMessageRepository } from '../telegram-message-repository';
 
+const SQL_INSERT =
+  'INSERT OR REPLACE INTO telegram_message_notes (telegram_message_id, note_id) VALUES (?, ?)';
+const SQL_SELECT =
+  'SELECT note_id FROM telegram_message_notes WHERE telegram_message_id = ?';
+
 function makeMockDb() {
   const store = new Map<number, number>();
-
-  const firstFn = (
-    telegramId: number,
-  ): { noteId: number | null; run: () => void } => {
-    const row = store.get(telegramId);
-    return {
-      noteId: row ?? null,
-      run: () => {},
-    };
-  };
 
   return {
     store,
     db: {
       prepare: (sql: string) => ({
         bind: (...args: unknown[]) => {
-          if (sql.includes('INSERT')) {
+          if (sql === SQL_INSERT) {
             const [msgId, noteId] = args as [number, number];
             return {
               run: async () => {
@@ -32,7 +27,7 @@ function makeMockDb() {
               },
             };
           }
-          if (sql.includes('SELECT')) {
+          if (sql === SQL_SELECT) {
             const [telegramId] = args as [number];
             return {
               first: async <T>() => {

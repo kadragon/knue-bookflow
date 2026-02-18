@@ -197,6 +197,33 @@ describe('sendTelegramMessage (via broadcastDailyNote)', () => {
     expect(sent).toBe(true);
   });
 
+  it('returns false when Telegram 2xx response has missing message_id', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: {} }), // no message_id
+    });
+
+    const candidate = createCandidate({ note: { id: 1 } as NoteRecord });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    });
+
+    expect(sent).toBe(false);
+  });
+
   it('returns null (false) when Telegram API call fails', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

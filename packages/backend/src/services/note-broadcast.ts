@@ -217,7 +217,13 @@ async function sendTelegramMessage(
     return null;
   }
 
-  const data = await response.json<{ result: { message_id: number } }>();
+  const data = await response.json<{ result?: { message_id?: number } }>();
+  if (!data.result?.message_id) {
+    console.error(
+      '[NoteBroadcast] Telegram response missing result.message_id',
+    );
+    return null;
+  }
   return data.result.message_id;
 }
 
