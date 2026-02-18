@@ -170,3 +170,31 @@ describe('scheduled handler', () => {
     expect(mockCtx.waitUntil).not.toHaveBeenCalled();
   });
 });
+
+describe('POST /webhook/telegram', () => {
+  it('routes to telegram webhook handler and returns 401 without secret', async () => {
+    const env: Env = {
+      DB: {} as D1Database,
+      ALADIN_API_KEY: '',
+      LIBRARY_USER_ID: '',
+      LIBRARY_PASSWORD: '',
+      TELEGRAM_BOT_TOKEN: 'tok',
+      TELEGRAM_CHAT_ID: '123',
+      TELEGRAM_WEBHOOK_SECRET: 'secret',
+      ENVIRONMENT: 'test',
+      ASSETS: {} as Fetcher,
+    };
+    const ctx = {
+      waitUntil: vi.fn(),
+      passThroughOnException: vi.fn(),
+    } as unknown as ExecutionContext;
+
+    const req = new Request('https://example.com/webhook/telegram', {
+      method: 'POST',
+      body: JSON.stringify({ update_id: 1 }),
+    });
+
+    const res = await worker.fetch(req, env, ctx);
+    expect(res.status).toBe(401);
+  });
+});

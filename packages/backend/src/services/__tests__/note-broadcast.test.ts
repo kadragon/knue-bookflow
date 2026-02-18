@@ -8,6 +8,7 @@ import type { BookRecord, Env, NoteRecord } from '../../types';
 import {
   broadcastDailyNote,
   formatNoteMessage,
+  type NoteBroadcastDeps,
   type NoteBroadcastRepository,
   type NoteCandidate,
   selectNoteCandidate,
@@ -157,6 +158,96 @@ describe('formatNoteMessage', () => {
   });
 });
 
+describe('sendTelegramMessage (via broadcastDailyNote)', () => {
+  const baseEnv = {
+    TELEGRAM_BOT_TOKEN: 'token',
+    TELEGRAM_CHAT_ID: 'chat',
+    DB: {} as D1Database,
+    ASSETS: {} as Fetcher,
+    LIBRARY_USER_ID: '',
+    LIBRARY_PASSWORD: '',
+    ALADIN_API_KEY: '',
+    ENVIRONMENT: 'test',
+  } as Env;
+
+  it('returns message_id on successful Telegram API call', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 42 } }),
+    });
+
+    const candidate = createCandidate({ note: { id: 1 } as NoteRecord });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    });
+
+    expect(sent).toBe(true);
+  });
+
+  it('returns false when Telegram 2xx response has missing message_id', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: {} }), // no message_id
+    });
+
+    const candidate = createCandidate({ note: { id: 1 } as NoteRecord });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    });
+
+    expect(sent).toBe(false);
+  });
+
+  it('returns null (false) when Telegram API call fails', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'error',
+      text: async () => 'fail',
+    });
+
+    const candidate = createCandidate({ note: { id: 1 } as NoteRecord });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+    });
+
+    expect(sent).toBe(false);
+  });
+});
+
 describe('broadcastDailyNote', () => {
   const baseEnv = {
     TELEGRAM_BOT_TOKEN: 'token',
@@ -218,6 +309,7 @@ describe('broadcastDailyNote', () => {
       ok: true,
       status: 200,
       statusText: 'OK',
+      json: async () => ({ result: { message_id: 999 } }),
     });
 
     const candidate = createCandidate({
@@ -228,11 +320,15 @@ describe('broadcastDailyNote', () => {
       getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
       incrementSendCount: vi.fn(),
     };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+    };
 
     const sent = await broadcastDailyNote(baseEnv, {
       repository,
       fetchFn: mockFetch,
       randomFn: () => 0,
+      telegramMessageRepository,
     });
 
     expect(sent).toBe(true);
@@ -246,5 +342,69 @@ describe('broadcastDailyNote', () => {
     expect(body.text).toContain('📚 *Test Book*');
     expect(body.text).toContain('_Test Author_');
     expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
+  });
+
+  it('does not increment send count when mapping save fails', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 1234 } }),
+    });
+
+    const candidate = createCandidate({
+      note: { id: 10, book_id: 1, page_number: 1, content: 'test' },
+    });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockRejectedValue(new Error('D1 error')),
+      findNoteIdByMessageId: vi.fn(),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    });
+
+    expect(sent).toBe(false);
+    expect(repository.incrementSendCount).not.toHaveBeenCalled();
+  });
+
+  it('stores telegram_message_id -> note_id mapping after successful send', async () => {
+    const MESSAGE_ID = 7777;
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: MESSAGE_ID } }),
+    });
+
+    const candidate = createCandidate({
+      note: { id: 55, book_id: 1, page_number: 10, content: 'Store test' },
+    });
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([candidate]),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+      findNoteIdByMessageId: vi.fn(),
+    };
+
+    const deps: NoteBroadcastDeps = {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      telegramMessageRepository,
+    };
+
+    await broadcastDailyNote(baseEnv, deps);
+
+    expect(telegramMessageRepository.save).toHaveBeenCalledWith(MESSAGE_ID, 55);
   });
 });
