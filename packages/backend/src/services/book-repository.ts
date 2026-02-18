@@ -22,6 +22,10 @@ export class BookRepository {
   /**
    * Save or update a book record
    * @param record - Book record to save
+   * @param existingRecord - Pre-fetched row to avoid a duplicate DB read.
+   *   - `undefined` (omitted): performs a `findByChargeId` lookup internally
+   *   - `null`: caller confirms the row does not exist → INSERT path
+   *   - `BookRecord`: caller supplies the existing row → UPDATE path
    */
   async saveBook(
     record: BookRecord,
@@ -129,7 +133,7 @@ export class BookRepository {
       .bind(chargeId)
       .first<BookRecord>();
 
-    return result || null;
+    return result ?? null;
   }
 
   /**
@@ -162,7 +166,7 @@ export class BookRepository {
       .bind(isbn, chargeDate)
       .first<BookRecord>();
 
-    return result || null;
+    return result ?? null;
   }
 
   /**
@@ -186,7 +190,7 @@ export class BookRepository {
       .bind(id)
       .first<BookRecord>();
 
-    return result || null;
+    return result ?? null;
   }
 
   /**

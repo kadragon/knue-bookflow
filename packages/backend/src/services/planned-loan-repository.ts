@@ -82,20 +82,35 @@ export class PlannedLoanRepository {
     return result.meta.changes > 0;
   }
 
+  /**
+   * Delete planned loans matching any of the given library biblio IDs.
+   * Chunks the IDs into batches of 999 to stay under D1's 1000-parameter limit,
+   * executing all batches in a single db.batch() call.
+   * @param libraryBiblioIds - IDs to delete; returns 0 immediately if empty
+   * @returns Total number of rows deleted
+   */
   async deleteByLibraryBiblioIds(libraryBiblioIds: number[]): Promise<number> {
     if (libraryBiblioIds.length === 0) {
       return 0;
     }
 
-    const placeholders = libraryBiblioIds.map(() => '?').join(', ');
-    const result = await this.db
-      .prepare(
-        `DELETE FROM planned_loans WHERE library_biblio_id IN (${placeholders})`,
-      )
-      .bind(...libraryBiblioIds)
-      .run();
+    const BATCH_SIZE = 999; // D1 parameter limit is 1000
+    const statements: D1PreparedStatement[] = [];
 
-    return result.meta.changes;
+    for (let i = 0; i < libraryBiblioIds.length; i += BATCH_SIZE) {
+      const chunk = libraryBiblioIds.slice(i, i + BATCH_SIZE);
+      const placeholders = chunk.map(() => '?').join(', ');
+      statements.push(
+        this.db
+          .prepare(
+            `DELETE FROM planned_loans WHERE library_biblio_id IN (${placeholders})`,
+          )
+          .bind(...chunk),
+      );
+    }
+
+    const results = await this.db.batch(statements);
+    return results.reduce((sum, r) => sum + (r.meta.changes ?? 0), 0);
   }
 }
 

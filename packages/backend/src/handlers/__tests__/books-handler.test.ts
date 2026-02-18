@@ -179,7 +179,7 @@ describe('handleBooksApi', () => {
     };
 
     const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
-    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
@@ -233,7 +233,7 @@ describe('handleBooksApi', () => {
     };
 
     const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
-    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
@@ -282,6 +282,6 @@ describe('handleBooksApi', () => {
 
     const response = await handleGetBook(env, 1, fakeBookRepo, fakeNoteRepo);
     expect(response.status).toBe(200);
-    expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
   });
 });

@@ -55,7 +55,7 @@ export async function handleGetNotes(
   return new Response(JSON.stringify({ notes: viewModels }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=15',
+      'Cache-Control': 'private, max-age=15',
     },
   });
 }

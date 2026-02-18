@@ -322,7 +322,7 @@ export async function handleGetPlannedLoans(
     return new Response(JSON.stringify({ items: withAvailability }), {
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30',
+        'Cache-Control': 'private, max-age=30',
       },
     });
   } catch (error) {

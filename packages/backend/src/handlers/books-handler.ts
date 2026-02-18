@@ -131,7 +131,7 @@ export async function handleBooksApi(
   return new Response(JSON.stringify({ items: view }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=30',
+      'Cache-Control': 'private, max-age=30',
     },
   });
 }
@@ -210,7 +210,7 @@ export async function handleGetBook(
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'public, max-age=30',
+          'Cache-Control': 'private, max-age=30',
         },
       },
     );
