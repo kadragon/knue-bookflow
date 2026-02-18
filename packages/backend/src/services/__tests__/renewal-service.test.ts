@@ -178,6 +178,21 @@ describe('renewal service', () => {
       expect(candidates).toHaveLength(2);
     });
 
+    it('should skip negative renewCnt even with custom config', () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-15', renewCnt: -1 }),
+      ];
+
+      const config: RenewalConfig = {
+        maxRenewCount: 1,
+        daysBeforeDue: 5,
+      };
+
+      const candidates = identifyRenewalCandidates(charges, config);
+
+      expect(candidates).toHaveLength(0);
+    });
+
     it('should return empty array when no eligible books', () => {
       const charges = [
         createMockCharge({ id: 1, dueDate: '2025-01-20', renewCnt: 0 }), // too far

@@ -30,11 +30,7 @@ function isRenewCountEligible(
   renewCnt: number,
   maxRenewCount: number,
 ): boolean {
-  if (maxRenewCount === DEFAULT_RENEWAL_MAX_COUNT) {
-    return renewCnt === DEFAULT_RENEWAL_MAX_COUNT;
-  }
-
-  return renewCnt <= maxRenewCount;
+  return renewCnt >= DEFAULT_RENEWAL_MAX_COUNT && renewCnt <= maxRenewCount;
 }
 
 /**
