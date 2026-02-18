@@ -140,6 +140,16 @@ describe('renewal service', () => {
       expect(candidates[0].charge.id).toBe(2);
     });
 
+    it('should skip books when renewCnt is negative', () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-14', renewCnt: -1 }), // 1 day but invalid renewCnt
+      ];
+
+      const candidates = identifyRenewalCandidates(charges);
+
+      expect(candidates).toHaveLength(0);
+    });
+
     it('should skip books with due date beyond threshold', () => {
       const charges = [
         createMockCharge({ id: 1, dueDate: '2025-01-20', renewCnt: 0 }), // 7 days away

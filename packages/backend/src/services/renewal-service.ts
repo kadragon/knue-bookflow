@@ -26,6 +26,17 @@ const DEFAULT_CONFIG: RenewalConfig = {
   daysBeforeDue: DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
 };
 
+function isRenewCountEligible(
+  renewCnt: number,
+  maxRenewCount: number,
+): boolean {
+  if (maxRenewCount === DEFAULT_RENEWAL_MAX_COUNT) {
+    return renewCnt === DEFAULT_RENEWAL_MAX_COUNT;
+  }
+
+  return renewCnt <= maxRenewCount;
+}
+
 /**
  * Identify books eligible for renewal based on criteria
  * @param charges - List of current charges
@@ -40,8 +51,7 @@ export function identifyRenewalCandidates(
   const candidates: RenewalCandidate[] = [];
 
   for (const charge of charges) {
-    // Check if already renewed
-    if (charge.renewCnt > config.maxRenewCount) {
+    if (!isRenewCountEligible(charge.renewCnt, config.maxRenewCount)) {
       continue;
     }
 
