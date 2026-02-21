@@ -55,6 +55,46 @@ export function isWithinDays(
 }
 
 /**
+ * Check if a date is within a range of days from today
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @param maxDays - Maximum days in future (upper bound, inclusive)
+ * @param minDays - Minimum days (lower bound, inclusive; negative = past days allowed)
+ * @param offsetMinutes - Timezone offset in minutes (default KST +540)
+ * @returns true if date is within [minDays, maxDays] from today
+ */
+export function isDueWithinRange(
+  dateString: string,
+  maxDays: number,
+  minDays = 0,
+  offsetMinutes = KST_OFFSET_MINUTES,
+): boolean {
+  const normalized = normalizeDateString(dateString);
+  const targetMs = new Date(`${normalized}T00:00:00Z`).getTime();
+  const target = zoneDayNumber(targetMs, offsetMinutes);
+  const today = zoneDayNumber(Date.now(), offsetMinutes);
+
+  const diff = target - today;
+  return diff >= minDays && diff <= maxDays;
+}
+
+/**
+ * Return the number of days from today to a given date (KST)
+ * @param dateString - Date string in YYYY-MM-DD format
+ * @param offsetMinutes - Timezone offset in minutes (default KST +540)
+ * @returns Positive = future, 0 = today, negative = past
+ */
+export function daysFromToday(
+  dateString: string,
+  offsetMinutes = KST_OFFSET_MINUTES,
+): number {
+  const normalized = normalizeDateString(dateString);
+  const targetMs = new Date(`${normalized}T00:00:00Z`).getTime();
+  const target = zoneDayNumber(targetMs, offsetMinutes);
+  const today = zoneDayNumber(Date.now(), offsetMinutes);
+  return target - today;
+}
+
+/**
  * Check if a date is today
  * @param dateString - Date string in YYYY-MM-DD format
  * @param offsetMinutes - Timezone offset in minutes (default KST +540)

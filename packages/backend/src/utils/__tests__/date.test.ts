@@ -6,8 +6,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   daysBetween,
+  daysFromToday,
   formatDate,
   getTodayString,
+  isDueWithinRange,
   isToday,
   isWithinDays,
   normalizeDateString,
@@ -56,6 +58,61 @@ describe('date utilities', () => {
 
     it('should return false for past dates', () => {
       expect(isWithinDays('2025-01-14', 2)).toBe(false); // yesterday
+    });
+  });
+
+  describe('isDueWithinRange', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-01-15T14:30:00Z')); // 23:30 KST
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should return true when date is within [0, maxDays]', () => {
+      expect(isDueWithinRange('2025-01-17', 2)).toBe(true); // 2 days away
+      expect(isDueWithinRange('2025-01-15', 2)).toBe(true); // today
+    });
+
+    it('should return false when date is beyond maxDays', () => {
+      expect(isDueWithinRange('2025-01-18', 2)).toBe(false); // 3 days away
+    });
+
+    it('should return false for past dates when minDays=0 (default)', () => {
+      expect(isDueWithinRange('2025-01-14', 2)).toBe(false); // yesterday
+    });
+
+    it('should include past dates when minDays is negative', () => {
+      expect(isDueWithinRange('2025-01-14', 2, -1)).toBe(true); // 1 day ago
+    });
+
+    it('should exclude dates more overdue than minDays', () => {
+      expect(isDueWithinRange('2025-01-13', 2, -1)).toBe(false); // 2 days ago, minDays=-1
+    });
+  });
+
+  describe('daysFromToday', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2025-01-15T14:30:00Z')); // 23:30 KST = 2025-01-15 KST
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should return 0 for today', () => {
+      expect(daysFromToday('2025-01-15')).toBe(0);
+    });
+
+    it('should return positive for future dates', () => {
+      expect(daysFromToday('2025-01-17')).toBe(2);
+    });
+
+    it('should return negative for past dates', () => {
+      expect(daysFromToday('2025-01-14')).toBe(-1);
     });
   });
 

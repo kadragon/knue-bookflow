@@ -5,6 +5,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Charge, RenewalResult } from '../../types';
+import {
+  DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+  DEFAULT_RENEWAL_MAX_COUNT,
+} from '../../utils';
 import type { BookRepository } from '../book-repository';
 import {
   checkAndRenewBooks,
@@ -200,6 +204,49 @@ describe('renewal service', () => {
       ];
 
       const candidates = identifyRenewalCandidates(charges);
+
+      expect(candidates).toHaveLength(0);
+    });
+
+    it('should exclude overdue books when minDaysRemaining defaults to 0', () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-12', renewCnt: 0 }), // 1 day overdue
+      ];
+
+      const candidates = identifyRenewalCandidates(charges);
+
+      expect(candidates).toHaveLength(0);
+    });
+
+    it('should include books 1 day overdue when minDaysRemaining is -1', () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-12', renewCnt: 0 }), // 1 day overdue
+      ];
+
+      const config: RenewalConfig = {
+        maxRenewCount: DEFAULT_RENEWAL_MAX_COUNT,
+        daysBeforeDue: DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+        minDaysRemaining: -1,
+      };
+
+      const candidates = identifyRenewalCandidates(charges, config);
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0].charge.id).toBe(1);
+    });
+
+    it('should not include books 2 days overdue when minDaysRemaining is -1', () => {
+      const charges = [
+        createMockCharge({ id: 1, dueDate: '2025-01-11', renewCnt: 0 }), // 2 days overdue
+      ];
+
+      const config: RenewalConfig = {
+        maxRenewCount: DEFAULT_RENEWAL_MAX_COUNT,
+        daysBeforeDue: DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+        minDaysRemaining: -1,
+      };
+
+      const candidates = identifyRenewalCandidates(charges, config);
 
       expect(candidates).toHaveLength(0);
     });

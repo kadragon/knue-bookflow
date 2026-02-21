@@ -170,6 +170,25 @@ export class BookRepository {
   }
 
   /**
+   * Find books currently on loan that are due within the given date range (inclusive)
+   * @param fromDate - Start date in YYYY-MM-DD format (usually today)
+   * @param toDate - End date in YYYY-MM-DD format
+   */
+  async findDueSoonBooks(
+    fromDate: string,
+    toDate: string,
+  ): Promise<BookRecord[]> {
+    const result = await this.db
+      .prepare(
+        'SELECT * FROM books WHERE discharge_date IS NULL AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC',
+      )
+      .bind(fromDate, toDate)
+      .all<BookRecord>();
+
+    return result.results;
+  }
+
+  /**
    * Get all book records
    */
   async findAll(): Promise<BookRecord[]> {
