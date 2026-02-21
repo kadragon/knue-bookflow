@@ -1,6 +1,6 @@
 # knue-bookflow - AGENTS
 
-Last Updated: 2026-01-15
+Last Updated: 2026-02-21
 Framework: TDD (Test-Driven Development)
 
 ## Project Overview
@@ -28,6 +28,14 @@ KNUE BookFlow is a Cloudflare Workers-based automatic book renewal system for Ko
 - API clients (LibraryClient/AladinClient), repository pattern for D1 (Book/Note/PlannedLoan).
 - Scheduled handlers wrap work in `ctx.waitUntil`.
 - Vitest uses `--configLoader runner` with backend + frontend projects.
+## Workflows & Commands
+- Dev: `bun run dev` (backend), `bun run dev:frontend` (frontend).
+- Build: `bun run build` (all), `bun run build:frontend`, `bun run build:backend`.
+- Deploy: `bun run deploy` (backend worker).
+- DB migrations: `bun run db:migrate` (backend D1).
+- Tests: `bun run test` (vitest runner).
+- Lint/format: `bun run lint`, `bun run lint:fix`, `bun run format`, `bun run typecheck`.
+- Pre-commit hook runs: `bunx lint-staged`, `bun run typecheck`, `bun run test`.
 
 ## Governance Notes
 - Governance/spec/task folders were compacted into this AGENTS.md; SDD/spec references removed.
