@@ -78,9 +78,9 @@ export function BookDetailModal({ isbn, onClose }: BookDetailModalProps) {
       }}
     >
       <DialogTitle sx={{ pr: 6 }}>
-        {isLoading ? '책 정보 불러오는 중...' : book?.title || '책 정보'}
+        {isLoading ? '책 정보 불러오는 중…' : book?.title || '책 정보'}
         <IconButton
-          aria-label="close"
+          aria-label="닫기"
           onClick={onClose}
           sx={{
             position: 'absolute',

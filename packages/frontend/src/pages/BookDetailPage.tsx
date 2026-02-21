@@ -418,7 +418,7 @@ function NotesPanel({
                     취소
                   </Button>
                   <Button type="submit" variant="contained" disabled={isSaving}>
-                    {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
+                    {isSaving ? '저장 중…' : editingNote ? '수정' : '추가'}
                   </Button>
                 </Box>
               </Stack>
@@ -458,7 +458,11 @@ function NotesPanel({
                     color="primary"
                   />
                   <Box>
-                    <IconButton size="small" onClick={() => handleEdit(note)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(note)}
+                      aria-label="노트 수정"
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
@@ -466,6 +470,7 @@ function NotesPanel({
                       onClick={() => handleDeleteClick(note.id)}
                       color="error"
                       disabled={deleteMutation.isPending}
+                      aria-label="노트 삭제"
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -564,7 +569,11 @@ export default function BookDetailPage() {
       <Header
         title="Book Detail"
         leading={
-          <IconButton onClick={() => navigate('/')} color="inherit">
+          <IconButton
+            onClick={() => navigate('/')}
+            color="inherit"
+            aria-label="내 책장으로 돌아가기"
+          >
             <ArrowBackIcon />
           </IconButton>
         }

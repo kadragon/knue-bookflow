@@ -7,6 +7,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
   CardMedia,
@@ -54,7 +55,7 @@ function truncateTitle(title: string, maxLength: number = 20): string {
   if (title.length <= maxLength) {
     return title;
   }
-  return `${title.slice(0, maxLength)}...`;
+  return `${title.slice(0, maxLength)}…`;
 }
 
 // Format author display: show max 2 authors, rest as '외 N명'
@@ -92,21 +93,29 @@ function NewBookCard({
       variant="outlined"
       sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
-      <Box
+      <ButtonBase
         sx={{
           position: 'relative',
           pt: 2,
           px: 2,
+          width: '100%',
           display: 'flex',
           justifyContent: 'center',
           bgcolor: 'background.paper',
-          cursor: book.isbn ? 'pointer' : 'default',
+          borderRadius: 1,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
         }}
         onClick={() => {
           if (book.isbn) {
             onImageClick(book.isbn);
           }
         }}
+        aria-label={`${book.title} 상세 보기`}
+        disabled={!book.isbn}
       >
         {book.coverUrl ? (
           <CardMedia
@@ -141,7 +150,7 @@ function NewBookCard({
             <AutoStoriesIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
           </Box>
         )}
-      </Box>
+      </ButtonBase>
       <CardContent
         sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}
       >
@@ -296,6 +305,7 @@ export default function NewBooksPage() {
             onClick={() => refetch()}
             disabled={isLoading}
             color="inherit"
+            aria-label="신착 도서 새로고침"
           >
             <RefreshIcon />
           </IconButton>

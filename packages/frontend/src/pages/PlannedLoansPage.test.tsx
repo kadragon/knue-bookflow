@@ -111,5 +111,14 @@ describe('PlannedLoansPage availability badges (TEST-loan-plan-009)', () => {
     expect(await screen.findByText('대출 가능 (2/3권)')).toBeTruthy();
     expect(screen.getByText('대출 중 · 반납예정 2025-12-20')).toBeTruthy();
     expect(screen.getByText('대출 가능 여부 확인 불가')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Available Book 상세 보기' }),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole('button', { name: 'Loaned Book 상세 보기' })
+        .getAttribute('disabled'),
+    ).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: '삭제' })).toHaveLength(3);
   });
 });
