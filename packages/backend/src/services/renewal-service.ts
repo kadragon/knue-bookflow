@@ -14,7 +14,7 @@ import type {
 import {
   DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
   DEFAULT_RENEWAL_MAX_COUNT,
-  isWithinDays,
+  isDueWithinRange,
 } from '../utils';
 import type { BookRepository } from './book-repository';
 import { LibraryApiError, type LibraryClient } from './library-client';
@@ -52,7 +52,14 @@ export function identifyRenewalCandidates(
     }
 
     // Check if due date is within threshold
-    if (!isWithinDays(charge.dueDate, config.daysBeforeDue, offsetMinutes)) {
+    if (
+      !isDueWithinRange(
+        charge.dueDate,
+        config.daysBeforeDue,
+        config.minDaysRemaining ?? 0,
+        offsetMinutes,
+      )
+    ) {
       continue;
     }
 

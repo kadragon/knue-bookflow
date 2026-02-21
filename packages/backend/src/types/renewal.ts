@@ -11,6 +11,7 @@ import type { Charge } from './library';
 export interface RenewalConfig {
   maxRenewCount: number;
   daysBeforeDue: number;
+  minDaysRemaining?: number; // default 0; set to -1 to include books 1 day overdue
 }
 
 /**

@@ -73,8 +73,8 @@ describe('scheduled handler', () => {
 
     await worker.scheduled(mockEvent, mockEnv, mockCtx);
 
-    // Should call waitUntil twice: once for broadcast, once for sync
-    expect(waitUntilSpy).toHaveBeenCalledTimes(2);
+    // Should call waitUntil three times: broadcast, sync, and renewal
+    expect(waitUntilSpy).toHaveBeenCalledTimes(3);
 
     const pending = collectWaitUntilPromises();
     await Promise.allSettled(pending);
@@ -116,9 +116,10 @@ describe('scheduled handler', () => {
     await Promise.allSettled(pending);
 
     expect(mockFetch).toHaveBeenCalled();
-    const [, requestInit] = mockFetch.mock.calls[0];
-    const body = (requestInit as RequestInit)?.body as string;
-    expect(body).toContain('boom');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('sendMessage'),
+      expect.objectContaining({ body: expect.stringContaining('boom') }),
+    );
   });
 
   it('should log a scheduled sync summary when completed', async () => {

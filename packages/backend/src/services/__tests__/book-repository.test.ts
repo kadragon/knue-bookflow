@@ -663,3 +663,48 @@ describe('createBookRepository', () => {
     expect(repository).toBeInstanceOf(BookRepository);
   });
 });
+
+describe('findDueSoonBooks', () => {
+  let mockDb: D1Database;
+  let repository: BookRepository;
+
+  beforeEach(() => {
+    mockDb = createMockD1();
+    repository = new BookRepository(mockDb);
+  });
+
+  it('queries books with discharge_date IS NULL and due_date in range, ordered by due_date ASC', async () => {
+    const mockResults = [
+      createMockBookRecord({ charge_id: '1', due_date: '2025-01-15' }),
+      createMockBookRecord({ charge_id: '2', due_date: '2025-01-18' }),
+    ];
+
+    const mockAll = vi.fn().mockResolvedValue({ results: mockResults });
+    const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+    (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: mockBind,
+    });
+
+    const books = await repository.findDueSoonBooks('2025-01-15', '2025-01-22');
+
+    expect(mockDb.prepare).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /discharge_date IS NULL.*due_date >= \?.*due_date <= \?/s,
+      ),
+    );
+    expect(mockBind).toHaveBeenCalledWith('2025-01-15', '2025-01-22');
+    expect(books).toEqual(mockResults);
+  });
+
+  it('returns empty array when no books are due soon', async () => {
+    const mockAll = vi.fn().mockResolvedValue({ results: [] });
+    const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+    (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: mockBind,
+    });
+
+    const books = await repository.findDueSoonBooks('2025-01-15', '2025-01-22');
+
+    expect(books).toEqual([]);
+  });
+});

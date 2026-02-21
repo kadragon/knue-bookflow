@@ -42,6 +42,7 @@ import {
   createLibraryClient,
   logRenewalResults,
   NOTE_BROADCAST_CRON,
+  type RenewalConfig,
   type RenewalResult,
 } from './services';
 import type {
@@ -53,6 +54,8 @@ import type {
 import {
   ALADIN_LOOKUP_CONCURRENCY,
   createDebugLogger,
+  DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+  DEFAULT_RENEWAL_MAX_COUNT,
   isDebugEnabled,
 } from './utils';
 
@@ -70,6 +73,7 @@ export default {
       ctx.waitUntil(handleNoteBroadcast(env));
       console.log('[ScheduledSync] Triggered by cron; starting scheduled sync');
       ctx.waitUntil(handleScheduledSync(env));
+      ctx.waitUntil(handleScheduledRenewal(env));
     } else {
       console.warn(
         `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
@@ -412,6 +416,44 @@ async function handleScheduledSync(env: Env): Promise<void> {
   } catch (error) {
     console.error('[ScheduledSync] Sync failed:', error);
     await sendScheduledSyncAlert(env, error);
+  }
+}
+
+/**
+ * Scheduled renewal handler - checks for overdue/due-soon books and renews them
+ */
+async function handleScheduledRenewal(env: Env): Promise<void> {
+  console.log(
+    `[ScheduledRenewal] Starting scheduled renewal at ${new Date().toISOString()}`,
+  );
+
+  try {
+    const libraryClient = createLibraryClient();
+    await libraryClient.login({
+      loginId: env.LIBRARY_USER_ID,
+      password: env.LIBRARY_PASSWORD,
+    });
+
+    const charges = await libraryClient.getCharges();
+    const bookRepository = createBookRepository(env.DB);
+
+    const config: RenewalConfig = {
+      maxRenewCount: DEFAULT_RENEWAL_MAX_COUNT,
+      daysBeforeDue: DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
+      minDaysRemaining: -1,
+    };
+
+    const results = await checkAndRenewBooks(libraryClient, charges, config);
+    await logRenewalResults(bookRepository, results);
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+    console.log(
+      `[ScheduledRenewal] Completed: ${successCount} renewed, ${failCount} failed`,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[ScheduledRenewal] Failed: ${message}`);
   }
 }
 
