@@ -9,6 +9,7 @@ import {
   DUE_SOON_BROADCAST_DAYS,
   daysFromToday,
   formatDate,
+  getTodayString,
   KST_OFFSET_MINUTES,
 } from '../utils';
 import { createBookRepository } from './book-repository';
@@ -275,43 +276,49 @@ export async function broadcastDailyNote(
     return false;
   }
 
+  let noteSuccess = false;
   const candidates = await repository.getNoteCandidates();
   const candidate = selectNoteCandidate(candidates, randomFn);
 
   if (!candidate) {
     console.log('[NoteBroadcast] No notes available to send; skipping');
-    return false;
-  }
+  } else {
+    const message = formatNoteMessage(candidate);
+    const messageId = await sendTelegramMessage(
+      env.TELEGRAM_BOT_TOKEN,
+      env.TELEGRAM_CHAT_ID,
+      message,
+      fetchFn,
+    );
 
-  const message = formatNoteMessage(candidate);
-  const messageId = await sendTelegramMessage(
-    env.TELEGRAM_BOT_TOKEN,
-    env.TELEGRAM_CHAT_ID,
-    message,
-    fetchFn,
-  );
-
-  if (messageId === null) {
-    return false;
-  }
-
-  if (candidate.note.id) {
-    // Save mapping first. If it fails, skip incrementSendCount to keep
-    // both writes consistent (no mapping → no send count increment).
-    try {
-      await telegramMessageRepository.save(messageId, candidate.note.id);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[NoteBroadcast] Failed to save message mapping: ${msg}`);
-      return false;
+    if (messageId !== null) {
+      if (candidate.note.id) {
+        // Save mapping first. If it fails, skip incrementSendCount to keep
+        // both writes consistent (no mapping → no send count increment).
+        let mappingSaved = false;
+        try {
+          await telegramMessageRepository.save(messageId, candidate.note.id);
+          mappingSaved = true;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(
+            `[NoteBroadcast] Failed to save message mapping: ${msg}`,
+          );
+        }
+        if (mappingSaved) {
+          await repository.incrementSendCount(candidate.note.id);
+          noteSuccess = true;
+        }
+      } else {
+        noteSuccess = true;
+      }
     }
-    await repository.incrementSendCount(candidate.note.id);
   }
 
-  // Send due-soon books as a separate message
+  // Send due-soon books as a separate message (always attempted when credentials are valid)
   try {
     const kstOffsetMs = KST_OFFSET_MINUTES * 60 * 1000;
-    const today = formatDate(new Date(Date.now() + kstOffsetMs));
+    const today = getTodayString();
     const futureDate = formatDate(
       new Date(Date.now() + kstOffsetMs + DUE_SOON_BROADCAST_DAYS * DAY_MS),
     );
@@ -333,5 +340,5 @@ export async function broadcastDailyNote(
     console.error(`[NoteBroadcast] Failed to send due-soon message: ${msg}`);
   }
 
-  return true;
+  return noteSuccess;
 }

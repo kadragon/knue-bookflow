@@ -568,6 +568,51 @@ describe('broadcastDailyNote', () => {
     expect(secondCallBody.text).toContain('반납 예정');
   });
 
+  it('sends due-soon message even when no notes are available', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 100 } }),
+    });
+
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([]),
+      incrementSendCount: vi.fn(),
+    };
+    const dueSoonBook: BookRecord = {
+      id: 99,
+      charge_id: 'cx',
+      isbn: '9780000000099',
+      title: '반납 예정',
+      author: '저자',
+      publisher: null,
+      cover_url: null,
+      description: null,
+      charge_date: '2025-01-01',
+      due_date: '2025-01-18',
+      renew_count: 0,
+      is_read: 0,
+      isbn13: null,
+      pub_date: null,
+    };
+    const bookRepository = {
+      findDueSoonBooks: vi.fn().mockResolvedValue([dueSoonBook]),
+    };
+
+    const sent = await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      bookRepository,
+    });
+
+    expect(sent).toBe(false); // no note was sent
+    expect(mockFetch).toHaveBeenCalledTimes(1); // due-soon message still sent
+    const callBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(callBody.text).toContain('반납 예정');
+  });
+
   it('does not send a second message when no books are due soon', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
