@@ -45,6 +45,10 @@ class FakePlannedRepo {
     return created;
   }
 
+  async findById(id: number): Promise<PlannedLoanRecord | null> {
+    return this.items.find((i) => i.id === id) || null;
+  }
+
   async deleteById(id: number): Promise<boolean> {
     const before = this.items.length;
     this.items = this.items.filter((i) => i.id !== id);
@@ -462,6 +466,7 @@ describe('createCachedFetcher', () => {
 describe('handleDeletePlannedLoan', () => {
   it('deletes and returns success flag (TEST-loan-plan-003)', async () => {
     const repo = new FakePlannedRepo();
+    const dismissalRepo = { markDismissed: vi.fn() };
     await repo.create({
       library_biblio_id: 10,
       source: 'search',
@@ -475,14 +480,55 @@ describe('handleDeletePlannedLoan', () => {
       branch_volumes: '[]',
     });
 
-    const response = await handleDeletePlannedLoan(makeEnv(), 1, repo);
+    const response = await handleDeletePlannedLoan(
+      makeEnv(),
+      1,
+      repo,
+      dismissalRepo,
+    );
     expect(response.status).toBe(200);
     const body = (await response.json()) as { success: boolean };
     expect(body.success).toBe(true);
     expect(repo.items).toHaveLength(0);
+    expect(dismissalRepo.markDismissed).not.toHaveBeenCalled();
 
-    const second = await handleDeletePlannedLoan(makeEnv(), 99, repo);
+    const second = await handleDeletePlannedLoan(
+      makeEnv(),
+      99,
+      repo,
+      dismissalRepo,
+    );
     const secondBody = (await second.json()) as { success: boolean };
     expect(secondBody.success).toBe(false);
+    expect(dismissalRepo.markDismissed).not.toHaveBeenCalled();
+  });
+
+  it('records dismissal when deleting request_book source', async () => {
+    const repo = new FakePlannedRepo();
+    const dismissalRepo = { markDismissed: vi.fn() };
+
+    await repo.create({
+      library_biblio_id: 55,
+      source: 'request_book',
+      title: '희망도서',
+      author: '저자',
+      publisher: null,
+      year: null,
+      isbn: null,
+      cover_url: null,
+      material_type: null,
+      branch_volumes: '[]',
+    });
+
+    const response = await handleDeletePlannedLoan(
+      makeEnv(),
+      1,
+      repo,
+      dismissalRepo,
+    );
+    const body = (await response.json()) as { success: boolean };
+
+    expect(body.success).toBe(true);
+    expect(dismissalRepo.markDismissed).toHaveBeenCalledWith(55);
   });
 });

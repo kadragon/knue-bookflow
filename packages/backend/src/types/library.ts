@@ -111,6 +111,53 @@ export interface ChargeHistoriesResponse {
   };
 }
 
+export interface AcqRequest {
+  id: number;
+  biblio: {
+    id: number;
+    titleStatement: string;
+    author: string | null;
+    publication: string | null;
+    isbn: string | null;
+  };
+  branch: {
+    id: number;
+    name: string;
+    alias: string;
+    libraryCode: string;
+    sortOrder: number;
+  } | null;
+  acqState: {
+    id: number;
+    code: string;
+    name: string;
+  } | null;
+  itemState: {
+    id: number;
+    code: string;
+    name: string;
+  } | null;
+  dateCreated: string;
+  materialType: {
+    id: number;
+    code: string;
+    name: string;
+    myParent: unknown;
+  } | null;
+}
+
+export interface AcqRequestsResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: {
+    list: AcqRequest[];
+    totalCount: number;
+    offset: number;
+    max: number;
+  };
+}
+
 export interface RenewalRequest {
   circulationMethodCode: string;
 }

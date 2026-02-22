@@ -66,7 +66,7 @@ export interface NoteSendStat {
 export interface PlannedLoanRecord {
   id?: number;
   library_biblio_id: number;
-  source: 'new_books' | 'search';
+  source: 'new_books' | 'search' | 'request_book';
   title: string;
   author: string;
   publisher: string | null;

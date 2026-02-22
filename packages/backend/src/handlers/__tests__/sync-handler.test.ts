@@ -11,15 +11,19 @@ import type { PlannedLoanRepository } from '../../services/planned-loan-reposito
 import type { Charge, ChargeHistory, Env } from '../../types';
 import {
   handleSyncBooks,
+  parsePublication,
   processCharge,
   processChargeHistory,
   processChargesWithPlanningCleanup,
+  syncBooksCore,
+  syncRequestBooksToPlannedLoans,
 } from '../sync-handler';
 
 const mockLibraryClient = {
   login: vi.fn(),
   getCharges: vi.fn(),
   getChargeHistories: vi.fn(),
+  getAllAcqRequests: vi.fn(),
 };
 const mockAladinClient = {
   lookupByIsbn: vi.fn(),
@@ -31,8 +35,13 @@ const mockBookRepository = {
   saveBook: vi.fn(),
 };
 const mockPlannedLoanRepository = {
+  findAllLibraryBiblioIds: vi.fn(),
+  create: vi.fn(),
   deleteByLibraryBiblioId: vi.fn(),
   deleteByLibraryBiblioIds: vi.fn(),
+};
+const mockPlannedLoanDismissalRepository = {
+  findAllLibraryBiblioIds: vi.fn(),
 };
 
 vi.mock('../../services', async (importOriginal) => {
@@ -43,6 +52,8 @@ vi.mock('../../services', async (importOriginal) => {
     createAladinClient: () => mockAladinClient,
     createBookRepository: () => mockBookRepository,
     createPlannedLoanRepository: () => mockPlannedLoanRepository,
+    createPlannedLoanDismissalRepository: () =>
+      mockPlannedLoanDismissalRepository,
   };
 });
 
@@ -59,6 +70,12 @@ const baseEnv: Env = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockPlannedLoanRepository.findAllLibraryBiblioIds.mockResolvedValue([]);
+  mockPlannedLoanRepository.create.mockResolvedValue({});
+  mockPlannedLoanDismissalRepository.findAllLibraryBiblioIds.mockResolvedValue(
+    [],
+  );
+  mockLibraryClient.getAllAcqRequests.mockResolvedValue([]);
 });
 
 describe('handleSyncBooks error classification', () => {
@@ -421,6 +438,173 @@ describe('processCharge', () => {
   });
 });
 
+describe('parsePublication', () => {
+  it('extracts publisher and year from standard Korean format', () => {
+    expect(parsePublication('서울 : 테스트출판, 2025')).toEqual({
+      publisher: '테스트출판',
+      year: '2025',
+    });
+  });
+
+  it('extracts publisher only when year is absent', () => {
+    expect(parsePublication('서울 : 출판사')).toEqual({
+      publisher: '출판사',
+      year: null,
+    });
+  });
+
+  it('returns nulls for null input', () => {
+    expect(parsePublication(null)).toEqual({ publisher: null, year: null });
+  });
+
+  it('returns nulls when format does not match', () => {
+    expect(parsePublication('출판사명만')).toEqual({
+      publisher: null,
+      year: null,
+    });
+  });
+});
+
+describe('syncRequestBooksToPlannedLoans', () => {
+  it('adds only ON_SHELF request books and skips existing/dismissed biblios', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 100,
+            titleStatement: '배가완료 도서',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000001',
+          },
+          branch: {
+            id: 1,
+            name: '한국교원대학교도서관',
+            alias: '한국',
+            libraryCode: '243012',
+            sortOrder: 1,
+          },
+          acqState: { id: 5, code: 'REGISTRATION', name: '등록' },
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: { id: 1, code: 'BK', name: '단행본', myParent: null },
+        },
+        {
+          id: 2,
+          biblio: {
+            id: 101,
+            titleStatement: '제외된 도서',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000002',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 6, code: 'LOAN', name: '대출중' },
+          dateCreated: '2025-12-29 22:38:48',
+          materialType: null,
+        },
+        {
+          id: 3,
+          biblio: {
+            id: 200,
+            titleStatement: '기존 planned',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000003',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:49',
+          materialType: null,
+        },
+        {
+          id: 4,
+          biblio: {
+            id: 300,
+            titleStatement: 'dismissed',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000004',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:50',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([200]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([300]),
+    };
+
+    const added = await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+    );
+
+    expect(added).toBe(1);
+    expect(plannedRepo.create).toHaveBeenCalledTimes(1);
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        author: '저자',
+        library_biblio_id: 100,
+        source: 'request_book',
+      }),
+    );
+  });
+
+  it('trims request book author before saving', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 500,
+            titleStatement: '공백 저자',
+            author: '  저자 공백  ',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000500',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+    };
+
+    await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+    );
+
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        author: '저자 공백',
+        library_biblio_id: 500,
+      }),
+    );
+  });
+});
+
 describe('processChargesWithPlanningCleanup', () => {
   it('deduplicates planned loan deletions by biblio id', async () => {
     const charges = [
@@ -470,6 +654,60 @@ describe('processChargesWithPlanningCleanup', () => {
     expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledWith([
       99, 100,
     ]);
+  });
+});
+
+describe('syncBooksCore request book sync behavior', () => {
+  it('runs request-book sync even when there are no charges', async () => {
+    mockLibraryClient.login.mockResolvedValue(undefined);
+    mockLibraryClient.getCharges.mockResolvedValue([]);
+    mockLibraryClient.getAllAcqRequests.mockResolvedValue([
+      {
+        id: 1,
+        biblio: {
+          id: 700,
+          titleStatement: '희망도서',
+          author: null,
+          publication: null,
+          isbn: null,
+        },
+        branch: null,
+        acqState: null,
+        itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+        dateCreated: '2025-12-29 22:38:47',
+        materialType: null,
+      },
+    ]);
+
+    const summary = await syncBooksCore(baseEnv);
+
+    expect(summary.total_charges).toBe(0);
+    expect(mockPlannedLoanRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        library_biblio_id: 700,
+        source: 'request_book',
+      }),
+    );
+  });
+
+  it('continues main sync when request-book sync fails', async () => {
+    mockLibraryClient.login.mockResolvedValue(undefined);
+    mockLibraryClient.getCharges.mockResolvedValue([
+      createMockCharge({ id: 10 }),
+    ]);
+    mockLibraryClient.getChargeHistories.mockResolvedValue([]);
+    mockLibraryClient.getAllAcqRequests.mockRejectedValue(
+      new Error('acq failed'),
+    );
+    mockBookRepository.findByChargeId.mockResolvedValue(null);
+    mockBookRepository.saveBook.mockResolvedValue(undefined);
+    mockAladinClient.lookupByIsbn.mockResolvedValue(null);
+
+    const summary = await syncBooksCore(baseEnv);
+
+    expect(summary.total_charges).toBe(1);
+    expect(summary.added).toBe(1);
+    expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 });
 

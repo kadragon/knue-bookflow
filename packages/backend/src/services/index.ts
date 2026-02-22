@@ -8,6 +8,7 @@ export * from './book-repository';
 export * from './library-client';
 export * from './note-broadcast';
 export * from './note-repository';
+export * from './planned-loan-dismissal-repository';
 export * from './planned-loan-repository';
 export * from './renewal-service';
 export * from './telegram-message-repository';
