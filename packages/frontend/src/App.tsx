@@ -35,7 +35,6 @@ import {
   type ApiResponse,
   type BookItem,
   createNote,
-  type DueStatus,
   deleteNote,
   getBooks,
   getNotes,
@@ -55,24 +54,17 @@ import {
   filterBooks,
   type StatFilter,
 } from './filterBooks';
+import {
+  formatDdayLabel,
+  getLoanStatusChip,
+  shouldShowDdayChip,
+} from './loanStatusPresentation';
 import BookDetailPage from './pages/BookDetailPage';
 import NewBooksPage from './pages/NewBooksPage';
 import PlannedLoansPage from './pages/PlannedLoansPage';
 import SearchBooksPage from './pages/SearchBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-scheduler-001, task_id: TASK-019, TASK-023, TASK-029, TASK-070
-
-const DUE_STATUS_LABEL: Record<DueStatus, string> = {
-  overdue: '연체',
-  due_soon: '반납 임박',
-  ok: '대출 중',
-};
-
-const STATUS_COLOR: Record<DueStatus, 'error' | 'warning' | 'success'> = {
-  overdue: 'error',
-  due_soon: 'warning',
-  ok: 'success',
-};
 
 // Format date string to YYYY-MM-DD
 function formatDate(dateStr: string): string {
@@ -145,6 +137,8 @@ function BookCard({
   onReadStatusChange: (book: BookItem, readStatus: ReadStatus) => void;
   onBookClick: (book: BookItem) => void;
 }) {
+  const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
+
   return (
     <Card
       variant="outlined"
@@ -246,8 +240,8 @@ function BookCard({
           sx={{ mb: 1 }}
         >
           <Chip
-            label={DUE_STATUS_LABEL[book.dueStatus]}
-            color={STATUS_COLOR[book.dueStatus]}
+            label={statusChip.label}
+            color={statusChip.color}
             size="small"
             variant="filled"
           />
@@ -267,11 +261,13 @@ function BookCard({
               variant="outlined"
             />
           )}
-          <Chip
-            label={`D${book.daysLeft >= 0 ? '-' : '+'}${Math.abs(book.daysLeft)}`}
-            size="small"
-            variant="outlined"
-          />
+          {shouldShowDdayChip(book.loanState) && (
+            <Chip
+              label={formatDdayLabel(book.daysLeft)}
+              size="small"
+              variant="outlined"
+            />
+          )}
         </Stack>
 
         <Stack spacing={0.5} sx={{ mt: 'auto' }}>
