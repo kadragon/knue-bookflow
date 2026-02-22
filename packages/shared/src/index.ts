@@ -51,6 +51,7 @@ export interface BookViewModel {
   noteCount: number;
   noteState: NoteState;
   readStatus: ReadStatus;
+  loanOrdinal?: number;
 }
 
 /** Alias for compatibility with legacy Frontend types */

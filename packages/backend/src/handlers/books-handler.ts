@@ -38,6 +38,63 @@ function computeDaysLeft(
   return dueDay - today;
 }
 
+function normalizeIsbn(value: string | null | undefined): string {
+  return (value ?? '').replace(/[\s-]/g, '').toLowerCase();
+}
+
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function bookGroupingKey(record: BookRecord): string {
+  const isbn = normalizeIsbn(record.isbn);
+  if (isbn) {
+    return `isbn:${isbn}`;
+  }
+  return `fallback:${normalizeText(record.title)}|${normalizeText(record.author)}`;
+}
+
+function compareBookRecency(a: BookRecord, b: BookRecord): number {
+  const dateDiff = a.charge_date.localeCompare(b.charge_date);
+  if (dateDiff !== 0) {
+    return dateDiff;
+  }
+
+  const idA = a.id ?? -1;
+  const idB = b.id ?? -1;
+  if (idA !== idB) {
+    return idA - idB;
+  }
+
+  return a.charge_id.localeCompare(b.charge_id);
+}
+
+interface GroupedBook {
+  representative: BookRecord;
+  loanOrdinal: number;
+}
+
+function groupBooks(records: BookRecord[]): GroupedBook[] {
+  const grouped = new Map<string, GroupedBook>();
+
+  for (const record of records) {
+    const key = bookGroupingKey(record);
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, { representative: record, loanOrdinal: 1 });
+      continue;
+    }
+
+    existing.loanOrdinal += 1;
+    if (compareBookRecency(record, existing.representative) > 0) {
+      existing.representative = record;
+    }
+  }
+
+  return Array.from(grouped.values());
+}
+
 export function deriveBookViewModel(
   record: BookRecord,
   noteCount = 0,
@@ -84,6 +141,7 @@ export function deriveBookViewModel(
     noteCount,
     noteState,
     readStatus: toReadStatus(record.is_read ?? 0),
+    loanOrdinal: 1,
   };
 }
 
@@ -115,7 +173,11 @@ export async function handleBooksApi(
   noteRepo: NoteRepo = createNoteRepository(env.DB),
 ): Promise<Response> {
   const records = await bookRepo.findAll();
-  const sorted = sortBooks(records);
+  const grouped = groupBooks(records);
+  const sorted = sortBooks(grouped.map((item) => item.representative));
+  const loanOrdinalByChargeId = new Map(
+    grouped.map((item) => [item.representative.charge_id, item.loanOrdinal]),
+  );
 
   // Fetch all note counts in a single query to avoid N+1 problem
   const bookIds = sorted
@@ -125,7 +187,10 @@ export async function handleBooksApi(
 
   const view = sorted.map((record) => {
     const noteCount = record.id ? noteCounts.get(record.id) || 0 : 0;
-    return deriveBookViewModel(record, noteCount);
+    return {
+      ...deriveBookViewModel(record, noteCount),
+      loanOrdinal: loanOrdinalByChargeId.get(record.charge_id) ?? 1,
+    };
   });
 
   return new Response(JSON.stringify({ items: view }), {

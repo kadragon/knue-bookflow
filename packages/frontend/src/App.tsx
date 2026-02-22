@@ -259,6 +259,14 @@ function BookCard({
               variant="outlined"
             />
           )}
+          {book.loanOrdinal && book.loanOrdinal > 1 && (
+            <Chip
+              label={`${book.loanOrdinal}번째 대여`}
+              color="primary"
+              size="small"
+              variant="outlined"
+            />
+          )}
           <Chip
             label={`D${book.daysLeft >= 0 ? '-' : '+'}${Math.abs(book.daysLeft)}`}
             size="small"
