@@ -6,6 +6,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
   CardMedia,
@@ -97,7 +98,7 @@ function SearchBookCard({
 
   return (
     <Card variant="outlined" sx={{ display: 'flex', minHeight: 180 }}>
-      <Box
+      <ButtonBase
         sx={{
           width: 120,
           flexShrink: 0,
@@ -106,13 +107,20 @@ function SearchBookCard({
           justifyContent: 'center',
           bgcolor: 'background.paper',
           p: 2,
-          cursor: book.isbn ? 'pointer' : 'default',
+          borderRadius: 1,
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
         }}
         onClick={() => {
           if (book.isbn) {
             onImageClick(book.isbn);
           }
         }}
+        aria-label={`${book.title} 상세 보기`}
+        disabled={!book.isbn}
       >
         {book.coverUrl ? (
           <CardMedia
@@ -149,7 +157,7 @@ function SearchBookCard({
             </Typography>
           </Box>
         )}
-      </Box>
+      </ButtonBase>
       <CardContent
         sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}
       >

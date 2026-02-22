@@ -9,6 +9,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   Card,
   CardContent,
   CardMedia,
@@ -83,7 +84,7 @@ function truncateTitle(title: string, maxLength: number = 15): string {
   if (title.length <= maxLength) {
     return title;
   }
-  return `${title.slice(0, maxLength)}...`;
+  return `${title.slice(0, maxLength)}…`;
 }
 
 // Format author display: show max 3 authors, rest as '외 N명'
@@ -149,18 +150,26 @@ function BookCard({
       variant="outlined"
       sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
-      <Box
+      <ButtonBase
         sx={{
           position: 'relative',
           pt: 2,
           px: 2,
+          width: '100%',
           display: 'flex',
           justifyContent: 'center',
           bgcolor: 'background.paper',
-          cursor: 'pointer',
+          borderRadius: 1,
           '&:hover': { opacity: 0.8 },
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
         }}
         onClick={() => onBookClick(book)}
+        aria-label={`${book.title} 상세 보기`}
+        tabIndex={-1}
       >
         {book.coverUrl ? (
           <CardMedia
@@ -191,24 +200,40 @@ function BookCard({
             </Typography>
           </Box>
         )}
-      </Box>
+      </ButtonBase>
       <CardContent
         sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}
       >
-        <Typography
-          variant="h6"
-          component="h3"
-          sx={{
-            fontSize: '1rem',
-            fontWeight: 600,
-            lineHeight: 1.3,
-            cursor: 'pointer',
-            '&:hover': { color: 'primary.main' },
-          }}
+        <ButtonBase
           onClick={() => onBookClick(book)}
+          aria-label={`${book.title} 상세 페이지 열기`}
+          sx={{
+            alignSelf: 'flex-start',
+            textAlign: 'left',
+            borderRadius: 1,
+            '&:focus-visible': {
+              outline: '2px solid',
+              outlineColor: 'primary.main',
+              outlineOffset: 2,
+            },
+            '&:hover .book-card-title': {
+              color: 'primary.main',
+            },
+          }}
         >
-          {truncateTitle(book.title)}
-        </Typography>
+          <Typography
+            variant="h6"
+            component="h3"
+            className="book-card-title"
+            sx={{
+              fontSize: '1rem',
+              fontWeight: 600,
+              lineHeight: 1.3,
+            }}
+          >
+            {truncateTitle(book.title)}
+          </Typography>
+        </ButtonBase>
         <Typography variant="body2" color="text.secondary" gutterBottom>
           {formatAuthors(book.author)}
         </Typography>
@@ -506,7 +531,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
                   취소
                 </Button>
                 <Button type="submit" variant="contained" disabled={isSaving}>
-                  {isSaving ? '저장 중...' : editingNote ? '수정' : '추가'}
+                  {isSaving ? '저장 중…' : editingNote ? '수정' : '추가'}
                 </Button>
               </Box>
             </Stack>
@@ -552,7 +577,11 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
                 color="primary"
               />
               <Box>
-                <IconButton size="small" onClick={() => handleEdit(note)}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleEdit(note)}
+                  aria-label="노트 수정"
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
@@ -560,6 +589,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
                   onClick={() => handleDeleteClick(note.id)}
                   color="error"
                   disabled={deleteMutation.isPending}
+                  aria-label="노트 삭제"
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
@@ -593,7 +623,7 @@ function NoteModal({ book, onClose, onNotesChanged }: NoteModalProps) {
           }}
         >
           {book.title}
-          <IconButton onClick={onClose} size="small">
+          <IconButton onClick={onClose} size="small" aria-label="노트 창 닫기">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -711,7 +741,8 @@ function ShelfStats({
               borderColor: isActive ? 'primary.main' : 'divider',
               boxShadow: isActive ? 2 : 0,
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
+              transition:
+                'border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease',
               '&:hover': {
                 borderColor: 'primary.light',
                 backgroundColor: 'action.hover',

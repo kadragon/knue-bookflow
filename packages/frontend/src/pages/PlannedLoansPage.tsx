@@ -5,6 +5,7 @@ import {
 import {
   Alert,
   Box,
+  ButtonBase,
   Card,
   CardContent,
   CardMedia,
@@ -99,7 +100,7 @@ function PlannedLoanCard({
         height: '100%',
       }}
     >
-      <Box
+      <ButtonBase
         sx={{
           width: 120,
           height: 160,
@@ -117,12 +118,19 @@ function PlannedLoanCard({
                 transform: 'scale(1.05)',
               }
             : {},
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
         }}
         onClick={() => {
           if (item.isbn) {
             onImageClick(item.isbn);
           }
         }}
+        aria-label={`${item.title} 상세 보기`}
+        disabled={!item.isbn}
       >
         {item.coverUrl ? (
           <CardMedia
@@ -134,7 +142,7 @@ function PlannedLoanCard({
         ) : (
           <BookmarkAddIcon sx={{ color: 'text.disabled', fontSize: 32 }} />
         )}
-      </Box>
+      </ButtonBase>
 
       <CardContent sx={{ flex: 1, p: 0, '&:last-child': { pb: 0 } }}>
         <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 700 }}>

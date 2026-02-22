@@ -30,7 +30,17 @@ export function ReadStatusButtonGroup({
   const isAbandoned = readStatus === 'abandoned';
 
   return (
-    <ButtonGroup fullWidth size={size}>
+    <ButtonGroup
+      fullWidth
+      size={size}
+      sx={{
+        '& .MuiButton-root': {
+          fontWeight: 700,
+          transition:
+            'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+        },
+      }}
+    >
       <Button
         variant={isFinished ? 'contained' : 'outlined'}
         onClick={() => onReadStatusChange(isFinished ? 'unread' : 'finished')}
@@ -39,8 +49,18 @@ export function ReadStatusButtonGroup({
         }
         color={isFinished ? 'success' : 'inherit'}
         disabled={disabled}
+        aria-pressed={isFinished}
+        sx={
+          isFinished
+            ? {
+                borderColor: 'success.dark',
+                boxShadow: (theme) =>
+                  `0 0 0 2px ${theme.palette.success.light}`,
+              }
+            : undefined
+        }
       >
-        {isFinished ? '완독' : '완독 표시'}
+        완독
       </Button>
       <Button
         variant={isAbandoned ? 'contained' : 'outlined'}
@@ -48,8 +68,18 @@ export function ReadStatusButtonGroup({
         startIcon={<CloseIcon />}
         color={isAbandoned ? 'warning' : 'inherit'}
         disabled={disabled}
+        aria-pressed={isAbandoned}
+        sx={
+          isAbandoned
+            ? {
+                borderColor: 'warning.dark',
+                boxShadow: (theme) =>
+                  `0 0 0 2px ${theme.palette.warning.light}`,
+              }
+            : undefined
+        }
       >
-        {isAbandoned ? '중단됨' : '중단(포기) 표시'}
+        중단
       </Button>
     </ButtonGroup>
   );
