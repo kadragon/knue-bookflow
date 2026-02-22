@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { DueStatus } from './api';
 import {
   formatDdayLabel,
   getLoanStatusChip,
@@ -6,39 +7,30 @@ import {
 } from './loanStatusPresentation';
 
 describe('loanStatusPresentation', () => {
-  it('returns overdue chip for active loan', () => {
-    expect(getLoanStatusChip('on_loan', 'overdue')).toEqual({
-      label: '연체',
-      color: 'error',
-    });
-  });
+  describe('getLoanStatusChip', () => {
+    const activeLoanCases: [
+      DueStatus,
+      { label: string; color: 'error' | 'warning' | 'success' },
+    ][] = [
+      ['overdue', { label: '연체', color: 'error' }],
+      ['due_soon', { label: '반납 임박', color: 'warning' }],
+      ['ok', { label: '대출 중', color: 'success' }],
+    ];
 
-  it('returns due soon chip for active loan', () => {
-    expect(getLoanStatusChip('on_loan', 'due_soon')).toEqual({
-      label: '반납 임박',
-      color: 'warning',
+    it.each(
+      activeLoanCases,
+    )('returns correct chip for active loan with due status: %s', (dueStatus, expected) => {
+      expect(getLoanStatusChip('on_loan', dueStatus)).toEqual(expected);
     });
-  });
 
-  it('returns ok chip for active loan', () => {
-    expect(getLoanStatusChip('on_loan', 'ok')).toEqual({
-      label: '대출 중',
-      color: 'success',
-    });
-  });
-
-  it('returns returned chip regardless of due status', () => {
-    expect(getLoanStatusChip('returned', 'overdue')).toEqual({
-      label: '반납 완료',
-      color: 'default',
-    });
-    expect(getLoanStatusChip('returned', 'due_soon')).toEqual({
-      label: '반납 완료',
-      color: 'default',
-    });
-    expect(getLoanStatusChip('returned', 'ok')).toEqual({
-      label: '반납 완료',
-      color: 'default',
+    const allDueStatuses: DueStatus[] = ['overdue', 'due_soon', 'ok'];
+    it.each(
+      allDueStatuses,
+    )('returns returned chip regardless of due status: %s', (dueStatus) => {
+      expect(getLoanStatusChip('returned', dueStatus)).toEqual({
+        label: '반납 완료',
+        color: 'default',
+      });
     });
   });
 
@@ -47,9 +39,11 @@ describe('loanStatusPresentation', () => {
     expect(shouldShowDdayChip('returned')).toBe(false);
   });
 
-  it('formats D-day label with existing signs', () => {
-    expect(formatDdayLabel(3)).toBe('D-3');
-    expect(formatDdayLabel(0)).toBe('D-0');
-    expect(formatDdayLabel(-2)).toBe('D+2');
+  it.each([
+    [3, 'D-3'],
+    [0, 'D-0'],
+    [-2, 'D+2'],
+  ])('formats %i days left as %s', (daysLeft, expected) => {
+    expect(formatDdayLabel(daysLeft)).toBe(expected);
   });
 });
