@@ -60,8 +60,8 @@ function compareBookRecency(a: BookRecord, b: BookRecord): number {
     return dateDiff;
   }
 
-  const idA = a.id ?? -1;
-  const idB = b.id ?? -1;
+  const idA = a.id ?? 0;
+  const idB = b.id ?? 0;
   if (idA !== idB) {
     return idA - idB;
   }

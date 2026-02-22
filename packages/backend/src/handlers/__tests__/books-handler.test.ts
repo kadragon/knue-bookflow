@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookRecord, Env } from '../../types';
 import {
   deriveBookViewModel,
@@ -123,7 +123,7 @@ describe('sortBooks', () => {
 });
 
 describe('handleBooksApi', () => {
-  const env: Env = {
+  const createEnv = (): Env => ({
     DB: null as unknown as D1Database,
     ASSETS: { fetch: async () => new Response('') } as unknown as Fetcher,
     LIBRARY_USER_ID: '',
@@ -132,7 +132,13 @@ describe('handleBooksApi', () => {
     TELEGRAM_BOT_TOKEN: '',
     TELEGRAM_CHAT_ID: '',
     ENVIRONMENT: 'test',
-  };
+  });
+
+  let env: Env;
+
+  beforeEach(() => {
+    env = createEnv();
+  });
 
   it('returns sorted items with derived fields', async () => {
     const fakeBookRepo = {
