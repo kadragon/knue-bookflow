@@ -169,6 +169,7 @@ function BookCard({
         }}
         onClick={() => onBookClick(book)}
         aria-label={`${book.title} 상세 보기`}
+        tabIndex={-1}
       >
         {book.coverUrl ? (
           <CardMedia
