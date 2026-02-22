@@ -46,21 +46,12 @@ import {
 import { Header } from '../components/Header';
 import { ReadStatusButtonGroup } from '../components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
+import {
+  formatDdayLabel,
+  getLoanStatusChip,
+  shouldShowDdayChip,
+} from '../loanStatusPresentation';
 import { NOTES_LIST_SX } from './bookDetailLayout';
-
-type DueStatus = 'overdue' | 'due_soon' | 'ok';
-
-const DUE_STATUS_LABEL: Record<DueStatus, string> = {
-  overdue: '연체',
-  due_soon: '반납 임박',
-  ok: '대출 중',
-};
-
-const STATUS_COLOR: Record<DueStatus, 'error' | 'warning' | 'success'> = {
-  overdue: 'error',
-  due_soon: 'warning',
-  ok: 'success',
-};
 
 function formatDate(dateStr: string): string {
   return dateStr.split(' ')[0];
@@ -108,6 +99,8 @@ function BookInfoPanel({
   onReadStatusChange: (readStatus: ReadStatus) => void;
   isUpdating: boolean;
 }) {
+  const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
+
   return (
     <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
       <Stack spacing={3}>
@@ -182,8 +175,8 @@ function BookInfoPanel({
             </Typography>
             <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
               <Chip
-                label={DUE_STATUS_LABEL[book.dueStatus]}
-                color={STATUS_COLOR[book.dueStatus]}
+                label={statusChip.label}
+                color={statusChip.color}
                 size="small"
               />
               {book.renewCount > 0 && (
@@ -194,11 +187,13 @@ function BookInfoPanel({
                   variant="outlined"
                 />
               )}
-              <Chip
-                label={`D${book.daysLeft >= 0 ? '-' : '+'}${Math.abs(book.daysLeft)}`}
-                size="small"
-                variant="outlined"
-              />
+              {shouldShowDdayChip(book.loanState) && (
+                <Chip
+                  label={formatDdayLabel(book.daysLeft)}
+                  size="small"
+                  variant="outlined"
+                />
+              )}
             </Stack>
           </Box>
 
