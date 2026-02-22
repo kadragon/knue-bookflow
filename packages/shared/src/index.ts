@@ -193,7 +193,7 @@ export interface PlannedLoanAvailability {
 export interface PlannedLoanViewModel {
   id: number;
   libraryId: number;
-  source: 'new_books' | 'search';
+  source: 'new_books' | 'search' | 'request_book';
   title: string;
   author: string;
   publisher: string | null;
@@ -215,7 +215,7 @@ export interface PlannedLoansResponse {
 
 export interface CreatePlannedLoanRequest {
   libraryId: number;
-  source: 'new_books' | 'search';
+  source: 'new_books' | 'search' | 'request_book';
   title: string;
   author: string;
   publisher?: string | null;

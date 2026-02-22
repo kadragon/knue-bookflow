@@ -92,6 +92,36 @@ describe('PlannedLoanRepository', () => {
     });
   });
 
+  describe('findById', () => {
+    it('should return record when found', async () => {
+      const mockBind = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue({ id: 1, library_biblio_id: 123 }),
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+
+      const result = await repository.findById(1);
+      expect(result).toEqual({ id: 1, library_biblio_id: 123 });
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'SELECT * FROM planned_loans WHERE id = ?',
+      );
+      expect(mockBind).toHaveBeenCalledWith(1);
+    });
+
+    it('should return null when not found', async () => {
+      const mockBind = vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(null),
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
+
+      const result = await repository.findById(999);
+      expect(result).toBeNull();
+    });
+  });
+
   describe('create', () => {
     const newLoan = {
       library_biblio_id: 123,

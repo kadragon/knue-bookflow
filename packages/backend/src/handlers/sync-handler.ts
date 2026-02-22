@@ -10,15 +10,19 @@ import {
   createBookRecord,
   createBookRepository,
   createLibraryClient,
+  createPlannedLoanDismissalRepository,
   createPlannedLoanRepository,
 } from '../services';
 import type { AladinClient } from '../services/aladin-client';
 import type { BookRepository } from '../services/book-repository';
 import type { LibraryClient } from '../services/library-client';
 import { LibraryApiError } from '../services/library-client';
+import type { PlannedLoanDismissalRepository } from '../services/planned-loan-dismissal-repository';
 import type { PlannedLoanRepository } from '../services/planned-loan-repository';
 import type {
+  AcqRequest,
   BookInfo,
+  BranchAvailability,
   Charge,
   ChargeHistory,
   Env,
@@ -34,6 +38,12 @@ type SyncErrorCode =
   | 'LIBRARY_ERROR'
   | 'EXTERNAL_TIMEOUT'
   | 'UNKNOWN';
+
+type PlannedLoanCreateRepo = Pick<PlannedLoanRepository, 'findAll' | 'create'>;
+type PlannedLoanDismissalReadRepo = Pick<
+  PlannedLoanDismissalRepository,
+  'findAllLibraryBiblioIds'
+>;
 
 function classifySyncError(error: unknown): {
   code: SyncErrorCode;
@@ -74,6 +84,9 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   const aladinClient = createAladinClient(env.ALADIN_API_KEY);
   const bookRepository = createBookRepository(env.DB);
   const plannedLoanRepository = createPlannedLoanRepository(env.DB);
+  const plannedLoanDismissalRepository = createPlannedLoanDismissalRepository(
+    env.DB,
+  );
 
   const summary: SyncSummary = {
     total_charges: 0,
@@ -94,6 +107,24 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   console.log('[SyncHandler] Fetching all charges...');
   const charges = await libraryClient.getCharges();
   summary.total_charges = charges.length;
+
+  try {
+    const added = await syncRequestBooksToPlannedLoans(
+      libraryClient,
+      plannedLoanRepository,
+      plannedLoanDismissalRepository,
+    );
+    if (added > 0) {
+      console.log(
+        `[SyncHandler] Added ${added} request books to planned loans`,
+      );
+    }
+  } catch (error) {
+    console.warn(
+      '[SyncHandler] Failed to sync request books to planned loans; continuing:',
+      error,
+    );
+  }
 
   if (charges.length === 0) {
     console.log('[SyncHandler] No borrowed books found');
@@ -126,6 +157,102 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   }
 
   return summary;
+}
+
+function parsePublication(publication: string | null): {
+  publisher: string | null;
+  year: string | null;
+} {
+  if (!publication) {
+    return { publisher: null, year: null };
+  }
+
+  const match = publication.match(/[^:]+:\s*(.+?),\s*(\d{4})\s*$/);
+  if (match) {
+    return {
+      publisher: match[1]?.trim() || null,
+      year: match[2] || null,
+    };
+  }
+
+  const publisherOnlyMatch = publication.match(/[^:]+:\s*(.+)$/);
+  if (publisherOnlyMatch) {
+    return {
+      publisher: publisherOnlyMatch[1]?.trim() || null,
+      year: null,
+    };
+  }
+
+  return { publisher: null, year: null };
+}
+
+function toBranchVolumes(acqRequest: AcqRequest): BranchAvailability[] {
+  if (!acqRequest.branch) {
+    return [];
+  }
+
+  return [
+    {
+      branchId: acqRequest.branch.id,
+      branchName: acqRequest.branch.name,
+      volumes: 1,
+      callNumber: null,
+    },
+  ];
+}
+
+export async function syncRequestBooksToPlannedLoans(
+  libraryClient: Pick<LibraryClient, 'getAllAcqRequests'>,
+  plannedLoanRepository: PlannedLoanCreateRepo,
+  dismissalRepository: PlannedLoanDismissalReadRepo,
+): Promise<number> {
+  const acqRequests = await libraryClient.getAllAcqRequests();
+  const onShelfRequests = acqRequests.filter(
+    (item) => item.itemState?.code === 'ON_SHELF',
+  );
+
+  if (onShelfRequests.length === 0) {
+    return 0;
+  }
+
+  const existingPlannedLoans = await plannedLoanRepository.findAll();
+  const dismissedBiblioIds =
+    await dismissalRepository.findAllLibraryBiblioIds();
+  const existingBiblioIds = new Set(
+    existingPlannedLoans.map((item) => item.library_biblio_id),
+  );
+  const dismissedSet = new Set(dismissedBiblioIds);
+
+  let added = 0;
+  for (const request of onShelfRequests) {
+    const libraryBiblioId = request.biblio.id;
+    if (existingBiblioIds.has(libraryBiblioId)) {
+      continue;
+    }
+    if (dismissedSet.has(libraryBiblioId)) {
+      continue;
+    }
+
+    const { publisher, year } = parsePublication(request.biblio.publication);
+    await plannedLoanRepository.create({
+      library_biblio_id: libraryBiblioId,
+      source: 'request_book',
+      title: request.biblio.titleStatement,
+      author: request.biblio.author?.trim()
+        ? request.biblio.author
+        : '저자 미상',
+      publisher,
+      year,
+      isbn: request.biblio.isbn,
+      cover_url: null,
+      material_type: request.materialType?.name ?? null,
+      branch_volumes: JSON.stringify(toBranchVolumes(request)),
+    });
+    existingBiblioIds.add(libraryBiblioId);
+    added++;
+  }
+
+  return added;
 }
 
 /**

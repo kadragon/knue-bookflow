@@ -8,7 +8,11 @@
  */
 
 import { z } from 'zod';
-import { createLibraryClient } from '../services';
+import {
+  createLibraryClient,
+  createPlannedLoanDismissalRepository,
+} from '../services';
+import type { PlannedLoanDismissalRepository } from '../services/planned-loan-dismissal-repository';
 import {
   createPlannedLoanRepository,
   type PlannedLoanRepository,
@@ -30,7 +34,12 @@ import {
 
 type PlannedRepo = Pick<
   PlannedLoanRepository,
-  'findAll' | 'findByLibraryBiblioId' | 'create' | 'deleteById'
+  'findAll' | 'findById' | 'findByLibraryBiblioId' | 'create' | 'deleteById'
+>;
+
+type PlannedDismissalRepo = Pick<
+  PlannedLoanDismissalRepository,
+  'markDismissed'
 >;
 
 const branchSchema = z.object({
@@ -46,8 +55,8 @@ const plannedLoanSchema = z
       .number('libraryId is required')
       .refine((v) => Number.isFinite(v), 'libraryId must be a number'),
     source: z
-      .enum(['new_books', 'search'], {
-        error: 'source must be new_books or search',
+      .enum(['new_books', 'search', 'request_book'], {
+        error: 'source must be new_books, search, or request_book',
       })
       .optional(),
     title: z.string('title is required').trim().min(1, 'title is required'),
@@ -338,9 +347,18 @@ export async function handleDeletePlannedLoan(
   env: Env,
   id: number,
   repo: PlannedRepo = createPlannedLoanRepository(env.DB),
+  dismissalRepo: PlannedDismissalRepo = createPlannedLoanDismissalRepository(
+    env.DB,
+  ),
 ): Promise<Response> {
   try {
+    const existing = await repo.findById(id);
     const deleted = await repo.deleteById(id);
+
+    if (deleted && existing?.source === 'request_book') {
+      await dismissalRepo.markDismissed(existing.library_biblio_id);
+    }
+
     return new Response(JSON.stringify({ success: deleted }), {
       headers: { 'Content-Type': 'application/json' },
     });

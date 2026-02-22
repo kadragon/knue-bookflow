@@ -29,6 +29,15 @@ export class PlannedLoanRepository {
     return result || null;
   }
 
+  async findById(id: number): Promise<PlannedLoanRecord | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM planned_loans WHERE id = ?')
+      .bind(id)
+      .first<PlannedLoanRecord>();
+
+    return result || null;
+  }
+
   async create(
     record: Omit<PlannedLoanRecord, 'id' | 'created_at' | 'updated_at'>,
   ): Promise<PlannedLoanRecord> {

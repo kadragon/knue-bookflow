@@ -7,6 +7,8 @@
  */
 
 import type {
+  AcqRequest,
+  AcqRequestsResponse,
   Charge,
   ChargeHistoriesResponse,
   ChargeHistory,
@@ -162,6 +164,76 @@ export class LibraryClient {
       `[LibraryClient] Retrieved ${histories.length} charge histories`,
     );
     return histories;
+  }
+
+  /**
+   * Get list of acquisition requests (희망도서 신청 내역)
+   * @param max - Maximum number of results (default: 20)
+   * @param offset - Offset for pagination (default: 0)
+   */
+  async getAcqRequests(
+    max: number = 20,
+    offset: number = 0,
+  ): Promise<{
+    list: AcqRequest[];
+    totalCount: number;
+    offset: number;
+    max: number;
+  }> {
+    this.ensureAuthenticated();
+
+    const response = await this.fetchWithResilience(
+      `${BASE_URL}/8/api/acq-requests?max=${max}&offset=${offset}`,
+      {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new LibraryApiError(
+        `Failed to fetch acq requests with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    const data: AcqRequestsResponse = await response.json();
+
+    if (!data.success) {
+      throw new LibraryApiError(
+        `Failed to fetch acq requests: ${data.message}`,
+        400,
+        data.code,
+      );
+    }
+
+    return data.data;
+  }
+
+  /**
+   * Get all acquisition requests by paging through all results
+   * @param pageSize - Number of items per page (default: 20)
+   */
+  async getAllAcqRequests(pageSize: number = 20): Promise<AcqRequest[]> {
+    this.ensureAuthenticated();
+
+    let offset = 0;
+    let all: AcqRequest[] = [];
+
+    while (true) {
+      const page = await this.getAcqRequests(pageSize, offset);
+      all = all.concat(page.list);
+      offset += pageSize;
+
+      if (all.length >= page.totalCount || page.list.length === 0) {
+        break;
+      }
+    }
+
+    console.log(
+      `[LibraryClient] Retrieved ${all.length} acq requests (paginated)`,
+    );
+    return all;
   }
 
   /**

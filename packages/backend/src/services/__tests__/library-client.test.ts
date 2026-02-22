@@ -387,6 +387,162 @@ describe('LibraryClient', () => {
     });
   });
 
+  describe('getAcqRequests / getAllAcqRequests', () => {
+    beforeEach(async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { accessToken: 'token', id: '1', name: 'User' },
+        }),
+        headers: new Headers({ 'set-cookie': 'session=abc' }),
+      });
+      await client.login({ loginId: 'user', password: 'pass' });
+      mockFetch.mockReset();
+    });
+
+    it('fetches acq requests with auth headers', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'success.retrieved',
+          message: 'ok',
+          data: {
+            totalCount: 1,
+            offset: 0,
+            max: 20,
+            list: [
+              {
+                id: 1,
+                biblio: {
+                  id: 100,
+                  titleStatement: '희망도서',
+                  author: '저자',
+                  publication: '서울 : 출판사, 2025',
+                  isbn: '9780000000001',
+                },
+                branch: {
+                  id: 1,
+                  name: '한국교원대학교도서관',
+                  alias: '한국',
+                  libraryCode: '243012',
+                  sortOrder: 1,
+                },
+                acqState: { id: 5, code: 'REGISTRATION', name: '등록' },
+                itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+                dateCreated: '2025-12-29 22:38:47',
+                materialType: {
+                  id: 1,
+                  code: 'BK',
+                  name: '단행본',
+                  myParent: null,
+                },
+              },
+            ],
+          },
+        }),
+      });
+
+      const result = await client.getAcqRequests();
+
+      expect(result.list).toHaveLength(1);
+      expect(result.totalCount).toBe(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://lib.knue.ac.kr/pyxis-api/8/api/acq-requests?max=20&offset=0',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'pyxis-auth-token': 'token',
+          }),
+        }),
+      );
+    });
+
+    it('paginates through all acq requests', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'success.retrieved',
+          message: 'ok',
+          data: {
+            totalCount: 2,
+            offset: 0,
+            max: 1,
+            list: [
+              {
+                id: 1,
+                biblio: {
+                  id: 100,
+                  titleStatement: '희망도서1',
+                  author: '저자1',
+                  publication: '서울 : 출판사, 2025',
+                  isbn: '9780000000001',
+                },
+                branch: null,
+                acqState: null,
+                itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+                dateCreated: '2025-12-29 22:38:47',
+                materialType: null,
+              },
+            ],
+          },
+        }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'success.retrieved',
+          message: 'ok',
+          data: {
+            totalCount: 2,
+            offset: 1,
+            max: 1,
+            list: [
+              {
+                id: 2,
+                biblio: {
+                  id: 101,
+                  titleStatement: '희망도서2',
+                  author: '저자2',
+                  publication: '서울 : 출판사, 2025',
+                  isbn: '9780000000002',
+                },
+                branch: null,
+                acqState: null,
+                itemState: { id: 6, code: 'LOAN', name: '대출중' },
+                dateCreated: '2025-12-29 22:39:47',
+                materialType: null,
+              },
+            ],
+          },
+        }),
+      });
+
+      const result = await client.getAllAcqRequests(1);
+
+      expect(result).toHaveLength(2);
+      expect(result.map((item) => item.id)).toEqual([1, 2]);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws LibraryApiError when acq request API reports failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: false,
+          code: 'error',
+          message: 'acq failed',
+          data: null,
+        }),
+      });
+
+      await expect(client.getAcqRequests()).rejects.toThrow('acq failed');
+    });
+  });
+
   describe('renewCharge', () => {
     beforeEach(async () => {
       // Login first
