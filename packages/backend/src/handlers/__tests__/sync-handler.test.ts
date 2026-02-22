@@ -11,6 +11,7 @@ import type { PlannedLoanRepository } from '../../services/planned-loan-reposito
 import type { Charge, ChargeHistory, Env } from '../../types';
 import {
   handleSyncBooks,
+  parsePublication,
   processCharge,
   processChargeHistory,
   processChargesWithPlanningCleanup,
@@ -434,6 +435,33 @@ describe('processCharge', () => {
       }),
       null,
     );
+  });
+});
+
+describe('parsePublication', () => {
+  it('extracts publisher and year from standard Korean format', () => {
+    expect(parsePublication('서울 : 테스트출판, 2025')).toEqual({
+      publisher: '테스트출판',
+      year: '2025',
+    });
+  });
+
+  it('extracts publisher only when year is absent', () => {
+    expect(parsePublication('서울 : 출판사')).toEqual({
+      publisher: '출판사',
+      year: null,
+    });
+  });
+
+  it('returns nulls for null input', () => {
+    expect(parsePublication(null)).toEqual({ publisher: null, year: null });
+  });
+
+  it('returns nulls when format does not match', () => {
+    expect(parsePublication('출판사명만')).toEqual({
+      publisher: null,
+      year: null,
+    });
   });
 });
 

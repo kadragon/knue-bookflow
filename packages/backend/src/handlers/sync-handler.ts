@@ -159,7 +159,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   return summary;
 }
 
-function parsePublication(publication: string | null): {
+export function parsePublication(publication: string | null): {
   publisher: string | null;
   year: string | null;
 } {
@@ -191,6 +191,8 @@ function toBranchVolumes(acqRequest: AcqRequest): BranchAvailability[] {
     return [];
   }
 
+  // acq-requests payload has no volume count or call number;
+  // 1 volume is a safe default since the request was approved and shelved.
   return [
     {
       branchId: acqRequest.branch.id,
