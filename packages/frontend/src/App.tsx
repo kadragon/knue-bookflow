@@ -253,6 +253,14 @@ function BookCard({
               variant="outlined"
             />
           )}
+          {book.loanOrdinal && book.loanOrdinal > 1 && (
+            <Chip
+              label={`${book.loanOrdinal}번째 대여`}
+              color="primary"
+              size="small"
+              variant="outlined"
+            />
+          )}
           {shouldShowDdayChip(book.loanState) && (
             <Chip
               label={formatDdayLabel(book.daysLeft)}
