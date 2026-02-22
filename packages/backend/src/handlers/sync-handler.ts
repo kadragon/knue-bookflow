@@ -39,7 +39,10 @@ type SyncErrorCode =
   | 'EXTERNAL_TIMEOUT'
   | 'UNKNOWN';
 
-type PlannedLoanCreateRepo = Pick<PlannedLoanRepository, 'findAll' | 'create'>;
+type PlannedLoanCreateRepo = Pick<
+  PlannedLoanRepository,
+  'findAllLibraryBiblioIds' | 'create'
+>;
 type PlannedLoanDismissalReadRepo = Pick<
   PlannedLoanDismissalRepository,
   'findAllLibraryBiblioIds'
@@ -217,12 +220,11 @@ export async function syncRequestBooksToPlannedLoans(
     return 0;
   }
 
-  const existingPlannedLoans = await plannedLoanRepository.findAll();
-  const dismissedBiblioIds =
-    await dismissalRepository.findAllLibraryBiblioIds();
-  const existingBiblioIds = new Set(
-    existingPlannedLoans.map((item) => item.library_biblio_id),
-  );
+  const [existingPlannedBiblioIds, dismissedBiblioIds] = await Promise.all([
+    plannedLoanRepository.findAllLibraryBiblioIds(),
+    dismissalRepository.findAllLibraryBiblioIds(),
+  ]);
+  const existingBiblioIds = new Set(existingPlannedBiblioIds);
   const dismissedSet = new Set(dismissedBiblioIds);
 
   let added = 0;
@@ -240,9 +242,7 @@ export async function syncRequestBooksToPlannedLoans(
       library_biblio_id: libraryBiblioId,
       source: 'request_book',
       title: request.biblio.titleStatement,
-      author: request.biblio.author?.trim()
-        ? request.biblio.author
-        : '저자 미상',
+      author: request.biblio.author?.trim() || '저자 미상',
       publisher,
       year,
       isbn: request.biblio.isbn,

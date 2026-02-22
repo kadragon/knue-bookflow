@@ -122,6 +122,23 @@ describe('PlannedLoanRepository', () => {
     });
   });
 
+  describe('findAllLibraryBiblioIds', () => {
+    it('should return only library biblio ids', async () => {
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        all: vi.fn().mockResolvedValue({
+          results: [{ library_biblio_id: 123 }, { library_biblio_id: 456 }],
+        }),
+      } as unknown as D1PreparedStatement);
+
+      const result = await repository.findAllLibraryBiblioIds();
+
+      expect(result).toEqual([123, 456]);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'SELECT library_biblio_id FROM planned_loans',
+      );
+    });
+  });
+
   describe('create', () => {
     const newLoan = {
       library_biblio_id: 123,

@@ -35,7 +35,7 @@ const mockBookRepository = {
   saveBook: vi.fn(),
 };
 const mockPlannedLoanRepository = {
-  findAll: vi.fn(),
+  findAllLibraryBiblioIds: vi.fn(),
   create: vi.fn(),
   deleteByLibraryBiblioId: vi.fn(),
   deleteByLibraryBiblioIds: vi.fn(),
@@ -70,7 +70,7 @@ const baseEnv: Env = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPlannedLoanRepository.findAll.mockResolvedValue([]);
+  mockPlannedLoanRepository.findAllLibraryBiblioIds.mockResolvedValue([]);
   mockPlannedLoanRepository.create.mockResolvedValue({});
   mockPlannedLoanDismissalRepository.findAllLibraryBiblioIds.mockResolvedValue(
     [],
@@ -538,7 +538,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
       ]),
     };
     const plannedRepo = {
-      findAll: vi.fn().mockResolvedValue([{ library_biblio_id: 200 }]),
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([200]),
       create: vi.fn().mockResolvedValue({}),
     };
     const dismissalRepo = {
@@ -555,8 +555,51 @@ describe('syncRequestBooksToPlannedLoans', () => {
     expect(plannedRepo.create).toHaveBeenCalledTimes(1);
     expect(plannedRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        author: '저자',
         library_biblio_id: 100,
         source: 'request_book',
+      }),
+    );
+  });
+
+  it('trims request book author before saving', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 500,
+            titleStatement: '공백 저자',
+            author: '  저자 공백  ',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9780000000500',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+    };
+
+    await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+    );
+
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        author: '저자 공백',
+        library_biblio_id: 500,
       }),
     );
   });

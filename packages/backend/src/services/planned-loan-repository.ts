@@ -38,6 +38,14 @@ export class PlannedLoanRepository {
     return result || null;
   }
 
+  async findAllLibraryBiblioIds(): Promise<number[]> {
+    const result = await this.db
+      .prepare('SELECT library_biblio_id FROM planned_loans')
+      .all<{ library_biblio_id: number }>();
+
+    return result.results.map((row) => row.library_biblio_id);
+  }
+
   async create(
     record: Omit<PlannedLoanRecord, 'id' | 'created_at' | 'updated_at'>,
   ): Promise<PlannedLoanRecord> {
