@@ -21,6 +21,9 @@ interface TelegramUpdate {
 
 export interface TelegramWebhookDeps {
   findNoteIdByMessageId(telegramMessageId: number): Promise<number | null>;
+  findNoteById?(
+    noteId: number,
+  ): Promise<Pick<NoteRecord, 'id' | 'content'> | null>;
   updateNote(
     noteId: number,
     content: string,
@@ -33,6 +36,17 @@ export async function handleTelegramWebhook(
   env: Env,
   deps: TelegramWebhookDeps,
 ): Promise<Response> {
+  const sendConfirmationBestEffort = async (text: string): Promise<void> => {
+    try {
+      await deps.sendConfirmation(text);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[TelegramWebhook] Confirmation send failed (best-effort): ${msg}`,
+      );
+    }
+  };
+
   // Validate secret token
   const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
   if (!secret || secret !== env.TELEGRAM_WEBHOOK_SECRET) {
@@ -65,16 +79,41 @@ export async function handleTelegramWebhook(
     return new Response('OK', { status: 200 });
   }
 
-  const updated = await deps.updateNote(noteId, message.text);
+  const delimiterIndex = message.text.indexOf('>');
+  if (delimiterIndex < 0) {
+    await sendConfirmationBestEffort(
+      '⚠️ 수정 실패: 형식은 `오탈 > 수정`으로 입력해 주세요.',
+    );
+    return new Response('OK', { status: 200 });
+  }
+
+  if (!deps.findNoteById) {
+    await sendConfirmationBestEffort('⚠️ 수정 실패: 시스템 설정 오류');
+    return new Response('OK', { status: 200 });
+  }
+
+  const typo = message.text.slice(0, delimiterIndex).trim();
+  const correction = message.text.slice(delimiterIndex + 1).trim();
+
+  if (typo === '' || correction === '') {
+    await sendConfirmationBestEffort(
+      '⚠️ 수정 실패: 형식은 `오탈 > 수정`으로 입력해 주세요.',
+    );
+    return new Response('OK', { status: 200 });
+  }
+
+  const note = await deps.findNoteById(noteId);
+  if (!note || !note.content.includes(typo)) {
+    await sendConfirmationBestEffort(
+      '⚠️ 수정 실패: 원문에서 오탈자를 찾지 못했습니다.',
+    );
+    return new Response('OK', { status: 200 });
+  }
+
+  const nextContent = note.content.replace(typo, correction);
+  const updated = await deps.updateNote(noteId, nextContent);
   if (updated) {
-    try {
-      await deps.sendConfirmation(`✅ Note updated:\n${updated.content}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        `[TelegramWebhook] Confirmation send failed (best-effort): ${msg}`,
-      );
-    }
+    await sendConfirmationBestEffort(`✅ Note updated:\n${updated.content}`);
   }
 
   return new Response('OK', { status: 200 });
@@ -89,6 +128,7 @@ export function createTelegramWebhookDeps(
 
   return {
     findNoteIdByMessageId: (id) => telegramRepo.findNoteIdByMessageId(id),
+    findNoteById: (noteId) => noteRepo.findById(noteId),
     updateNote: (noteId, content) => noteRepo.update(noteId, { content }),
     sendConfirmation: async (text) => {
       const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
