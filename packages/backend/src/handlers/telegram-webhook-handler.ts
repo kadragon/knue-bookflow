@@ -79,23 +79,18 @@ export async function handleTelegramWebhook(
     return new Response('OK', { status: 200 });
   }
 
-  const delimiterIndex = message.text.indexOf('>');
-  if (delimiterIndex < 0) {
-    await sendConfirmationBestEffort(
-      '⚠️ 수정 실패: 형식은 `오탈 > 수정`으로 입력해 주세요.',
-    );
-    return new Response('OK', { status: 200 });
-  }
-
   if (!deps.findNoteById) {
     await sendConfirmationBestEffort('⚠️ 수정 실패: 시스템 설정 오류');
     return new Response('OK', { status: 200 });
   }
 
-  const typo = message.text.slice(0, delimiterIndex).trim();
-  const correction = message.text.slice(delimiterIndex + 1).trim();
+  const delimiterIndex = message.text.indexOf('>');
+  const typo =
+    delimiterIndex > -1 ? message.text.slice(0, delimiterIndex).trim() : '';
+  const correction =
+    delimiterIndex > -1 ? message.text.slice(delimiterIndex + 1).trim() : '';
 
-  if (typo === '' || correction === '') {
+  if (!typo || !correction) {
     await sendConfirmationBestEffort(
       '⚠️ 수정 실패: 형식은 `오탈 > 수정`으로 입력해 주세요.',
     );
