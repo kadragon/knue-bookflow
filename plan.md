@@ -16,3 +16,13 @@
 - [x] acq-requests 실패 시 sync 전체는 실패하지 않는다
 - [x] request_book 삭제 시 dismissal이 저장된다
 - [x] request_book 이외 source 삭제는 dismissal을 만들지 않는다
+
+## Telegram Note Correction - Typo Patch
+
+> Reply 댓글을 오탈자 치환 명령으로 안전하게 부분 수정한다.
+
+- [x] reply 댓글이 `오탈 > 수정` 형식이면 원문 첫 1회만 치환한다
+- [x] 좌/우 공백은 무시하고 정확 일치로 매칭한다
+- [x] 구분자 누락 또는 좌/우 빈 문자열이면 수정하지 않고 실패 안내를 보낸다
+- [x] 원문 미발견이면 수정하지 않고 실패 안내를 보낸다
+- [x] `>` 없는 댓글은 전체 본문 교체를 하지 않는다

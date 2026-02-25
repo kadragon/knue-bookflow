@@ -95,36 +95,146 @@ describe('handleTelegramWebhook', () => {
     expect(findNoteIdByMessageId).toHaveBeenCalledWith(999);
   });
 
-  it('updates note content when replying to a known note message', async () => {
+  it('replaces only the first matching typo when reply text is "오탈 > 수정"', async () => {
     const req = makeRequest(
       {
         update_id: 4,
         message: {
           message_id: 300,
           chat: { id: 12345 },
-          text: 'corrected text',
+          text: '오탈 > 수정',
           reply_to_message: { message_id: 777 },
         },
       },
       'my-secret',
     );
     const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장 오탈' });
     const updateNote = vi
       .fn()
-      .mockResolvedValue({ id: 42, content: 'corrected text' });
+      .mockResolvedValue({ id: 42, content: '수정 문장 오탈' });
     const sendConfirmation = vi.fn().mockResolvedValue(undefined);
 
     const res = await handleTelegramWebhook(req, BASE_ENV, {
       findNoteIdByMessageId,
       updateNote,
       sendConfirmation,
-    });
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
 
     expect(res.status).toBe(200);
-    expect(updateNote).toHaveBeenCalledWith(42, 'corrected text');
+    expect(findNoteById).toHaveBeenCalledWith(42);
+    expect(updateNote).toHaveBeenCalledWith(42, '수정 문장 오탈');
   });
 
-  it('sends Telegram confirmation after successful update', async () => {
+  it('trims spaces around delimiter and applies exact-match replacement', async () => {
+    const req = makeRequest(
+      {
+        update_id: 41,
+        message: {
+          message_id: 301,
+          chat: { id: 12345 },
+          text: '  오탈  >   수정  ',
+          reply_to_message: { message_id: 778 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장' });
+    const updateNote = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '수정 문장' });
+    const sendConfirmation = vi.fn().mockResolvedValue(undefined);
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      sendConfirmation,
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
+
+    expect(res.status).toBe(200);
+    expect(updateNote).toHaveBeenCalledWith(42, '수정 문장');
+  });
+
+  it('does not update note and sends failure notice when typo part is empty', async () => {
+    const req = makeRequest(
+      {
+        update_id: 42,
+        message: {
+          message_id: 302,
+          chat: { id: 12345 },
+          text: '   > 수정',
+          reply_to_message: { message_id: 779 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장' });
+    const updateNote = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장' });
+    const sendConfirmation = vi.fn().mockResolvedValue(undefined);
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      sendConfirmation,
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
+
+    expect(res.status).toBe(200);
+    expect(updateNote).not.toHaveBeenCalled();
+    expect(sendConfirmation).toHaveBeenCalledWith(
+      expect.stringContaining('수정 실패'),
+    );
+  });
+
+  it('does not update note and sends failure notice when typo is not found', async () => {
+    const req = makeRequest(
+      {
+        update_id: 43,
+        message: {
+          message_id: 303,
+          chat: { id: 12345 },
+          text: '없는문자열 > 수정',
+          reply_to_message: { message_id: 780 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '원본 문장' });
+    const updateNote = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '원본 문장' });
+    const sendConfirmation = vi.fn().mockResolvedValue(undefined);
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      sendConfirmation,
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
+
+    expect(res.status).toBe(200);
+    expect(updateNote).not.toHaveBeenCalled();
+    expect(sendConfirmation).toHaveBeenCalledWith(
+      expect.stringContaining('수정 실패'),
+    );
+  });
+
+  it('does not update note and sends failure notice when delimiter is missing', async () => {
     const req = makeRequest(
       {
         update_id: 5,
@@ -138,19 +248,26 @@ describe('handleTelegramWebhook', () => {
       'my-secret',
     );
     const findNoteIdByMessageId = vi.fn().mockResolvedValue(55);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 55, content: 'before content' });
     const updateNote = vi
       .fn()
       .mockResolvedValue({ id: 55, content: 'fixed note' });
     const sendConfirmation = vi.fn().mockResolvedValue(undefined);
 
-    await handleTelegramWebhook(req, BASE_ENV, {
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
       findNoteIdByMessageId,
       updateNote,
       sendConfirmation,
-    });
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
 
+    expect(res.status).toBe(200);
+    expect(findNoteById).not.toHaveBeenCalled();
+    expect(updateNote).not.toHaveBeenCalled();
     expect(sendConfirmation).toHaveBeenCalledWith(
-      expect.stringContaining('fixed note'),
+      expect.stringContaining('수정 실패'),
     );
   });
 
@@ -185,16 +302,19 @@ describe('handleTelegramWebhook', () => {
         message: {
           message_id: 700,
           chat: { id: 12345 },
-          text: 'fixed note',
+          text: '오탈 > 수정',
           reply_to_message: { message_id: 888 },
         },
       },
       'my-secret',
     );
     const findNoteIdByMessageId = vi.fn().mockResolvedValue(55);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 55, content: '오탈 문장' });
     const updateNote = vi
       .fn()
-      .mockResolvedValue({ id: 55, content: 'fixed note' });
+      .mockResolvedValue({ id: 55, content: '수정 문장' });
     const sendConfirmation = vi
       .fn()
       .mockRejectedValue(new Error('network error'));
@@ -203,7 +323,8 @@ describe('handleTelegramWebhook', () => {
       findNoteIdByMessageId,
       updateNote,
       sendConfirmation,
-    });
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
 
     expect(res.status).toBe(200);
     expect(updateNote).toHaveBeenCalled();
