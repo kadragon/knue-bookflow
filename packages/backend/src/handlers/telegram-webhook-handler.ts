@@ -28,7 +28,11 @@ export interface TelegramWebhookDeps {
     noteId: number,
     content: string,
   ): Promise<Pick<NoteRecord, 'id' | 'content'> | null>;
-  sendConfirmation(text: string): Promise<void>;
+  setReaction(
+    chatId: string,
+    messageId: number,
+    emoji: '✅' | '❌',
+  ): Promise<void>;
 }
 
 export async function handleTelegramWebhook(
@@ -36,13 +40,17 @@ export async function handleTelegramWebhook(
   env: Env,
   deps: TelegramWebhookDeps,
 ): Promise<Response> {
-  const sendConfirmationBestEffort = async (text: string): Promise<void> => {
+  const setReactionBestEffort = async (
+    chatId: string,
+    messageId: number,
+    emoji: '✅' | '❌',
+  ): Promise<void> => {
     try {
-      await deps.sendConfirmation(text);
+      await deps.setReaction(chatId, messageId, emoji);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
-        `[TelegramWebhook] Confirmation send failed (best-effort): ${msg}`,
+        `[TelegramWebhook] Reaction send failed (best-effort): ${msg}`,
       );
     }
   };
@@ -73,15 +81,20 @@ export async function handleTelegramWebhook(
   }
 
   const replyToId = message.reply_to_message.message_id;
+  const userMessageId = message.message_id;
+  const chatId = env.TELEGRAM_CHAT_ID;
+  const failWithReaction = async (): Promise<Response> => {
+    await setReactionBestEffort(chatId, userMessageId, '❌');
+    return new Response('OK', { status: 200 });
+  };
   const noteId = await deps.findNoteIdByMessageId(replyToId);
 
   if (noteId === null) {
-    return new Response('OK', { status: 200 });
+    return failWithReaction();
   }
 
   if (!deps.findNoteById) {
-    await sendConfirmationBestEffort('⚠️ 수정 실패: 시스템 설정 오류');
-    return new Response('OK', { status: 200 });
+    return failWithReaction();
   }
 
   const delimiterIndex = message.text.indexOf('>');
@@ -91,25 +104,20 @@ export async function handleTelegramWebhook(
     delimiterIndex > -1 ? message.text.slice(delimiterIndex + 1).trim() : '';
 
   if (!typo || !correction) {
-    await sendConfirmationBestEffort(
-      '⚠️ 수정 실패: 형식은 `오탈 > 수정`으로 입력해 주세요.',
-    );
-    return new Response('OK', { status: 200 });
+    return failWithReaction();
   }
 
   const note = await deps.findNoteById(noteId);
   if (!note || !note.content.includes(typo)) {
-    await sendConfirmationBestEffort(
-      '⚠️ 수정 실패: 원문에서 오탈자를 찾지 못했습니다.',
-    );
-    return new Response('OK', { status: 200 });
+    return failWithReaction();
   }
 
   const nextContent = note.content.replace(typo, correction);
   const updated = await deps.updateNote(noteId, nextContent);
-  if (updated) {
-    await sendConfirmationBestEffort(`✅ Note updated:\n${updated.content}`);
+  if (!updated) {
+    return failWithReaction();
   }
+  await setReactionBestEffort(chatId, userMessageId, '✅');
 
   return new Response('OK', { status: 200 });
 }
@@ -125,14 +133,15 @@ export function createTelegramWebhookDeps(
     findNoteIdByMessageId: (id) => telegramRepo.findNoteIdByMessageId(id),
     findNoteById: (noteId) => noteRepo.findById(noteId),
     updateNote: (noteId, content) => noteRepo.update(noteId, { content }),
-    sendConfirmation: async (text) => {
-      const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+    setReaction: async (chatId, messageId, emoji) => {
+      const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/setMessageReaction`;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chat_id: env.TELEGRAM_CHAT_ID,
-          text,
+          chat_id: chatId,
+          message_id: messageId,
+          reaction: [{ type: 'emoji', emoji }],
         }),
       });
     },
