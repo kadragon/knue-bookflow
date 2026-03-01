@@ -82,8 +82,9 @@ describe('filterBooks', () => {
     expect(filterBooks(items, filters)).toEqual(items);
   });
 
-  it("exposes default filters with loan state set to 'on_loan'", () => {
-    expect(defaultFilters.loanState).toBe('on_loan');
+  it("exposes default filters with stat set to 'on_loan'", () => {
+    expect(defaultFilters.stat).toBe('on_loan');
+    expect(defaultFilters.loanState).toBe('all');
   });
 
   it('applies combined search and stat filters', () => {
