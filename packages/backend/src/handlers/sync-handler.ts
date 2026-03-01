@@ -116,6 +116,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
       libraryClient,
       plannedLoanRepository,
       plannedLoanDismissalRepository,
+      aladinClient,
     );
     if (added > 0) {
       console.log(
@@ -210,6 +211,7 @@ export async function syncRequestBooksToPlannedLoans(
   libraryClient: Pick<LibraryClient, 'getAllAcqRequests'>,
   plannedLoanRepository: PlannedLoanCreateRepo,
   dismissalRepository: PlannedLoanDismissalReadRepo,
+  aladinClient: AladinClient,
 ): Promise<number> {
   const acqRequests = await libraryClient.getAllAcqRequests();
   const onShelfRequests = acqRequests.filter(
@@ -238,6 +240,11 @@ export async function syncRequestBooksToPlannedLoans(
     }
 
     const { publisher, year } = parsePublication(request.biblio.publication);
+    const bookInfo = await fetchBookInfo(
+      request.biblio.isbn,
+      aladinClient,
+      'request book',
+    );
     await plannedLoanRepository.create({
       library_biblio_id: libraryBiblioId,
       source: 'request_book',
@@ -246,7 +253,7 @@ export async function syncRequestBooksToPlannedLoans(
       publisher,
       year,
       isbn: request.biblio.isbn,
-      cover_url: null,
+      cover_url: bookInfo?.coverUrl ?? null,
       material_type: request.materialType?.name ?? null,
       branch_volumes: JSON.stringify(toBranchVolumes(request)),
     });

@@ -545,10 +545,15 @@ describe('syncRequestBooksToPlannedLoans', () => {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([300]),
     };
 
+    const aladinMock = {
+      lookupByIsbn: vi.fn().mockResolvedValue(null),
+    } as unknown as AladinClient;
+
     const added = await syncRequestBooksToPlannedLoans(
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
+      aladinMock,
     );
 
     expect(added).toBe(1);
@@ -589,17 +594,162 @@ describe('syncRequestBooksToPlannedLoans', () => {
     const dismissalRepo = {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
     };
+    const aladinMock = {
+      lookupByIsbn: vi.fn().mockResolvedValue(null),
+    } as unknown as AladinClient;
 
     await syncRequestBooksToPlannedLoans(
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
+      aladinMock,
     );
 
     expect(plannedRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         author: '저자 공백',
         library_biblio_id: 500,
+      }),
+    );
+  });
+
+  it('fetches cover_url from Aladin when ISBN is present', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 100,
+            titleStatement: '표지 테스트',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9781234567890',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+    };
+    const aladinMock = {
+      lookupByIsbn: vi.fn().mockResolvedValue({
+        coverUrl: 'https://covers.aladin.co.kr/test.jpg',
+      }),
+    } as unknown as AladinClient;
+
+    await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+      aladinMock,
+    );
+
+    expect(aladinMock.lookupByIsbn).toHaveBeenCalledWith('9781234567890');
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cover_url: 'https://covers.aladin.co.kr/test.jpg',
+      }),
+    );
+  });
+
+  it('skips Aladin lookup and sets cover_url null when ISBN is null', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 100,
+            titleStatement: 'ISBN 없는 도서',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: null,
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+    };
+    const aladinMock = {
+      lookupByIsbn: vi.fn(),
+    } as unknown as AladinClient;
+
+    await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+      aladinMock,
+    );
+
+    expect(aladinMock.lookupByIsbn).not.toHaveBeenCalled();
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cover_url: null,
+      }),
+    );
+  });
+
+  it('sets cover_url null when Aladin lookup fails', async () => {
+    const client = {
+      getAllAcqRequests: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          biblio: {
+            id: 100,
+            titleStatement: 'Aladin 실패 도서',
+            author: '저자',
+            publication: '서울 : 테스트출판, 2025',
+            isbn: '9781234567890',
+          },
+          branch: null,
+          acqState: null,
+          itemState: { id: 5, code: 'ON_SHELF', name: '배가완료' },
+          dateCreated: '2025-12-29 22:38:47',
+          materialType: null,
+        },
+      ]),
+    };
+    const plannedRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+    };
+    const dismissalRepo = {
+      findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
+    };
+    const aladinMock = {
+      lookupByIsbn: vi.fn().mockRejectedValue(new Error('Aladin API error')),
+    } as unknown as AladinClient;
+
+    const added = await syncRequestBooksToPlannedLoans(
+      client as never,
+      plannedRepo as never,
+      dismissalRepo as never,
+      aladinMock,
+    );
+
+    expect(added).toBe(1);
+    expect(aladinMock.lookupByIsbn).toHaveBeenCalledWith('9781234567890');
+    expect(plannedRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cover_url: null,
       }),
     );
   });
