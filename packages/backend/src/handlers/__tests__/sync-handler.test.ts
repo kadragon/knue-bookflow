@@ -545,15 +545,11 @@ describe('syncRequestBooksToPlannedLoans', () => {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([300]),
     };
 
-    const aladinMock = {
-      lookupByIsbn: vi.fn().mockResolvedValue(null),
-    } as unknown as AladinClient;
-
     const added = await syncRequestBooksToPlannedLoans(
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
-      aladinMock,
+      createMockAladinClient(null),
     );
 
     expect(added).toBe(1);
@@ -594,15 +590,12 @@ describe('syncRequestBooksToPlannedLoans', () => {
     const dismissalRepo = {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
     };
-    const aladinMock = {
-      lookupByIsbn: vi.fn().mockResolvedValue(null),
-    } as unknown as AladinClient;
 
     await syncRequestBooksToPlannedLoans(
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
-      aladinMock,
+      createMockAladinClient(null),
     );
 
     expect(plannedRepo.create).toHaveBeenCalledWith(
@@ -640,11 +633,9 @@ describe('syncRequestBooksToPlannedLoans', () => {
     const dismissalRepo = {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
     };
-    const aladinMock = {
-      lookupByIsbn: vi.fn().mockResolvedValue({
-        coverUrl: 'https://covers.aladin.co.kr/test.jpg',
-      }),
-    } as unknown as AladinClient;
+    const aladinMock = createMockAladinClient({
+      coverUrl: 'https://covers.aladin.co.kr/test.jpg',
+    });
 
     await syncRequestBooksToPlannedLoans(
       client as never,
@@ -688,9 +679,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     const dismissalRepo = {
       findAllLibraryBiblioIds: vi.fn().mockResolvedValue([]),
     };
-    const aladinMock = {
-      lookupByIsbn: vi.fn(),
-    } as unknown as AladinClient;
+    const aladinMock = createMockAladinClient(null);
 
     await syncRequestBooksToPlannedLoans(
       client as never,

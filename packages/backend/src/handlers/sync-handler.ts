@@ -229,7 +229,7 @@ export async function syncRequestBooksToPlannedLoans(
   const existingBiblioIds = new Set(existingPlannedBiblioIds);
   const dismissedSet = new Set(dismissedBiblioIds);
 
-  let added = 0;
+  const requestsToAdd: AcqRequest[] = [];
   for (const request of onShelfRequests) {
     const libraryBiblioId = request.biblio.id;
     if (existingBiblioIds.has(libraryBiblioId)) {
@@ -238,15 +238,26 @@ export async function syncRequestBooksToPlannedLoans(
     if (dismissedSet.has(libraryBiblioId)) {
       continue;
     }
+    existingBiblioIds.add(libraryBiblioId);
+    requestsToAdd.push(request);
+  }
 
+  if (requestsToAdd.length === 0) {
+    return 0;
+  }
+
+  const bookInfos = await Promise.all(
+    requestsToAdd.map((request) =>
+      fetchBookInfo(request.biblio.isbn, aladinClient, 'request book'),
+    ),
+  );
+
+  for (let i = 0; i < requestsToAdd.length; i++) {
+    const request = requestsToAdd[i];
+    const bookInfo = bookInfos[i];
     const { publisher, year } = parsePublication(request.biblio.publication);
-    const bookInfo = await fetchBookInfo(
-      request.biblio.isbn,
-      aladinClient,
-      'request book',
-    );
     await plannedLoanRepository.create({
-      library_biblio_id: libraryBiblioId,
+      library_biblio_id: request.biblio.id,
       source: 'request_book',
       title: request.biblio.titleStatement,
       author: request.biblio.author?.trim() || '저자 미상',
@@ -257,11 +268,9 @@ export async function syncRequestBooksToPlannedLoans(
       material_type: request.materialType?.name ?? null,
       branch_volumes: JSON.stringify(toBranchVolumes(request)),
     });
-    existingBiblioIds.add(libraryBiblioId);
-    added++;
   }
 
-  return added;
+  return requestsToAdd.length;
 }
 
 /**
