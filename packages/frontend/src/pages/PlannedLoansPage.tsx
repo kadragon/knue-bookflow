@@ -22,6 +22,7 @@ import {
   deletePlannedLoan,
   getPlannedLoans,
   type PlannedLoanItem,
+  type PlannedLoansResponse,
 } from '../api';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
@@ -224,28 +225,39 @@ export default function PlannedLoansPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deletePlannedLoan,
-    onSuccess: (res, _id) => {
-      if (res.success) {
-        setSnackbar({
-          open: true,
-          message: '대출 예정에서 제거했습니다.',
-          severity: 'success',
-        });
-      } else {
-        setSnackbar({
-          open: true,
-          message: '이미 목록에 없습니다.',
-          severity: 'info',
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ['planned-loans'] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['planned-loans'] });
+      const previous = queryClient.getQueryData<PlannedLoansResponse>([
+        'planned-loans',
+      ]);
+      queryClient.setQueryData<PlannedLoansResponse>(
+        ['planned-loans'],
+        (old) =>
+          old ? { items: old.items.filter((item) => item.id !== id) } : old,
+      );
+      return { previous };
     },
-    onError: () => {
+    onSuccess: (res) => {
+      setSnackbar({
+        open: true,
+        message: res.success
+          ? '대출 예정에서 제거했습니다.'
+          : '이미 목록에 없습니다.',
+        severity: res.success ? 'success' : 'info',
+      });
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['planned-loans'], context.previous);
+      }
       setSnackbar({
         open: true,
         message: '삭제 중 오류가 발생했습니다.',
         severity: 'error',
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['planned-loans'] });
     },
   });
 
