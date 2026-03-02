@@ -20,8 +20,8 @@ export interface Filters {
 
 export const defaultFilters: Filters = {
   search: '',
-  loanState: 'on_loan',
-  stat: 'none',
+  loanState: 'all',
+  stat: 'on_loan',
 };
 
 export function filterBooks<T extends BookListItem>(
