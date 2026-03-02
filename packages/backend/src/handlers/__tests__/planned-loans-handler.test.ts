@@ -246,7 +246,7 @@ describe('handleGetPlannedLoans', () => {
 
     const response = await handleGetPlannedLoans(makeEnv(), repo);
     expect(response.status).toBe(200);
-    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
