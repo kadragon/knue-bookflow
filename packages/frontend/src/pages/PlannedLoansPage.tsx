@@ -233,7 +233,9 @@ export default function PlannedLoansPage() {
       queryClient.setQueryData<PlannedLoansResponse>(
         ['planned-loans'],
         (old) =>
-          old ? { items: old.items.filter((item) => item.id !== id) } : old,
+          old
+            ? { ...old, items: old.items.filter((item) => item.id !== id) }
+            : old,
       );
       return { previous };
     },
