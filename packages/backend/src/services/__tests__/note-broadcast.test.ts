@@ -200,6 +200,7 @@ describe('formatDueSoonMessage', () => {
     expect(msg).toContain('Clean Code');
     expect(msg).toContain('2025\\-01\\-17'); // hyphens escaped
     expect(msg).toContain('\\(2일 남음\\)'); // parentheses escaped
+    expect(msg).toContain('연장 가능 1회');
   });
 
   it('shows 오늘 for due_date equal to today', () => {
@@ -250,6 +251,56 @@ describe('formatDueSoonMessage', () => {
     const msg = formatDueSoonMessage(books);
 
     expect(msg).toContain('A\\_B \\(C\\)');
+  });
+
+  it('shows zero remaining renewals when the renewal limit is already used', () => {
+    const books: BookRecord[] = [
+      {
+        id: 1,
+        charge_id: 'c1',
+        isbn: '9780000000001',
+        title: '연장 완료',
+        author: '저자',
+        publisher: null,
+        cover_url: null,
+        description: null,
+        charge_date: '2025-01-01',
+        due_date: '2025-01-16',
+        renew_count: 1,
+        is_read: 0,
+        isbn13: null,
+        pub_date: null,
+      },
+    ];
+
+    const msg = formatDueSoonMessage(books);
+
+    expect(msg).toContain('연장 가능 0회');
+  });
+
+  it('clamps remaining renewals at zero when stored renew count exceeds the limit', () => {
+    const books: BookRecord[] = [
+      {
+        id: 1,
+        charge_id: 'c1',
+        isbn: '9780000000001',
+        title: '예외 케이스',
+        author: '저자',
+        publisher: null,
+        cover_url: null,
+        description: null,
+        charge_date: '2025-01-01',
+        due_date: '2025-01-16',
+        renew_count: 3,
+        is_read: 0,
+        isbn13: null,
+        pub_date: null,
+      },
+    ];
+
+    const msg = formatDueSoonMessage(books);
+
+    expect(msg).toContain('연장 가능 0회');
   });
 
   it('includes all books in order', () => {
@@ -566,6 +617,40 @@ describe('broadcastDailyNote', () => {
       mockFetch.mock.calls[1][1].body as string,
     );
     expect(secondCallBody.text).toContain('반납 예정');
+  });
+
+  it('queries due-soon books using a five-day inclusive window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-01-15T00:00:00Z'));
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 100 } }),
+    });
+
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue([]),
+      incrementSendCount: vi.fn(),
+    };
+    const bookRepository = {
+      findDueSoonBooks: vi.fn().mockResolvedValue([]),
+    };
+
+    await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      bookRepository,
+    });
+
+    expect(bookRepository.findDueSoonBooks).toHaveBeenCalledWith(
+      '2025-01-15',
+      '2025-01-20',
+    );
+
+    vi.useRealTimers();
   });
 
   it('sends due-soon message even when no notes are available', async () => {

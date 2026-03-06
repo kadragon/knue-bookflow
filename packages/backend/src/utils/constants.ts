@@ -7,9 +7,10 @@ export const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DUE_SOON_DAYS = 3;
-export const DUE_SOON_BROADCAST_DAYS = 7;
+export const DUE_SOON_BROADCAST_DAYS = 5;
 
 export const DEFAULT_RENEWAL_MAX_COUNT = 0;
+export const MAX_RENEWALS_PER_LOAN = 1;
 export const DEFAULT_RENEWAL_DAYS_BEFORE_DUE = 2;
 
 export const ALADIN_LOOKUP_TIMEOUT_MS = 3000;

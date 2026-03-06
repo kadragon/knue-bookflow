@@ -11,6 +11,7 @@ import {
   formatDate,
   getTodayString,
   KST_OFFSET_MINUTES,
+  MAX_RENEWALS_PER_LOAN,
 } from '../utils';
 import { createBookRepository } from './book-repository';
 import { createTelegramMessageRepository } from './telegram-message-repository';
@@ -212,7 +213,10 @@ export function formatDueSoonMessage(books: BookRecord[]): string {
     const dueDate = escapeMarkdownV2(book.due_date);
     const days = daysFromToday(book.due_date);
     const dayLabel = days > 0 ? `${days}일 남음` : '오늘';
-    return `• ${title} — ${dueDate} \\(${dayLabel}\\)`;
+    const renewCount = book.renew_count ?? 0;
+    const remainingRenewals = Math.max(0, MAX_RENEWALS_PER_LOAN - renewCount);
+    const renewalLabel = escapeMarkdownV2(`연장 가능 ${remainingRenewals}회`);
+    return `• ${title} — ${dueDate} \\(${dayLabel}\\) / ${renewalLabel}`;
   });
 
   return [header, ...items].join('\n');
