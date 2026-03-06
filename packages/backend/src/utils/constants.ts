@@ -10,6 +10,7 @@ export const DUE_SOON_DAYS = 3;
 export const DUE_SOON_BROADCAST_DAYS = 5;
 
 export const DEFAULT_RENEWAL_MAX_COUNT = 0;
+export const MAX_RENEWALS_PER_LOAN = 1;
 export const DEFAULT_RENEWAL_DAYS_BEFORE_DUE = 2;
 
 export const ALADIN_LOOKUP_TIMEOUT_MS = 3000;
