@@ -200,6 +200,40 @@ describe('handleTelegramWebhook', () => {
     expect(setReaction).toHaveBeenCalledWith('12345', 302, '❌');
   });
 
+  it('does not update note and sends failure notice when correction part is empty', async () => {
+    const req = makeRequest(
+      {
+        update_id: 421,
+        message: {
+          message_id: 3021,
+          chat: { id: 12345 },
+          text: '오탈 >   ',
+          reply_to_message: { message_id: 7791 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장' });
+    const updateNote = vi
+      .fn()
+      .mockResolvedValue({ id: 42, content: '오탈 문장' });
+    const setReaction = vi.fn().mockResolvedValue(undefined);
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      setReaction,
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
+
+    expect(res.status).toBe(200);
+    expect(updateNote).not.toHaveBeenCalled();
+    expect(setReaction).toHaveBeenCalledWith('12345', 3021, '❌');
+  });
+
   it('does not update note and sends failure notice when typo is not found', async () => {
     const req = makeRequest(
       {
@@ -351,7 +385,7 @@ describe('handleTelegramWebhook', () => {
     expect(updateNote).not.toHaveBeenCalled();
   });
 
-  it('returns 200 even when setReaction throws (best-effort)', async () => {
+  it('logs reaction failure and still returns 200 when setReaction throws', async () => {
     const req = makeRequest(
       {
         update_id: 8,
@@ -372,6 +406,9 @@ describe('handleTelegramWebhook', () => {
       .fn()
       .mockResolvedValue({ id: 55, content: '수정 문장' });
     const setReaction = vi.fn().mockRejectedValue(new Error('network error'));
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
 
     const res = await handleTelegramWebhook(req, BASE_ENV, {
       findNoteIdByMessageId,
@@ -382,6 +419,10 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      '[TelegramWebhook] Reaction send failed (best-effort): network error',
+    );
+    consoleError.mockRestore();
   });
 
   it('returns 400 when request body is not valid JSON', async () => {
