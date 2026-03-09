@@ -268,6 +268,36 @@ describe('handleTelegramWebhook', () => {
     expect(setReaction).toHaveBeenCalledWith('12345', 303, '❌');
   });
 
+  it('does not update note and sends failure notice when findNoteById returns null', async () => {
+    const req = makeRequest(
+      {
+        update_id: 430,
+        message: {
+          message_id: 3030,
+          chat: { id: 12345 },
+          text: '오탈 > 수정',
+          reply_to_message: { message_id: 7800 },
+        },
+      },
+      'my-secret',
+    );
+    const findNoteIdByMessageId = vi.fn().mockResolvedValue(42);
+    const findNoteById = vi.fn().mockResolvedValue(null);
+    const updateNote = vi.fn();
+    const setReaction = vi.fn().mockResolvedValue(undefined);
+
+    const res = await handleTelegramWebhook(req, BASE_ENV, {
+      findNoteIdByMessageId,
+      updateNote,
+      setReaction,
+      findNoteById,
+    } as unknown as Parameters<typeof handleTelegramWebhook>[2]);
+
+    expect(res.status).toBe(200);
+    expect(updateNote).not.toHaveBeenCalled();
+    expect(setReaction).toHaveBeenCalledWith('12345', 3030, '❌');
+  });
+
   it('sends failure reaction when findNoteById dependency is missing', async () => {
     const req = makeRequest(
       {
