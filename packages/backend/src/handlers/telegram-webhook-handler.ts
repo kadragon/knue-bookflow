@@ -61,6 +61,10 @@ export async function handleTelegramWebhook(
     if (!secret || secret !== env.TELEGRAM_WEBHOOK_SECRET) {
       return new Response('Unauthorized', { status: 401 });
     }
+  } else {
+    console.warn(
+      '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured; skipping auth',
+    );
   }
 
   let update: TelegramUpdate;

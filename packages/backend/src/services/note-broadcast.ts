@@ -351,13 +351,13 @@ export async function broadcastDueSoonBooks(
     );
     if (dueSoonBooks.length > 0) {
       const dueSoonMessage = formatDueSoonMessage(dueSoonBooks);
-      await sendTelegramMessage(
+      const messageId = await sendTelegramMessage(
         env.TELEGRAM_BOT_TOKEN,
         env.TELEGRAM_CHAT_ID,
         dueSoonMessage,
         fetchFn,
       );
-      return true;
+      return messageId !== null;
     }
     return false;
   } catch (err) {

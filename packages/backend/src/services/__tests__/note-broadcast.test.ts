@@ -736,6 +736,43 @@ describe('broadcastDueSoonBooks', () => {
     expect(sent).toBe(false);
   });
 
+  it('returns false when Telegram send fails (non-ok response)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({}),
+    });
+
+    const dueSoonBook: BookRecord = {
+      id: 99,
+      charge_id: 'cx',
+      isbn: '9780000000099',
+      title: '반납 예정',
+      author: '저자',
+      publisher: null,
+      cover_url: null,
+      description: null,
+      charge_date: '2025-01-01',
+      due_date: '2025-01-18',
+      renew_count: 0,
+      is_read: 0,
+      isbn13: null,
+      pub_date: null,
+    };
+    const bookRepository = {
+      findDueSoonBooks: vi.fn().mockResolvedValue([dueSoonBook]),
+    };
+
+    const sent = await broadcastDueSoonBooks(baseEnv, {
+      fetchFn: mockFetch,
+      bookRepository,
+    });
+
+    expect(sent).toBe(false);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('returns false and logs error on failure', async () => {
     const bookRepository = {
       findDueSoonBooks: vi.fn().mockRejectedValue(new Error('DB error')),

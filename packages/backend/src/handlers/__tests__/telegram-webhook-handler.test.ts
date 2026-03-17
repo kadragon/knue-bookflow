@@ -42,7 +42,8 @@ describe('handleTelegramWebhook', () => {
     expect(res.status).toBe(401);
   });
 
-  it('skips secret validation when TELEGRAM_WEBHOOK_SECRET is not configured', async () => {
+  it('skips secret validation when TELEGRAM_WEBHOOK_SECRET is not configured and logs warning', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const envWithoutSecret = {
       ...BASE_ENV,
       TELEGRAM_WEBHOOK_SECRET: undefined as unknown as string,
@@ -61,6 +62,10 @@ describe('handleTelegramWebhook', () => {
       setReaction: vi.fn(),
     });
     expect(res.status).toBe(200);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured; skipping auth',
+    );
+    warnSpy.mockRestore();
   });
 
   it('returns 401 when secret header is wrong', async () => {
