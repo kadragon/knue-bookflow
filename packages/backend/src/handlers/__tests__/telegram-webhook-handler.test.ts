@@ -42,6 +42,32 @@ describe('handleTelegramWebhook', () => {
     expect(res.status).toBe(401);
   });
 
+  it('skips secret validation when TELEGRAM_WEBHOOK_SECRET is not configured and logs warning', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const envWithoutSecret = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: undefined as unknown as string,
+    };
+    const req = makeRequest({
+      update_id: 1,
+      message: {
+        message_id: 100,
+        chat: { id: 12345 },
+        text: 'hello',
+      },
+    });
+    const res = await handleTelegramWebhook(req, envWithoutSecret, {
+      findNoteIdByMessageId: vi.fn(),
+      updateNote: vi.fn(),
+      setReaction: vi.fn(),
+    });
+    expect(res.status).toBe(200);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured; skipping auth',
+    );
+    warnSpy.mockRestore();
+  });
+
   it('returns 401 when secret header is wrong', async () => {
     const req = makeRequest({ update_id: 1 }, 'wrong-secret');
     const res = await handleTelegramWebhook(req, BASE_ENV, {
