@@ -55,10 +55,12 @@ export async function handleTelegramWebhook(
     }
   };
 
-  // Validate secret token
-  const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
-  if (!secret || secret !== env.TELEGRAM_WEBHOOK_SECRET) {
-    return new Response('Unauthorized', { status: 401 });
+  // Validate secret token (skip if secret is not configured)
+  if (env.TELEGRAM_WEBHOOK_SECRET) {
+    const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+    if (!secret || secret !== env.TELEGRAM_WEBHOOK_SECRET) {
+      return new Response('Unauthorized', { status: 401 });
+    }
   }
 
   let update: TelegramUpdate;

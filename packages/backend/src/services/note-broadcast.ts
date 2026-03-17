@@ -38,9 +38,6 @@ export interface NoteBroadcastDeps {
   telegramMessageRepository?: {
     save(telegramMessageId: number, noteId: number): Promise<void>;
   };
-  bookRepository?: {
-    findDueSoonBooks(fromDate: string, toDate: string): Promise<BookRecord[]>;
-  };
 }
 
 interface NoteCandidateRow {
@@ -272,8 +269,6 @@ export async function broadcastDailyNote(
   const telegramMessageRepository =
     deps.telegramMessageRepository ??
     createTelegramMessageRepository(env.DB as D1Database);
-  const bookRepository =
-    deps.bookRepository ?? createBookRepository(env.DB as D1Database);
 
   if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
     console.warn('[NoteBroadcast] Telegram credentials missing; skipping send');
@@ -319,7 +314,31 @@ export async function broadcastDailyNote(
     }
   }
 
-  // Send due-soon books as a separate message (always attempted when credentials are valid)
+  return noteSuccess;
+}
+
+export interface DueSoonBroadcastDeps {
+  fetchFn?: typeof fetch;
+  bookRepository?: {
+    findDueSoonBooks(fromDate: string, toDate: string): Promise<BookRecord[]>;
+  };
+}
+
+export async function broadcastDueSoonBooks(
+  env: Env,
+  deps: DueSoonBroadcastDeps = {},
+): Promise<boolean> {
+  const fetchFn = deps.fetchFn ?? fetch;
+  const bookRepository =
+    deps.bookRepository ?? createBookRepository(env.DB as D1Database);
+
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
+    console.warn(
+      '[DueSoonBroadcast] Telegram credentials missing; skipping send',
+    );
+    return false;
+  }
+
   try {
     const kstOffsetMs = KST_OFFSET_MINUTES * 60 * 1000;
     const today = getTodayString();
@@ -338,11 +357,12 @@ export async function broadcastDailyNote(
         dueSoonMessage,
         fetchFn,
       );
+      return true;
     }
+    return false;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[NoteBroadcast] Failed to send due-soon message: ${msg}`);
+    console.error(`[DueSoonBroadcast] Failed to send due-soon message: ${msg}`);
+    return false;
   }
-
-  return noteSuccess;
 }

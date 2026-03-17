@@ -73,8 +73,8 @@ describe('scheduled handler', () => {
 
     await worker.scheduled(mockEvent, mockEnv, mockCtx);
 
-    // Should call waitUntil three times: broadcast, sync, and renewal
-    expect(waitUntilSpy).toHaveBeenCalledTimes(3);
+    // Should call waitUntil twice: note broadcast and renewal-then-notify
+    expect(waitUntilSpy).toHaveBeenCalledTimes(2);
 
     const pending = collectWaitUntilPromises();
     await Promise.allSettled(pending);
@@ -92,7 +92,7 @@ describe('scheduled handler', () => {
     await Promise.allSettled(pending);
 
     expect(consoleLogSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[ScheduledSync] Triggered by cron'),
+      expect.stringContaining('[ScheduledSync] Starting scheduled sync'),
     );
   });
 

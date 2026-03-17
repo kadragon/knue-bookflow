@@ -36,6 +36,7 @@ import {
 } from './handlers/telegram-webhook-handler';
 import {
   broadcastDailyNote,
+  broadcastDueSoonBooks,
   checkAndRenewBooks,
   createAladinClient,
   createBookRepository,
@@ -71,9 +72,7 @@ export default {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
       ctx.waitUntil(handleNoteBroadcast(env));
-      console.log('[ScheduledSync] Triggered by cron; starting scheduled sync');
-      ctx.waitUntil(handleScheduledSync(env));
-      ctx.waitUntil(handleScheduledRenewal(env));
+      ctx.waitUntil(handleRenewalThenNotify(env));
     } else {
       console.warn(
         `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
@@ -397,6 +396,39 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
+  }
+}
+
+/**
+ * Sequential handler: renewal → sync → due-soon notification
+ * Ensures renewed due dates are reflected before sending due-soon alerts.
+ */
+async function handleRenewalThenNotify(env: Env): Promise<void> {
+  await handleScheduledRenewal(env);
+  await handleScheduledSync(env);
+  await handleDueSoonBroadcast(env);
+}
+
+/**
+ * Due-soon books broadcast handler (Telegram)
+ */
+async function handleDueSoonBroadcast(env: Env): Promise<void> {
+  console.log(
+    `[DueSoonBroadcast] Starting due-soon broadcast at ${new Date().toISOString()}`,
+  );
+
+  try {
+    const sent = await broadcastDueSoonBooks(env);
+    if (sent) {
+      console.log('[DueSoonBroadcast] Sent due-soon message to Telegram');
+    } else {
+      console.log(
+        '[DueSoonBroadcast] No due-soon message sent (no books due soon or missing creds)',
+      );
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[DueSoonBroadcast] Broadcast failed: ${message}`);
   }
 }
 
