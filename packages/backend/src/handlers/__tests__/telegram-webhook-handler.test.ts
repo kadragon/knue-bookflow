@@ -47,7 +47,7 @@ describe('handleTelegramWebhook', () => {
     const envProdNoSecret = {
       ...BASE_ENV,
       ENVIRONMENT: 'production',
-      TELEGRAM_WEBHOOK_SECRET: undefined as unknown as string,
+      TELEGRAM_WEBHOOK_SECRET: undefined,
     };
     const req = makeRequest({ update_id: 1 });
     const res = await handleTelegramWebhook(req, envProdNoSecret, {
@@ -66,7 +66,7 @@ describe('handleTelegramWebhook', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const envWithoutSecret = {
       ...BASE_ENV,
-      TELEGRAM_WEBHOOK_SECRET: undefined as unknown as string,
+      TELEGRAM_WEBHOOK_SECRET: undefined,
     };
     const req = makeRequest({
       update_id: 1,
