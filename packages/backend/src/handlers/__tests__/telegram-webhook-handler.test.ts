@@ -42,11 +42,31 @@ describe('handleTelegramWebhook', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns 403 and logs error when TELEGRAM_WEBHOOK_SECRET is not configured in production', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const envProdNoSecret = {
+      ...BASE_ENV,
+      ENVIRONMENT: 'production',
+      TELEGRAM_WEBHOOK_SECRET: undefined,
+    };
+    const req = makeRequest({ update_id: 1 });
+    const res = await handleTelegramWebhook(req, envProdNoSecret, {
+      findNoteIdByMessageId: vi.fn(),
+      updateNote: vi.fn(),
+      setReaction: vi.fn(),
+    });
+    expect(res.status).toBe(403);
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured in production; rejecting request',
+    );
+    errorSpy.mockRestore();
+  });
+
   it('skips secret validation when TELEGRAM_WEBHOOK_SECRET is not configured and logs warning', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const envWithoutSecret = {
       ...BASE_ENV,
-      TELEGRAM_WEBHOOK_SECRET: undefined as unknown as string,
+      TELEGRAM_WEBHOOK_SECRET: undefined,
     };
     const req = makeRequest({
       update_id: 1,

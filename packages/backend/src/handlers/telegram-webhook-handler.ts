@@ -55,12 +55,17 @@ export async function handleTelegramWebhook(
     }
   };
 
-  // Validate secret token (skip if secret is not configured)
+  // Validate secret token
   if (env.TELEGRAM_WEBHOOK_SECRET) {
     const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
     if (!secret || secret !== env.TELEGRAM_WEBHOOK_SECRET) {
       return new Response('Unauthorized', { status: 401 });
     }
+  } else if (env.ENVIRONMENT === 'production') {
+    console.error(
+      '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured in production; rejecting request',
+    );
+    return new Response('Forbidden', { status: 403 });
   } else {
     console.warn(
       '[TelegramWebhook] TELEGRAM_WEBHOOK_SECRET not configured; skipping auth',
