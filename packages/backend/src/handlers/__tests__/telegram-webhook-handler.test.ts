@@ -140,7 +140,7 @@ describe('handleTelegramWebhook', () => {
     });
     expect(res.status).toBe(200);
     expect(findNoteIdByMessageId).toHaveBeenCalledWith(999);
-    expect(setReaction).toHaveBeenCalledWith('12345', 200, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 200, '👎');
   });
 
   it('replaces only the first matching typo when reply text is "오탈 > 수정"', async () => {
@@ -175,7 +175,7 @@ describe('handleTelegramWebhook', () => {
     expect(res.status).toBe(200);
     expect(findNoteById).toHaveBeenCalledWith(42);
     expect(updateNote).toHaveBeenCalledWith(42, '수정 문장 오탈');
-    expect(setReaction).toHaveBeenCalledWith('12345', 300, '✅');
+    expect(setReaction).toHaveBeenCalledWith('12345', 300, '👍');
   });
 
   it('trims spaces around delimiter and applies exact-match replacement', async () => {
@@ -209,7 +209,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).toHaveBeenCalledWith(42, '수정 문장');
-    expect(setReaction).toHaveBeenCalledWith('12345', 301, '✅');
+    expect(setReaction).toHaveBeenCalledWith('12345', 301, '👍');
   });
 
   it('does not update note and sends failure notice when typo part is empty', async () => {
@@ -243,7 +243,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).not.toHaveBeenCalled();
-    expect(setReaction).toHaveBeenCalledWith('12345', 302, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 302, '👎');
   });
 
   it('does not update note and sends failure notice when correction part is empty', async () => {
@@ -277,7 +277,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).not.toHaveBeenCalled();
-    expect(setReaction).toHaveBeenCalledWith('12345', 3021, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 3021, '👎');
   });
 
   it('does not update note and sends failure notice when typo is not found', async () => {
@@ -311,7 +311,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).not.toHaveBeenCalled();
-    expect(setReaction).toHaveBeenCalledWith('12345', 303, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 303, '👎');
   });
 
   it('does not update note and sends failure notice when findNoteById returns null', async () => {
@@ -341,7 +341,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).not.toHaveBeenCalled();
-    expect(setReaction).toHaveBeenCalledWith('12345', 3030, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 3030, '👎');
   });
 
   it('sends failure reaction when findNoteById dependency is missing', async () => {
@@ -367,7 +367,7 @@ describe('handleTelegramWebhook', () => {
     });
 
     expect(res.status).toBe(200);
-    expect(setReaction).toHaveBeenCalledWith('12345', 304, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 304, '👎');
   });
 
   it('sends failure reaction when updateNote returns null', async () => {
@@ -399,7 +399,7 @@ describe('handleTelegramWebhook', () => {
 
     expect(res.status).toBe(200);
     expect(updateNote).toHaveBeenCalledWith(42, '수정 문장');
-    expect(setReaction).toHaveBeenCalledWith('12345', 305, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 305, '👎');
   });
 
   it('does not update note and sends failure notice when delimiter is missing', async () => {
@@ -434,7 +434,7 @@ describe('handleTelegramWebhook', () => {
     expect(res.status).toBe(200);
     expect(findNoteById).not.toHaveBeenCalled();
     expect(updateNote).not.toHaveBeenCalled();
-    expect(setReaction).toHaveBeenCalledWith('12345', 400, '❌');
+    expect(setReaction).toHaveBeenCalledWith('12345', 400, '👎');
   });
 
   it('returns 200 and ignores messages without text (photos, stickers)', async () => {

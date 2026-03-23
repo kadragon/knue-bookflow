@@ -31,7 +31,7 @@ export interface TelegramWebhookDeps {
   setReaction(
     chatId: string,
     messageId: number,
-    emoji: '✅' | '❌',
+    emoji: '👍' | '👎',
   ): Promise<void>;
 }
 
@@ -43,7 +43,7 @@ export async function handleTelegramWebhook(
   const setReactionBestEffort = async (
     chatId: string,
     messageId: number,
-    emoji: '✅' | '❌',
+    emoji: '👍' | '👎',
   ): Promise<void> => {
     try {
       await deps.setReaction(chatId, messageId, emoji);
@@ -95,7 +95,7 @@ export async function handleTelegramWebhook(
   const userMessageId = message.message_id;
   const chatId = env.TELEGRAM_CHAT_ID;
   const failWithReaction = async (): Promise<Response> => {
-    await setReactionBestEffort(chatId, userMessageId, '❌');
+    await setReactionBestEffort(chatId, userMessageId, '👎');
     return new Response('OK', { status: 200 });
   };
   const noteId = await deps.findNoteIdByMessageId(replyToId);
@@ -128,7 +128,7 @@ export async function handleTelegramWebhook(
   if (!updated) {
     return failWithReaction();
   }
-  await setReactionBestEffort(chatId, userMessageId, '✅');
+  await setReactionBestEffort(chatId, userMessageId, '👍');
 
   return new Response('OK', { status: 200 });
 }
