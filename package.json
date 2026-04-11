@@ -30,10 +30,16 @@
     "pre-commit": "bunx lint-staged && bun run typecheck && bun run test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.12",
+    "@biomejs/biome": "^2.4.11",
     "lint-staged": "^16.2.7",
     "simple-git-hooks": "^2.13.1",
     "typescript": "^5.7.2",
     "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@mui/icons-material": "^9.0.0",
+    "@mui/material": "^9.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.8"
   }
 }

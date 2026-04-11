@@ -25,8 +25,7 @@ export function Header({ title, leading, actions }: HeaderProps) {
               <Typography
                 variant="h4"
                 component="h1"
-                fontWeight="bold"
-                sx={{ mt: -1 }}
+                sx={{ fontWeight: 'bold', mt: -1 }}
               >
                 {title}
               </Typography>

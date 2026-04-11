@@ -174,9 +174,7 @@ function NewBookCard({
         <Stack
           direction="row"
           spacing={0.5}
-          flexWrap="wrap"
-          useFlexGap
-          sx={{ mt: 'auto' }}
+          sx={{ flexWrap: 'wrap', mt: 'auto' }}
         >
           {book.materialType && (
             <Chip
