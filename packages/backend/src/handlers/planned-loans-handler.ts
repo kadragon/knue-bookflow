@@ -159,7 +159,7 @@ function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
 }
 
 // Exported for testing
-export { summarizeAvailability, createCachedFetcher, clearAvailabilityCache };
+export { clearAvailabilityCache, createCachedFetcher, summarizeAvailability };
 
 // Module-level cache for availability data (persistent across requests)
 const availabilityCache = new Map<

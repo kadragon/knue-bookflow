@@ -139,7 +139,7 @@ function BookInfoPanel({
 
         {/* Title and Author */}
         <Box>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }} gutterBottom>
             {book.title}
           </Typography>
           <Typography variant="subtitle1" color="text.secondary">
@@ -367,7 +367,7 @@ function NotesPanel({
             alignItems: 'center',
           }}
         >
-          <Typography variant="h6" fontWeight="bold">
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             독서 노트 ({notes.length})
           </Typography>
         </Box>

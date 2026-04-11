@@ -71,9 +71,11 @@ export function BookDetailModal({ isbn, onClose }: BookDetailModalProps) {
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{
-        sx: {
-          maxHeight: '80vh',
+      slotProps={{
+        paper: {
+          sx: {
+            maxHeight: '80vh',
+          },
         },
       }}
     >

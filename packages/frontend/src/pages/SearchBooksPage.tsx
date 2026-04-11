@@ -178,7 +178,11 @@ function SearchBookCard({
           </Typography>
         )}
         {book.isbn && (
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block' }}
+          >
             ISBN: {book.isbn}
           </Typography>
         )}
@@ -186,19 +190,12 @@ function SearchBookCard({
           <Typography
             variant="caption"
             color="text.secondary"
-            display="block"
-            sx={{ mt: 0.5 }}
+            sx={{ display: 'block', mt: 0.5 }}
           >
             청구기호: {callNumbersDisplay}
           </Typography>
         )}
-        <Stack
-          direction="row"
-          spacing={1}
-          flexWrap="wrap"
-          useFlexGap
-          sx={{ mt: 0.5 }}
-        >
+        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', mt: 0.5 }}>
           {book.materialType && (
             <Chip label={book.materialType} size="small" variant="outlined" />
           )}
@@ -311,24 +308,26 @@ export default function SearchBooksPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             variant="outlined"
             size="medium"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Button
-                    variant="contained"
-                    type="submit"
-                    disabled={!searchInput.trim()}
-                    sx={{ minWidth: 80 }}
-                  >
-                    검색
-                  </Button>
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button
+                      variant="contained"
+                      type="submit"
+                      disabled={!searchInput.trim()}
+                      sx={{ minWidth: 80 }}
+                    >
+                      검색
+                    </Button>
+                  </InputAdornment>
+                ),
+              },
             }}
           />
         </Box>

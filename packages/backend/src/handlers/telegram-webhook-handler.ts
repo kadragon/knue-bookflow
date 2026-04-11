@@ -119,7 +119,7 @@ export async function handleTelegramWebhook(
   }
 
   const note = await deps.findNoteById(noteId);
-  if (!note || !note.content.includes(typo)) {
+  if (!note?.content.includes(typo)) {
     return failWithReaction();
   }
 
