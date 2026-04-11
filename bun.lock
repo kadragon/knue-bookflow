@@ -8,7 +8,7 @@
         "@biomejs/biome": "^2.3.12",
         "lint-staged": "^16.2.7",
         "simple-git-hooks": "^2.13.1",
-        "typescript": "^5.7.2",
+        "typescript": "^6.0.2",
         "vitest": "^4.0.18",
       },
     },
@@ -22,7 +22,7 @@
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260124.0",
         "@vitest/coverage-v8": "^4.0.18",
-        "typescript": "^5.7.2",
+        "typescript": "^6.0.2",
         "vitest": "^4.0.18",
         "wrangler": "^4.60.0",
       },
@@ -57,7 +57,7 @@
       "name": "@knue-bookflow/shared",
       "version": "0.1.0",
       "devDependencies": {
-        "typescript": "^5.7.2",
+        "typescript": "^6.0.2",
       },
     },
   },
@@ -742,7 +742,7 @@
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
     "undici": ["undici@7.24.7", "", {}, "sha512-H/nlJ/h0ggGC+uRL3ovD+G0i4bqhvsDOpbDv7At5eFLlj2b41L8QliGbnl2H7SnDiYhENphh1tQFJZf+MyfLsQ=="],
 
