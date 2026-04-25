@@ -9,15 +9,22 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: [
-            '@mui/material',
-            '@mui/icons-material',
-            '@emotion/react',
-            '@emotion/styled',
-          ],
-          query: ['@tanstack/react-query'],
+        manualChunks: (id) => {
+          if (!id.includes('node_modules')) return;
+          if (
+            /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom)[\\/]/.test(
+              id,
+            )
+          )
+            return 'vendor';
+          if (
+            /[\\/]node_modules[\\/](@mui[\\/](material|icons-material)|@emotion[\\/](react|styled))[\\/]/.test(
+              id,
+            )
+          )
+            return 'ui';
+          if (/[\\/]node_modules[\\/]@tanstack[\\/]react-query[\\/]/.test(id))
+            return 'query';
         },
       },
     },
