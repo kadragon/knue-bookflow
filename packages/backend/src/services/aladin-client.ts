@@ -21,13 +21,19 @@ import {
 // Use HTTPS to protect API key in transit
 const BASE_URL = 'https://www.aladin.co.kr/ttb/api';
 
-export class AladinClient {
-  // Cache ISBN lookups for the lifetime of the instance
-  private readonly cache = new Map<
-    string,
-    { value: BookInfo | null; expiresAt: number }
-  >();
+// Module-level cache shared across all AladinClient instances in the same isolate.
+// Deduplicates repeat lookups within a cron run and across HTTP requests.
+const isbnCache = new Map<
+  string,
+  { value: BookInfo | null; expiresAt: number }
+>();
 
+/** Clear the module-level ISBN cache. Call this in test beforeEach to isolate tests. */
+export function __clearAladinIsbnCache(): void {
+  isbnCache.clear();
+}
+
+export class AladinClient {
   constructor(
     private apiKey: string,
     private cacheTtlMs = ALADIN_CACHE_TTL_MS,
@@ -51,7 +57,7 @@ export class AladinClient {
     // Clean ISBN (remove hyphens)
     const cleanIsbn = isbn.replace(/-/g, '');
 
-    const cached = this.cache.get(cleanIsbn);
+    const cached = isbnCache.get(cleanIsbn);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value;
     }
@@ -78,7 +84,7 @@ export class AladinClient {
 
       if (!response.ok) {
         console.error(`[AladinClient] API error: ${response.status}`);
-        this.cache.set(cleanIsbn, {
+        isbnCache.set(cleanIsbn, {
           value: null,
           expiresAt: now + this.cacheTtlMs,
         });
@@ -89,7 +95,7 @@ export class AladinClient {
 
       if (!data.item || data.item.length === 0) {
         console.log(`[AladinClient] No results found for ISBN: ${cleanIsbn}`);
-        this.cache.set(cleanIsbn, {
+        isbnCache.set(cleanIsbn, {
           value: null,
           expiresAt: now + this.cacheTtlMs,
         });
@@ -110,7 +116,7 @@ export class AladinClient {
         tableOfContents: item.bookDtlContents,
       };
 
-      this.cache.set(cleanIsbn, {
+      isbnCache.set(cleanIsbn, {
         value: bookInfo,
         expiresAt: now + this.cacheTtlMs,
       });
@@ -123,7 +129,7 @@ export class AladinClient {
         console.error(
           `[AladinClient] Lookup timeout after ${timeoutMs}ms for ISBN ${cleanIsbn}`,
         );
-        this.cache.set(cleanIsbn, {
+        isbnCache.set(cleanIsbn, {
           value: null,
           expiresAt: now + this.cacheTtlMs,
         });
@@ -134,7 +140,7 @@ export class AladinClient {
       console.error(
         `[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`,
       );
-      this.cache.set(cleanIsbn, {
+      isbnCache.set(cleanIsbn, {
         value: null,
         expiresAt: now + this.cacheTtlMs,
       });
