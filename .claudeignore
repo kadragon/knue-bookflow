@@ -1,0 +1,37 @@
+# Logs & temp
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Editor / OS
+.vscode/
+.fleet/
+.idea/
+
+# Maps & archives
+*.map
+*.zip
+*.tar.gz
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+out/
+coverage/
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# Bun / lockfiles
+bun.lock
+
+# Cloudflare / Wrangler / agent caches
+.wrangler/
+.serena/
+.codex/
+
+# Local secrets
+.dev.vars
