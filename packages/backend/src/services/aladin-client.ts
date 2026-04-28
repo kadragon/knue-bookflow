@@ -23,6 +23,9 @@ const BASE_URL = 'https://www.aladin.co.kr/ttb/api';
 
 // Module-level cache shared across all AladinClient instances in the same isolate.
 // Deduplicates repeat lookups within a cron run and across HTTP requests.
+// Only definitive results (successful lookup, not-found) are cached for the full TTL.
+// Transient failures (HTTP errors, timeouts, network errors) are not cached so the
+// next request retries immediately.
 const isbnCache = new Map<
   string,
   { value: BookInfo | null; expiresAt: number }
@@ -84,10 +87,6 @@ export class AladinClient {
 
       if (!response.ok) {
         console.error(`[AladinClient] API error: ${response.status}`);
-        isbnCache.set(cleanIsbn, {
-          value: null,
-          expiresAt: now + this.cacheTtlMs,
-        });
         return null;
       }
 
@@ -129,10 +128,6 @@ export class AladinClient {
         console.error(
           `[AladinClient] Lookup timeout after ${timeoutMs}ms for ISBN ${cleanIsbn}`,
         );
-        isbnCache.set(cleanIsbn, {
-          value: null,
-          expiresAt: now + this.cacheTtlMs,
-        });
         return null;
       }
       const errorMessage =
@@ -140,10 +135,6 @@ export class AladinClient {
       console.error(
         `[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`,
       );
-      isbnCache.set(cleanIsbn, {
-        value: null,
-        expiresAt: now + this.cacheTtlMs,
-      });
       return null;
     } finally {
       clearTimeout(timeoutId);

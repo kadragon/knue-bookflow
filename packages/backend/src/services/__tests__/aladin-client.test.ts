@@ -302,6 +302,7 @@ describe('AladinClient', () => {
               isbn: '333',
               isbn13: '333',
               cover: 'https://example.com/cover.jpg',
+              categoryName: 'Category',
             },
           ],
         }),
