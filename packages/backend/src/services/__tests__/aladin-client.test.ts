@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Charge } from '../../types';
 import {
+  __clearAladinIsbnCache,
   AladinClient,
   fetchNewBooksInfo,
   identifyNewBooks,
@@ -50,6 +51,7 @@ describe('AladinClient', () => {
   let client: AladinClient;
 
   beforeEach(() => {
+    __clearAladinIsbnCache();
     client = new AladinClient('test-api-key');
     mockFetch.mockReset();
   });
@@ -284,6 +286,37 @@ describe('AladinClient', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
 
       vi.useRealTimers();
+    });
+
+    it('should share cache across separate AladinClient instances', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          item: [
+            {
+              title: 'Shared Cache Book',
+              author: 'Author',
+              publisher: 'Publisher',
+              pubDate: '2024-01-01',
+              description: 'Desc',
+              isbn: '333',
+              isbn13: '333',
+              cover: 'https://example.com/cover.jpg',
+              categoryName: 'Category',
+            },
+          ],
+        }),
+      });
+
+      const clientA = new AladinClient('test-api-key');
+      const clientB = new AladinClient('test-api-key');
+
+      const first = await clientA.lookupByIsbn('333');
+      const second = await clientB.lookupByIsbn('333');
+
+      expect(first?.title).toBe('Shared Cache Book');
+      expect(second?.title).toBe('Shared Cache Book');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });
