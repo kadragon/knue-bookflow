@@ -11,6 +11,10 @@ import {
   handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
+import {
+  handleGetCronRuns,
+  handleGetLatestCronRuns,
+} from './handlers/cron-runs-handler';
 import { handleNewBooksApi } from './handlers/new-books-handler';
 import {
   handleCreateNote,
@@ -40,7 +44,9 @@ import {
   checkAndRenewBooks,
   createAladinClient,
   createBookRepository,
+  createCronRunRepository,
   createLibraryClient,
+  type ICronRunRepository,
   logRenewalResults,
   NOTE_BROADCAST_CRON,
   type RenewalConfig,
@@ -60,6 +66,37 @@ import {
   isDebugEnabled,
 } from './utils';
 
+type PhaseResult = {
+  status: 'success' | 'failure' | 'skipped';
+  detail: string | null;
+};
+
+async function runPhase(
+  repo: ICronRunRepository,
+  phase: string,
+  cronExpr: string,
+  fn: () => Promise<PhaseResult>,
+): Promise<PhaseResult> {
+  const startedAt = new Date().toISOString();
+  const startTs = Date.now();
+  const result = await fn();
+  const finishedAt = new Date().toISOString();
+  try {
+    await repo.record({
+      phase,
+      status: result.status,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      duration_ms: Date.now() - startTs,
+      detail: result.detail,
+      cron_expr: cronExpr,
+    });
+  } catch (err) {
+    console.error(`[CronObs] record failed phase=${phase}:`, err);
+  }
+  return result;
+}
+
 export default {
   /**
    * Cron Trigger Handler - Notes broadcast and sync
@@ -71,8 +108,13 @@ export default {
   ): Promise<void> {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
-      ctx.waitUntil(handleNoteBroadcast(env));
-      ctx.waitUntil(handleRenewalThenNotify(env));
+      const repo = createCronRunRepository(env.DB as D1Database);
+      ctx.waitUntil(
+        runPhase(repo, 'note_broadcast', event.cron, () =>
+          handleNoteBroadcast(env),
+        ),
+      );
+      ctx.waitUntil(handleRenewalThenNotify(repo, event.cron, env));
     } else {
       console.warn(
         `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
@@ -102,6 +144,14 @@ export default {
 
     if (url.pathname === '/api/books' && request.method === 'GET') {
       return handleBooksApi(env);
+    }
+
+    if (url.pathname === '/api/cron-runs/latest' && request.method === 'GET') {
+      return handleGetLatestCronRuns(env);
+    }
+
+    if (url.pathname === '/api/cron-runs' && request.method === 'GET') {
+      return handleGetCronRuns(env, request);
     }
 
     // New books API endpoint (신착 도서)
@@ -379,7 +429,7 @@ async function processChargesInBatches(
 /**
  * Daily note broadcast handler (Telegram)
  */
-async function handleNoteBroadcast(env: Env): Promise<void> {
+async function handleNoteBroadcast(env: Env): Promise<PhaseResult> {
   console.log(
     `[NoteBroadcast] Starting daily note broadcast at ${new Date().toISOString()}`,
   );
@@ -388,14 +438,16 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
     const sent = await broadcastDailyNote(env);
     if (sent) {
       console.log('[NoteBroadcast] Sent one note to Telegram');
-    } else {
-      console.log(
-        '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
-      );
+      return { status: 'success', detail: 'sent one note' };
     }
+    console.log(
+      '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
+    );
+    return { status: 'skipped', detail: 'no note sent' };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
@@ -403,16 +455,22 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
  * Sequential handler: renewal → sync → due-soon notification
  * Ensures renewed due dates are reflected before sending due-soon alerts.
  */
-async function handleRenewalThenNotify(env: Env): Promise<void> {
-  await handleScheduledRenewal(env);
-  await handleScheduledSync(env);
-  await handleDueSoonBroadcast(env);
+async function handleRenewalThenNotify(
+  repo: ICronRunRepository,
+  cronExpr: string,
+  env: Env,
+): Promise<void> {
+  await runPhase(repo, 'renewal', cronExpr, () => handleScheduledRenewal(env));
+  await runPhase(repo, 'sync', cronExpr, () => handleScheduledSync(env));
+  await runPhase(repo, 'due_soon_broadcast', cronExpr, () =>
+    handleDueSoonBroadcast(env),
+  );
 }
 
 /**
  * Due-soon books broadcast handler (Telegram)
  */
-async function handleDueSoonBroadcast(env: Env): Promise<void> {
+async function handleDueSoonBroadcast(env: Env): Promise<PhaseResult> {
   console.log(
     `[DueSoonBroadcast] Starting due-soon broadcast at ${new Date().toISOString()}`,
   );
@@ -421,40 +479,46 @@ async function handleDueSoonBroadcast(env: Env): Promise<void> {
     const sent = await broadcastDueSoonBooks(env);
     if (sent) {
       console.log('[DueSoonBroadcast] Sent due-soon message to Telegram');
-    } else {
-      console.log(
-        '[DueSoonBroadcast] No due-soon message sent (no books due soon or missing creds)',
-      );
+      return { status: 'success', detail: 'sent due-soon message' };
     }
+    console.log(
+      '[DueSoonBroadcast] No due-soon message sent (no books due soon or missing creds)',
+    );
+    return { status: 'skipped', detail: 'no due-soon books' };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[DueSoonBroadcast] Broadcast failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
 /**
  * Scheduled sync handler - syncs books from library to DB
  */
-async function handleScheduledSync(env: Env): Promise<void> {
+async function handleScheduledSync(env: Env): Promise<PhaseResult> {
   console.log(
     `[ScheduledSync] Starting scheduled sync at ${new Date().toISOString()}`,
   );
 
   try {
     const summary = await syncBooksCore(env);
+    const detail = `added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`;
     console.log(
-      `[ScheduledSync] Summary total=${summary.total_charges} added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`,
+      `[ScheduledSync] Summary total=${summary.total_charges} ${detail}`,
     );
+    return { status: 'success', detail };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[ScheduledSync] Sync failed:', error);
     await sendScheduledSyncAlert(env, error);
+    return { status: 'failure', detail: message };
   }
 }
 
 /**
  * Scheduled renewal handler - checks for overdue/due-soon books and renews them
  */
-async function handleScheduledRenewal(env: Env): Promise<void> {
+async function handleScheduledRenewal(env: Env): Promise<PhaseResult> {
   console.log(
     `[ScheduledRenewal] Starting scheduled renewal at ${new Date().toISOString()}`,
   );
@@ -480,12 +544,13 @@ async function handleScheduledRenewal(env: Env): Promise<void> {
 
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
-    console.log(
-      `[ScheduledRenewal] Completed: ${successCount} renewed, ${failCount} failed`,
-    );
+    const detail = `renewed=${successCount} failed=${failCount}`;
+    console.log(`[ScheduledRenewal] Completed: ${detail}`);
+    return { status: 'success', detail };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[ScheduledRenewal] Failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
