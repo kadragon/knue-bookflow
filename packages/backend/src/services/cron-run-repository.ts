@@ -50,15 +50,14 @@ export class CronRunRepository implements ICronRunRepository {
   async findLatestPerPhase(): Promise<CronRunRecord[]> {
     const result = await this.db
       .prepare(
-        `SELECT c.id, c.phase, c.status, c.started_at, c.finished_at,
-                c.duration_ms, c.detail, c.cron_expr
-           FROM cron_runs c
-           INNER JOIN (
-             SELECT phase, MAX(started_at) AS latest
+        `SELECT id, phase, status, started_at, finished_at,
+                duration_ms, detail, cron_expr
+           FROM (
+             SELECT *, ROW_NUMBER() OVER (PARTITION BY phase ORDER BY started_at DESC, id DESC) AS rn
                FROM cron_runs
-              GROUP BY phase
-           ) m ON c.phase = m.phase AND c.started_at = m.latest
-          ORDER BY c.phase`,
+           )
+          WHERE rn = 1
+          ORDER BY phase`,
       )
       .all<CronRunRecord>();
 

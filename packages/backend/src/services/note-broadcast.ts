@@ -363,6 +363,6 @@ export async function broadcastDueSoonBooks(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[DueSoonBroadcast] Failed to send due-soon message: ${msg}`);
-    return false;
+    throw err;
   }
 }

@@ -3,7 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CronRunRecord } from '../../types';
+import type { CronPhase, CronRunRecord } from '../../types';
 import { CronRunRepository } from '../cron-run-repository';
 
 type StoredRow = Omit<CronRunRecord, 'id'> & { id: number };
@@ -17,7 +17,7 @@ function makeMockDb() {
       if (sql.includes('INSERT INTO cron_runs')) {
         return {
           bind: (
-            phase: string,
+            phase: CronPhase,
             status: string,
             startedAt: string,
             finishedAt: string,
@@ -55,7 +55,7 @@ function makeMockDb() {
       }
 
       // findLatestPerPhase
-      if (sql.includes('GROUP BY phase')) {
+      if (sql.includes('PARTITION BY phase')) {
         return {
           all: async <T>() => {
             const latestByPhase = new Map<string, StoredRow>();
@@ -149,10 +149,10 @@ describe('CronRunRepository', () => {
   });
 
   it('findLatestPerPhase() returns one row per phase', async () => {
-    const sync = { ...BASE, phase: 'sync' };
+    const sync = { ...BASE, phase: 'sync' as CronPhase };
     const noteBroadcast = {
       ...BASE,
-      phase: 'note_broadcast',
+      phase: 'note_broadcast' as CronPhase,
       started_at: '2026-04-28T03:01:00.000Z',
       finished_at: '2026-04-28T03:01:01.000Z',
     };

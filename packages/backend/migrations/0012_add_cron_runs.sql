@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS cron_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     phase TEXT NOT NULL,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('success', 'failure', 'skipped')),
     started_at DATETIME NOT NULL,
     finished_at DATETIME NOT NULL,
     duration_ms INTEGER NOT NULL,
