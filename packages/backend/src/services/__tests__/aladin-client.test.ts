@@ -318,6 +318,62 @@ describe('AladinClient', () => {
       expect(second?.title).toBe('Shared Cache Book');
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('should trigger fresh fetch via a different instance after TTL expires', async () => {
+      vi.useFakeTimers();
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            item: [
+              {
+                title: 'First Instance',
+                author: 'Author',
+                publisher: 'Publisher',
+                pubDate: '2024-01-01',
+                description: 'Desc',
+                isbn: '444',
+                isbn13: '444',
+                cover: 'https://example.com/cover.jpg',
+                categoryName: 'Category',
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            item: [
+              {
+                title: 'Second Instance',
+                author: 'Author',
+                publisher: 'Publisher',
+                pubDate: '2024-01-02',
+                description: 'Desc',
+                isbn: '444',
+                isbn13: '444',
+                cover: 'https://example.com/cover.jpg',
+                categoryName: 'Category',
+              },
+            ],
+          }),
+        });
+
+      const clientA = new AladinClient('test-api-key', 10);
+      const first = await clientA.lookupByIsbn('444');
+
+      await vi.advanceTimersByTimeAsync(11);
+
+      const clientB = new AladinClient('test-api-key', 10);
+      const second = await clientB.lookupByIsbn('444');
+
+      expect(first?.title).toBe('First Instance');
+      expect(second?.title).toBe('Second Instance');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
   });
 });
 
