@@ -78,3 +78,20 @@ export interface PlannedLoanRecord {
   created_at?: string;
   updated_at?: string;
 }
+
+export type CronPhase =
+  | 'note_broadcast'
+  | 'renewal'
+  | 'sync'
+  | 'due_soon_broadcast';
+
+export interface CronRunRecord {
+  id?: number;
+  phase: CronPhase;
+  status: 'success' | 'failure' | 'skipped';
+  started_at: string;
+  finished_at: string;
+  duration_ms: number;
+  detail: string | null;
+  cron_expr: string;
+}

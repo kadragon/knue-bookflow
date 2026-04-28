@@ -32,10 +32,20 @@ describe('scheduled handler', () => {
     return pending;
   };
 
+  const makeDbStub = (): D1Database =>
+    ({
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true }),
+        all: vi.fn().mockResolvedValue({ results: [] }),
+        first: vi.fn().mockResolvedValue(null),
+      }),
+    }) as unknown as D1Database;
+
   beforeEach(() => {
     // Create mock environment
     mockEnv = {
-      DB: {} as D1Database,
+      DB: makeDbStub(),
       ALADIN_API_KEY: 'test-key',
       LIBRARY_USER_ID: 'test-user',
       LIBRARY_PASSWORD: 'test-password',

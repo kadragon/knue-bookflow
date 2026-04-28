@@ -1,32 +1,33 @@
 /**
- * Manual trigger workflow tests
- * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-075
+ * Manual trigger workflow tests (POST /trigger)
+ * Verifies that renewal and sync phases run sequentially and are observable.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RenewalResult } from '../services';
-import type { Charge, Env } from '../types';
+import type { Env } from '../types';
 
 const mockLibraryClient = {
   login: vi.fn(),
   getCharges: vi.fn(),
 };
-const mockBookRepository = {
-  logRenewal: vi.fn(),
-};
-const mockAladinClient = {};
-const mockProcessCharge = vi.fn();
-const mockFetchAndProcessReturns = vi.fn();
 const mockCheckAndRenewBooks = vi.fn();
+const mockLogRenewalResults = vi.fn();
+const mockSyncBooksCore = vi.fn();
+const mockCronRunRepo = {
+  record: vi.fn().mockResolvedValue(undefined),
+  findRecent: vi.fn().mockResolvedValue([]),
+  findLatestPerPhase: vi.fn().mockResolvedValue([]),
+};
 
 vi.mock('../services', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services')>();
   return {
     ...actual,
     createLibraryClient: () => mockLibraryClient,
-    createAladinClient: () => mockAladinClient,
-    createBookRepository: () => mockBookRepository,
+    createBookRepository: () => ({}),
+    createCronRunRepository: () => mockCronRunRepo,
     checkAndRenewBooks: mockCheckAndRenewBooks,
+    logRenewalResults: mockLogRenewalResults,
   };
 });
 
@@ -35,8 +36,7 @@ vi.mock('../handlers/sync-handler', async (importOriginal) => {
     await importOriginal<typeof import('../handlers/sync-handler')>();
   return {
     ...actual,
-    processCharge: mockProcessCharge,
-    fetchAndProcessReturns: mockFetchAndProcessReturns,
+    syncBooksCore: mockSyncBooksCore,
   };
 });
 
@@ -55,44 +55,28 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('manual trigger workflow', () => {
-  it('records renewals and completes even when sync partially fails', async () => {
-    const charges = [{ id: 1 } as Charge, { id: 2 } as Charge];
-    const renewalResults: RenewalResult[] = [
-      {
-        chargeId: 1,
-        title: 'First Book',
-        success: true,
-        newDueDate: '2025-01-20',
-        newRenewCount: 1,
-      },
-      {
-        chargeId: 2,
-        title: 'Second Book',
-        success: false,
-        errorMessage: 'renewal failed',
-      },
-    ];
-
+describe('POST /trigger', () => {
+  it('runs renewal and sync phases, responding 200 immediately', async () => {
     mockLibraryClient.login.mockResolvedValue(undefined);
-    mockLibraryClient.getCharges.mockResolvedValue(charges);
-    mockCheckAndRenewBooks.mockResolvedValue(renewalResults);
-    mockProcessCharge
-      .mockResolvedValueOnce('added')
-      .mockRejectedValueOnce(new Error('sync boom'));
-    mockFetchAndProcessReturns.mockResolvedValue(0);
-    mockBookRepository.logRenewal.mockResolvedValue(undefined);
+    mockLibraryClient.getCharges.mockResolvedValue([]);
+    mockCheckAndRenewBooks.mockResolvedValue([]);
+    mockSyncBooksCore.mockResolvedValue({
+      total_charges: 0,
+      added: 0,
+      updated: 0,
+      unchanged: 0,
+      returned: 0,
+    });
 
     const worker = (await import('../index')).default;
-
     const request = new Request('https://example.com/trigger', {
       method: 'POST',
     });
 
-    let waitUntilPromise: Promise<void> | undefined;
+    let waitUntilPromise: Promise<unknown> | undefined;
     const ctx = {
-      waitUntil: vi.fn((promise: Promise<void>) => {
-        waitUntilPromise = promise;
+      waitUntil: vi.fn((p: Promise<unknown>) => {
+        waitUntilPromise = p;
       }),
       passThroughOnException: vi.fn(),
     } as unknown as ExecutionContext;
@@ -101,11 +85,43 @@ describe('manual trigger workflow', () => {
 
     expect(response.status).toBe(200);
     expect(ctx.waitUntil).toHaveBeenCalledOnce();
-    expect(waitUntilPromise).toBeDefined();
 
     await expect(waitUntilPromise).resolves.toBeUndefined();
 
-    expect(mockBookRepository.logRenewal).toHaveBeenCalledTimes(2);
-    expect(mockFetchAndProcessReturns).toHaveBeenCalledOnce();
+    expect(mockCronRunRepo.record).toHaveBeenCalledTimes(2);
+    expect(mockCronRunRepo.record).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: 'renewal', cron_expr: 'manual' }),
+    );
+    expect(mockCronRunRepo.record).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: 'sync', cron_expr: 'manual' }),
+    );
+  });
+
+  it('records sync phase as failure when syncBooksCore throws', async () => {
+    mockLibraryClient.login.mockResolvedValue(undefined);
+    mockLibraryClient.getCharges.mockResolvedValue([]);
+    mockCheckAndRenewBooks.mockResolvedValue([]);
+    mockSyncBooksCore.mockRejectedValue(new Error('sync boom'));
+
+    const worker = (await import('../index')).default;
+    const request = new Request('https://example.com/trigger', {
+      method: 'POST',
+    });
+
+    let waitUntilPromise: Promise<unknown> | undefined;
+    const ctx = {
+      waitUntil: vi.fn((p: Promise<unknown>) => {
+        waitUntilPromise = p;
+      }),
+      passThroughOnException: vi.fn(),
+    } as unknown as ExecutionContext;
+
+    await worker.fetch(request, baseEnv, ctx);
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+
+    const syncCall = mockCronRunRepo.record.mock.calls.find(
+      (c) => c[0].phase === 'sync',
+    );
+    expect(syncCall?.[0].status).toBe('failure');
   });
 });

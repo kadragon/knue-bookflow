@@ -741,6 +741,7 @@ describe('broadcastDueSoonBooks', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
+      text: vi.fn().mockResolvedValue('Internal Server Error'),
       json: async () => ({}),
     });
 
@@ -773,15 +774,13 @@ describe('broadcastDueSoonBooks', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('returns false and logs error on failure', async () => {
+  it('throws on failure', async () => {
     const bookRepository = {
       findDueSoonBooks: vi.fn().mockRejectedValue(new Error('DB error')),
     };
 
-    const sent = await broadcastDueSoonBooks(baseEnv, {
-      bookRepository,
-    });
-
-    expect(sent).toBe(false);
+    await expect(
+      broadcastDueSoonBooks(baseEnv, { bookRepository }),
+    ).rejects.toThrow('DB error');
   });
 });

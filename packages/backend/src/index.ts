@@ -11,6 +11,10 @@ import {
   handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
+import {
+  handleGetCronRuns,
+  handleGetLatestCronRuns,
+} from './handlers/cron-runs-handler';
 import { handleNewBooksApi } from './handlers/new-books-handler';
 import {
   handleCreateNote,
@@ -24,12 +28,7 @@ import {
   handleGetPlannedLoans,
 } from './handlers/planned-loans-handler';
 import { handleSearchBooksApi } from './handlers/search-handler';
-import {
-  fetchAndProcessReturns,
-  handleSyncBooks,
-  processCharge,
-  syncBooksCore,
-} from './handlers/sync-handler';
+import { handleSyncBooks, syncBooksCore } from './handlers/sync-handler';
 import {
   createTelegramWebhookDeps,
   handleTelegramWebhook,
@@ -40,25 +39,62 @@ import {
   checkAndRenewBooks,
   createAladinClient,
   createBookRepository,
+  createCronRunRepository,
   createLibraryClient,
+  type ICronRunRepository,
   logRenewalResults,
   NOTE_BROADCAST_CRON,
   type RenewalConfig,
-  type RenewalResult,
 } from './services';
 import type {
-  Charge,
   CreateNoteRequest,
+  CronPhase,
   Env,
   UpdateNoteRequest,
 } from './types';
 import {
-  ALADIN_LOOKUP_CONCURRENCY,
-  createDebugLogger,
   DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
   DEFAULT_RENEWAL_MAX_COUNT,
-  isDebugEnabled,
 } from './utils';
+
+type PhaseResult = {
+  status: 'success' | 'failure' | 'skipped';
+  detail: string | null;
+};
+
+async function runPhase(
+  repo: ICronRunRepository,
+  phase: CronPhase,
+  cronExpr: string,
+  fn: () => Promise<PhaseResult>,
+): Promise<PhaseResult> {
+  const startedAt = new Date().toISOString();
+  const startTs = Date.now();
+  let result: PhaseResult;
+  try {
+    result = await fn();
+  } catch (e) {
+    result = {
+      status: 'failure',
+      detail: e instanceof Error ? e.message : String(e),
+    };
+  }
+  const finishedAt = new Date().toISOString();
+  try {
+    await repo.record({
+      phase,
+      status: result.status,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      duration_ms: Date.now() - startTs,
+      detail: result.detail,
+      cron_expr: cronExpr,
+    });
+  } catch (err) {
+    console.error(`[CronObs] record failed phase=${phase}:`, err);
+  }
+  return result;
+}
 
 export default {
   /**
@@ -71,8 +107,13 @@ export default {
   ): Promise<void> {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
     if (event.cron === NOTE_BROADCAST_CRON) {
-      ctx.waitUntil(handleNoteBroadcast(env));
-      ctx.waitUntil(handleRenewalThenNotify(env));
+      const repo = createCronRunRepository(env.DB as D1Database);
+      ctx.waitUntil(
+        runPhase(repo, 'note_broadcast', event.cron, () =>
+          handleNoteBroadcast(env),
+        ),
+      );
+      ctx.waitUntil(handleRenewalThenNotify(repo, event.cron, env));
     } else {
       console.warn(
         `[BookFlow] Unknown cron '${event.cron}', skipping renewal workflow`,
@@ -102,6 +143,14 @@ export default {
 
     if (url.pathname === '/api/books' && request.method === 'GET') {
       return handleBooksApi(env);
+    }
+
+    if (url.pathname === '/api/cron-runs/latest' && request.method === 'GET') {
+      return handleGetLatestCronRuns(env);
+    }
+
+    if (url.pathname === '/api/cron-runs' && request.method === 'GET') {
+      return handleGetCronRuns(env, request);
     }
 
     // New books API endpoint (신착 도서)
@@ -206,7 +255,17 @@ export default {
     // Manual trigger endpoint (access controlled via Zero Trust)
     // POST only - triggering task has side effects, violates REST if GET allowed
     if (url.pathname === '/trigger' && request.method === 'POST') {
-      ctx.waitUntil(handleManualTrigger(env));
+      const repo = createCronRunRepository(env.DB as D1Database);
+      ctx.waitUntil(
+        (async () => {
+          await runPhase(repo, 'renewal', 'manual', () =>
+            handleScheduledRenewal(env),
+          );
+          await runPhase(repo, 'sync', 'manual', () =>
+            handleScheduledSync(env),
+          );
+        })(),
+      );
       return new Response(JSON.stringify({ message: 'Task triggered' }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -238,148 +297,9 @@ export default {
 };
 
 /**
- * Main workflow handler for manual trigger
- * Orchestrates the complete book renewal process
- */
-async function handleManualTrigger(
-  env: Env,
-  _event?: ScheduledEvent,
-): Promise<void> {
-  const startTime = Date.now();
-  const logDebug = createDebugLogger(isDebugEnabled(env));
-  logDebug(`[BookFlow] Starting workflow run at ${new Date().toISOString()}`);
-
-  // Initialize services
-  const libraryClient = createLibraryClient();
-  const aladinClient = createAladinClient(env.ALADIN_API_KEY);
-  const bookRepository = createBookRepository(env.DB);
-
-  let renewalResults: RenewalResult[] = [];
-
-  try {
-    // Step 1: Authenticate with library API
-    logDebug('[BookFlow] Step 1: Authenticating...');
-    await libraryClient.login({
-      loginId: env.LIBRARY_USER_ID,
-      password: env.LIBRARY_PASSWORD,
-    });
-
-    // Step 2: Fetch current charges
-    logDebug('[BookFlow] Step 2: Fetching charges...');
-    const charges = await libraryClient.getCharges();
-
-    if (charges.length === 0) {
-      logDebug('[BookFlow] No borrowed books found. Task complete.');
-      return;
-    }
-
-    // Step 3-4: Check and process renewals (charges already fetched)
-    logDebug('[BookFlow] Step 3-4: Processing renewals...');
-    renewalResults = await checkAndRenewBooks(libraryClient, charges);
-
-    // Log renewal results to database
-    await logRenewalResults(bookRepository, renewalResults);
-
-    // Step 5: Sync all books with database
-    // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-075
-    logDebug('[BookFlow] Step 5: Syncing books with database...');
-
-    const { syncStatuses, syncErrors } = await processChargesInBatches(
-      charges,
-      bookRepository,
-      aladinClient,
-    );
-
-    for (const error of syncErrors) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[BookFlow] Sync failed: ${errorMessage}`);
-    }
-
-    const addedCount = syncStatuses.filter((s) => s === 'added').length;
-    const updatedCount = syncStatuses.filter((s) => s === 'updated').length;
-    const syncFailureCount = syncErrors.length;
-
-    // Step 6: Fetch charge histories to mark returned books
-    logDebug('[BookFlow] Step 6: Fetching charge histories...');
-    const returnedCount = await fetchAndProcessReturns(
-      libraryClient,
-      bookRepository,
-    );
-    if (returnedCount > 0) {
-      logDebug(`[BookFlow] Marked ${returnedCount} books as returned`);
-    }
-
-    // Step 7: Log summary
-    const duration = Date.now() - startTime;
-    const successCount = renewalResults.filter((r) => r.success).length;
-    const failCount = renewalResults.filter((r) => !r.success).length;
-
-    logDebug('[BookFlow] === Task Summary ===');
-    logDebug(`[BookFlow] Total charges: ${charges.length}`);
-    logDebug(`[BookFlow] Books added: ${addedCount}`);
-    logDebug(`[BookFlow] Books updated: ${updatedCount}`);
-    logDebug(`[BookFlow] Sync failures: ${syncFailureCount}`);
-    logDebug(`[BookFlow] Marked returned: ${returnedCount}`);
-    logDebug(`[BookFlow] Renewals attempted: ${renewalResults.length}`);
-    logDebug(`[BookFlow] Renewals succeeded: ${successCount}`);
-    logDebug(`[BookFlow] Renewals failed: ${failCount}`);
-    logDebug(`[BookFlow] Duration: ${duration}ms`);
-    logDebug('[BookFlow] Task completed successfully');
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[BookFlow] Task failed: ${errorMessage}`);
-
-    // Log the error
-    await bookRepository.logRenewal({
-      charge_id: 'SYSTEM',
-      action: 'workflow_error',
-      status: 'failure',
-      message: errorMessage,
-    });
-
-    throw error;
-  }
-}
-
-type SyncStatus = Awaited<ReturnType<typeof processCharge>>;
-
-async function processChargesInBatches(
-  charges: Charge[],
-  bookRepository: ReturnType<typeof createBookRepository>,
-  aladinClient: ReturnType<typeof createAladinClient>,
-  concurrency = ALADIN_LOOKUP_CONCURRENCY,
-): Promise<{ syncStatuses: SyncStatus[]; syncErrors: unknown[] }> {
-  // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-081
-  const batchSize = Math.max(1, concurrency);
-  const syncStatuses: SyncStatus[] = [];
-  const syncErrors: unknown[] = [];
-
-  for (let i = 0; i < charges.length; i += batchSize) {
-    const batch = charges.slice(i, i + batchSize);
-    const results = await Promise.allSettled(
-      batch.map((charge) =>
-        processCharge(charge, bookRepository, aladinClient),
-      ),
-    );
-
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        syncStatuses.push(result.value);
-      } else {
-        syncErrors.push(result.reason);
-      }
-    }
-  }
-
-  return { syncStatuses, syncErrors };
-}
-
-/**
  * Daily note broadcast handler (Telegram)
  */
-async function handleNoteBroadcast(env: Env): Promise<void> {
+async function handleNoteBroadcast(env: Env): Promise<PhaseResult> {
   console.log(
     `[NoteBroadcast] Starting daily note broadcast at ${new Date().toISOString()}`,
   );
@@ -388,14 +308,16 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
     const sent = await broadcastDailyNote(env);
     if (sent) {
       console.log('[NoteBroadcast] Sent one note to Telegram');
-    } else {
-      console.log(
-        '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
-      );
+      return { status: 'success', detail: 'sent one note' };
     }
+    console.log(
+      '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
+    );
+    return { status: 'skipped', detail: 'no note sent' };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
@@ -403,16 +325,22 @@ async function handleNoteBroadcast(env: Env): Promise<void> {
  * Sequential handler: renewal → sync → due-soon notification
  * Ensures renewed due dates are reflected before sending due-soon alerts.
  */
-async function handleRenewalThenNotify(env: Env): Promise<void> {
-  await handleScheduledRenewal(env);
-  await handleScheduledSync(env);
-  await handleDueSoonBroadcast(env);
+async function handleRenewalThenNotify(
+  repo: ICronRunRepository,
+  cronExpr: string,
+  env: Env,
+): Promise<void> {
+  await runPhase(repo, 'renewal', cronExpr, () => handleScheduledRenewal(env));
+  await runPhase(repo, 'sync', cronExpr, () => handleScheduledSync(env));
+  await runPhase(repo, 'due_soon_broadcast', cronExpr, () =>
+    handleDueSoonBroadcast(env),
+  );
 }
 
 /**
  * Due-soon books broadcast handler (Telegram)
  */
-async function handleDueSoonBroadcast(env: Env): Promise<void> {
+async function handleDueSoonBroadcast(env: Env): Promise<PhaseResult> {
   console.log(
     `[DueSoonBroadcast] Starting due-soon broadcast at ${new Date().toISOString()}`,
   );
@@ -421,40 +349,46 @@ async function handleDueSoonBroadcast(env: Env): Promise<void> {
     const sent = await broadcastDueSoonBooks(env);
     if (sent) {
       console.log('[DueSoonBroadcast] Sent due-soon message to Telegram');
-    } else {
-      console.log(
-        '[DueSoonBroadcast] No due-soon message sent (no books due soon or missing creds)',
-      );
+      return { status: 'success', detail: 'sent due-soon message' };
     }
+    console.log(
+      '[DueSoonBroadcast] No due-soon message sent (no books due soon or missing creds)',
+    );
+    return { status: 'skipped', detail: 'no due-soon books' };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[DueSoonBroadcast] Broadcast failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
 /**
  * Scheduled sync handler - syncs books from library to DB
  */
-async function handleScheduledSync(env: Env): Promise<void> {
+async function handleScheduledSync(env: Env): Promise<PhaseResult> {
   console.log(
     `[ScheduledSync] Starting scheduled sync at ${new Date().toISOString()}`,
   );
 
   try {
     const summary = await syncBooksCore(env);
+    const detail = `added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`;
     console.log(
-      `[ScheduledSync] Summary total=${summary.total_charges} added=${summary.added} updated=${summary.updated} unchanged=${summary.unchanged} returned=${summary.returned}`,
+      `[ScheduledSync] Summary total=${summary.total_charges} ${detail}`,
     );
+    return { status: 'success', detail };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[ScheduledSync] Sync failed:', error);
     await sendScheduledSyncAlert(env, error);
+    return { status: 'failure', detail: message };
   }
 }
 
 /**
  * Scheduled renewal handler - checks for overdue/due-soon books and renews them
  */
-async function handleScheduledRenewal(env: Env): Promise<void> {
+async function handleScheduledRenewal(env: Env): Promise<PhaseResult> {
   console.log(
     `[ScheduledRenewal] Starting scheduled renewal at ${new Date().toISOString()}`,
   );
@@ -480,12 +414,15 @@ async function handleScheduledRenewal(env: Env): Promise<void> {
 
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
-    console.log(
-      `[ScheduledRenewal] Completed: ${successCount} renewed, ${failCount} failed`,
-    );
+    const detail = `renewed=${successCount} failed=${failCount}`;
+    console.log(`[ScheduledRenewal] Completed: ${detail}`);
+    const status =
+      results.length === 0 ? 'skipped' : failCount > 0 ? 'failure' : 'success';
+    return { status, detail };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[ScheduledRenewal] Failed: ${message}`);
+    return { status: 'failure', detail: message };
   }
 }
 
