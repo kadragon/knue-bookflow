@@ -235,9 +235,8 @@ function BookCard({
         <Stack
           direction="row"
           spacing={1}
-          flexWrap="wrap"
           useFlexGap
-          sx={{ mb: 1 }}
+          sx={{ mb: 1, flexWrap: 'wrap' }}
         >
           <Chip
             label={statusChip.label}
@@ -271,10 +270,18 @@ function BookCard({
         </Stack>
 
         <Stack spacing={0.5} sx={{ mt: 'auto' }}>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block' }}
+          >
             대출 {formatDate(book.chargeDate)}
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block' }}
+          >
             반납 {formatDate(book.dueDate)}
           </Typography>
         </Stack>
@@ -295,7 +302,7 @@ function BookCard({
               mb: 1.5,
             }}
           >
-            <Typography variant="subtitle2" fontWeight="bold">
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
               노트 {book.noteCount}개
             </Typography>
             <Button
@@ -767,8 +774,8 @@ function ShelfStats({
             </Typography>
             <Typography
               variant="h5"
-              fontWeight="bold"
               color={card.color ?? 'text.primary'}
+              sx={{ fontWeight: 'bold' }}
             >
               {card.value}
             </Typography>

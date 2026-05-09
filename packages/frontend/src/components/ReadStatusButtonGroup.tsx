@@ -7,7 +7,7 @@
 
 import {
   CheckCircle as CheckCircleIcon,
-  CheckCircleOutline as CheckCircleOutlineIcon,
+  CheckCircleOutlined as CheckCircleOutlineIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import { Button, ButtonGroup } from '@mui/material';

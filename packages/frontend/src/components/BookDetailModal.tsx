@@ -31,7 +31,7 @@ function BookDetailSection({ title, content }: BookDetailSectionProps) {
   return (
     <>
       <Divider sx={{ my: 2 }} />
-      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
         {title}
       </Typography>
       <Typography
