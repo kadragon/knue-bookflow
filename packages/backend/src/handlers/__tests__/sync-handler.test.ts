@@ -9,9 +9,9 @@ import type { BookRepository } from '../../services/book-repository';
 import { LibraryApiError } from '../../services/library-client';
 import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
 import type { Charge, ChargeHistory, Env } from '../../types';
+import { parsePublication } from '../../utils';
 import {
   handleSyncBooks,
-  parsePublication,
   processCharge,
   processChargeHistory,
   processChargesWithPlanningCleanup,

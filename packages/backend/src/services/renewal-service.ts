@@ -94,10 +94,6 @@ export async function processRenewals(
     try {
       const response = await client.renewCharge(charge.id);
 
-      // Mutate the original charge so downstream persistence uses fresh data
-      charge.dueDate = response.data.dueDate;
-      charge.renewCnt = response.data.renewCnt;
-
       results.push({
         chargeId: charge.id,
         title,

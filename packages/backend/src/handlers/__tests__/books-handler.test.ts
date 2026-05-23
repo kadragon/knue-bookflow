@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deriveBookViewModel, sortBooks } from '../../services/book-shelf';
 import type { BookRecord, Env } from '../../types';
-import {
-  deriveBookViewModel,
-  handleBooksApi,
-  handleGetBook,
-  sortBooks,
-} from '../books-handler';
+import { handleBooksApi, handleGetBook } from '../books-handler';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 

@@ -272,7 +272,7 @@ describe('renewal service', () => {
       vi.useRealTimers();
     });
 
-    it('should update charge dueDate and renewCnt after successful renewal', async () => {
+    it('should return updated dueDate and renewCnt in result after successful renewal', async () => {
       const charges = [
         createMockCharge({ id: 1, dueDate: '2025-01-15', renewCnt: 0 }),
       ];
@@ -295,8 +295,8 @@ describe('renewal service', () => {
 
       expect(results[0].newDueDate).toBe('2025-01-22');
       expect(results[0].newRenewCount).toBe(1);
-      expect(charges[0].dueDate).toBe('2025-01-22');
-      expect(charges[0].renewCnt).toBe(1);
+      expect(charges[0].dueDate).toBe('2025-01-15');
+      expect(charges[0].renewCnt).toBe(0);
     });
   });
 
@@ -335,8 +335,8 @@ describe('renewal service', () => {
       );
 
       expect(mockClient.getCharges).not.toHaveBeenCalled();
-      expect(charges[0].dueDate).toBe('2025-01-22');
-      expect(charges[0].renewCnt).toBe(1);
+      expect(charges[0].dueDate).toBe('2025-01-15');
+      expect(charges[0].renewCnt).toBe(0);
     });
   });
 });

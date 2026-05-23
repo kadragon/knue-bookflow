@@ -23,6 +23,16 @@ import type {
   SyncResponse,
 } from '@knue-bookflow/shared';
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 export type {
   AladinBookInfo,
   AladinBookResponse,
@@ -199,10 +209,17 @@ async function handleApiError(
   defaultMessage: string,
 ): Promise<void> {
   if (!response.ok) {
-    const error = await response
+    const body = await response
       .json()
-      .catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || defaultMessage);
+      .catch(() => ({}) as Record<string, unknown>);
+    const code = typeof body.code === 'string' ? body.code : undefined;
+    const message =
+      typeof body.message === 'string'
+        ? body.message
+        : typeof body.error === 'string'
+          ? body.error
+          : defaultMessage;
+    throw new ApiError(message, code);
   }
 }
 

@@ -7,141 +7,22 @@
  */
 
 import { createLibraryClient } from '../services';
-import type {
-  LibraryItem,
-  PlannedLoanAvailability,
-  SearchBook,
-} from '../types';
+import type { PlannedLoanAvailability, SearchBook } from '../types';
 import {
-  AVAILABILITY_TTL_MS,
-  MAX_AVAILABILITY_CACHE_SIZE,
+  type AvailabilityFetcher,
+  createCachedFetcher,
   normalizeBranchVolumes,
   parsePaginationParams,
+  parsePublication,
+  summarizeAvailability,
 } from '../utils';
-
-/**
- * Parse publication string to extract publisher and year
- * Examples:
- *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
- *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
- */
-export function parsePublication(publication: string): {
-  publisher: string | null;
-  year: string | null;
-} {
-  if (!publication) {
-    return { publisher: null, year: null };
-  }
-
-  // Match pattern: location :publisher,year
-  // Use lazy quantifier (.+?) to capture publisher (may contain commas)
-  // Anchor year at end of string to handle commas in publisher names
-  const match = publication.match(/[^:]+:\s*(.+?),\s*(\d{4})\s*$/);
-  if (match) {
-    return {
-      publisher: match[1]?.trim() || null,
-      year: match[2] || null,
-    };
-  }
-
-  // Fallback: try to extract just the publisher without year
-  const publisherOnlyMatch = publication.match(/[^:]+:\s*(.+)$/);
-  if (publisherOnlyMatch) {
-    return {
-      publisher: publisherOnlyMatch[1]?.trim() || null,
-      year: null,
-    };
-  }
-
-  return { publisher: null, year: null };
-}
-
-/**
- * Summarize availability for a biblio's items
- * Rules:
- * - Available if at least one item is not charged
- * - Loaned out if all items are charged, with earliest due date
- */
-function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
-  const totalItems = items.length;
-  const availableItems = items.filter((item) => {
-    const code = item.circulationState?.code;
-    const isCharged = item.circulationState?.isCharged;
-    // Primary check: use isCharged boolean when present
-    if (isCharged === false) return true;
-    if (isCharged === true) return false;
-    // Fallback: check status codes when isCharged is undefined
-    return code === 'READY' || code === 'ON_SHELF' || code === 'AVAILABLE';
-  }).length;
-
-  const dueDates = items
-    .filter((item) => {
-      const code = item.circulationState?.code;
-      const isCharged = item.circulationState?.isCharged;
-      return (
-        isCharged === true ||
-        code === 'LOAN' ||
-        code === 'CHARGED' ||
-        code === 'CHARGE'
-      );
-    })
-    .map((item) => item.dueDate)
-    .filter((date): date is string => Boolean(date))
-    .map((date) => date.substring(0, 10)) // Extract YYYY-MM-DD
-    .sort();
-
-  const earliestDueDate = availableItems > 0 ? null : (dueDates[0] ?? null);
-
-  return {
-    status: availableItems > 0 ? 'available' : 'loaned_out',
-    totalItems,
-    availableItems,
-    earliestDueDate,
-  };
-}
-
-// Module-level cache for availability data
-const availabilityCache = new Map<
-  number,
-  { value: PlannedLoanAvailability | null; expiresAt: number }
->();
-
-type AvailabilityFetcher = (
-  libraryId: number,
-) => Promise<PlannedLoanAvailability | null>;
 
 function createAvailabilityFetcher(): AvailabilityFetcher {
   const client = createLibraryClient();
-
-  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
-    const now = Date.now();
-    const cached = availabilityCache.get(libraryId);
-
-    // Return cached value if still valid (LRU: move to end)
-    if (cached && cached.expiresAt > now) {
-      availabilityCache.delete(libraryId);
-      availabilityCache.set(libraryId, cached);
-      return cached.value;
-    }
-
+  return createCachedFetcher(async (libraryId: number) => {
     try {
-      // Fetch fresh value
       const items = await client.getBiblioItems(libraryId);
-      const value = summarizeAvailability(items);
-
-      // Implement simple LRU: remove oldest entry if cache is full
-      if (availabilityCache.size >= MAX_AVAILABILITY_CACHE_SIZE) {
-        const oldestKey = availabilityCache.keys().next().value;
-        if (oldestKey !== undefined) {
-          availabilityCache.delete(oldestKey);
-        }
-      }
-
-      availabilityCache.set(libraryId, {
-        value,
-        expiresAt: now + AVAILABILITY_TTL_MS,
-      });
-      return value;
+      return summarizeAvailability(items);
     } catch (error) {
       console.error(
         `[SearchHandler] Failed to fetch availability for ${libraryId}:`,
@@ -149,7 +30,7 @@ function createAvailabilityFetcher(): AvailabilityFetcher {
       );
       return null;
     }
-  };
+  });
 }
 
 /**

@@ -21,15 +21,16 @@ import type {
   BranchAvailability,
   CreatePlannedLoanRequest,
   Env,
-  LibraryItem,
   PlannedLoanAvailability,
   PlannedLoanRecord,
   PlannedLoanViewModel,
 } from '../types';
 import {
-  AVAILABILITY_TTL_MS,
-  MAX_AVAILABILITY_CACHE_SIZE,
+  type AvailabilityFetcher,
+  clearAvailabilityCache,
+  createCachedFetcher,
   normalizeBranchVolumes,
+  summarizeAvailability,
 } from '../utils';
 
 type PlannedRepo = Pick<
@@ -108,105 +109,8 @@ function toViewModel(record: PlannedLoanRecord): PlannedLoanViewModel {
   };
 }
 
-type AvailabilityFetcher = (
-  libraryId: number,
-) => Promise<PlannedLoanAvailability | null>;
-
-/**
- * Summarize availability for a biblio's items
- * Rules:
- * - Available if at least one item is not charged (isCharged=false or status code indicates ready)
- * - Loaned out if all items are charged, with earliest due date
- *
- * Note: isCharged is the primary indicator; status codes are fallback for API compatibility
- */
-function summarizeAvailability(items: LibraryItem[]): PlannedLoanAvailability {
-  const totalItems = items.length;
-  const availableItems = items.filter((item) => {
-    const code = item.circulationState?.code;
-    const isCharged = item.circulationState?.isCharged;
-    // Primary check: use isCharged boolean when present
-    if (isCharged === false) return true;
-    if (isCharged === true) return false;
-    // Fallback: check status codes when isCharged is undefined
-    return code === 'READY' || code === 'ON_SHELF' || code === 'AVAILABLE';
-  }).length;
-
-  const dueDates = items
-    .filter((item) => {
-      const code = item.circulationState?.code;
-      const isCharged = item.circulationState?.isCharged;
-      return (
-        isCharged === true ||
-        code === 'LOAN' ||
-        code === 'CHARGED' ||
-        code === 'CHARGE'
-      );
-    })
-    .map((item) => item.dueDate)
-    .filter((date): date is string => Boolean(date))
-    .map((date) => date.substring(0, 10)) // Extract YYYY-MM-DD regardless of separator (T or space)
-    .sort();
-
-  const earliestDueDate = availableItems > 0 ? null : (dueDates[0] ?? null);
-
-  return {
-    status: availableItems > 0 ? 'available' : 'loaned_out',
-    totalItems,
-    availableItems,
-    earliestDueDate,
-  };
-}
-
 // Exported for testing
 export { clearAvailabilityCache, createCachedFetcher, summarizeAvailability };
-
-// Module-level cache for availability data (persistent across requests)
-const availabilityCache = new Map<
-  number,
-  { value: PlannedLoanAvailability | null; expiresAt: number }
->();
-
-/**
- * Clear the availability cache (primarily for testing)
- */
-function clearAvailabilityCache(): void {
-  availabilityCache.clear();
-}
-
-function createCachedFetcher(
-  baseFetcher: AvailabilityFetcher,
-  ttlMs: number = AVAILABILITY_TTL_MS,
-  maxSize: number = MAX_AVAILABILITY_CACHE_SIZE,
-  cache: Map<
-    number,
-    { value: PlannedLoanAvailability | null; expiresAt: number }
-  > = availabilityCache,
-): AvailabilityFetcher {
-  return async (libraryId: number): Promise<PlannedLoanAvailability | null> => {
-    const now = Date.now();
-    const cached = cache.get(libraryId);
-
-    // Return cached value if still valid
-    if (cached && cached.expiresAt > now) {
-      return cached.value;
-    }
-
-    // Fetch fresh value
-    const value = await baseFetcher(libraryId);
-
-    // Implement simple LRU: remove oldest entry if cache is full
-    if (cache.size >= maxSize) {
-      const oldestKey = cache.keys().next().value;
-      if (oldestKey !== undefined) {
-        cache.delete(oldestKey);
-      }
-    }
-
-    cache.set(libraryId, { value, expiresAt: now + ttlMs });
-    return value;
-  };
-}
 
 // Singleton fetcher instance to maintain cache across requests
 let cachedAvailabilityFetcher: AvailabilityFetcher | null = null;
@@ -262,16 +166,22 @@ export async function handleCreatePlannedLoan(
     const { payload, error } = validatePayload(body);
 
     if (error || !payload) {
-      return new Response(JSON.stringify({ error }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ code: 'INVALID_REQUEST', message: error }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const existing = await repo.findByLibraryBiblioId(payload.libraryId);
     if (existing) {
       return new Response(
-        JSON.stringify({ error: 'Planned loan already exists for this book' }),
+        JSON.stringify({
+          code: 'DUPLICATE_PLANNED_LOAN',
+          message: 'Planned loan already exists for this book',
+        }),
         {
           status: 409,
           headers: { 'Content-Type': 'application/json' },

@@ -8,50 +8,17 @@
 
 import { createLibraryClient } from '../services';
 import type { NewBook } from '../types';
-import { normalizeBranchVolumes, parsePaginationParams } from '../utils';
+import {
+  normalizeBranchVolumes,
+  parsePaginationParams,
+  parsePublication,
+} from '../utils';
 
 /**
  * Format date to YYYY-MM-DD
  */
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
-}
-
-/**
- * Parse publication string to extract publisher and year
- * Examples:
- *   "서울 :진선아이,2024" -> { publisher: "진선아이", year: "2024" }
- *   "서울 :A, B출판사,2024" -> { publisher: "A, B출판사", year: "2024" }
- */
-export function parsePublication(publication: string): {
-  publisher: string | null;
-  year: string | null;
-} {
-  if (!publication) {
-    return { publisher: null, year: null };
-  }
-
-  // Match pattern: location :publisher,year
-  // Use lazy quantifier (.+?) to capture publisher (may contain commas)
-  // Anchor year at end of string to handle commas in publisher names
-  const match = publication.match(/[^:]+:\s*(.+?),\s*(\d{4})\s*$/);
-  if (match) {
-    return {
-      publisher: match[1]?.trim() || null,
-      year: match[2] || null,
-    };
-  }
-
-  // Fallback: try to extract just the publisher without year
-  const publisherOnlyMatch = publication.match(/[^:]+:\s*(.+)$/);
-  if (publisherOnlyMatch) {
-    return {
-      publisher: publisherOnlyMatch[1]?.trim() || null,
-      year: null,
-    };
-  }
-
-  return { publisher: null, year: null };
 }
 
 /**
