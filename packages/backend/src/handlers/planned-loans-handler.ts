@@ -271,7 +271,10 @@ export async function handleCreatePlannedLoan(
     const existing = await repo.findByLibraryBiblioId(payload.libraryId);
     if (existing) {
       return new Response(
-        JSON.stringify({ error: 'Planned loan already exists for this book' }),
+        JSON.stringify({
+          code: 'DUPLICATE_PLANNED_LOAN',
+          message: 'Planned loan already exists for this book',
+        }),
         {
           status: 409,
           headers: { 'Content-Type': 'application/json' },

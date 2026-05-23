@@ -143,8 +143,9 @@ describe('handleCreatePlannedLoan', () => {
 
     const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
     expect(response.status).toBe(409);
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toMatch(/already exists/i);
+    const body = (await response.json()) as { code: string; message: string };
+    expect(body.code).toBe('DUPLICATE_PLANNED_LOAN');
+    expect(body.message).toMatch(/already exists/i);
   });
 
   it('validates required fields (TEST-loan-plan-001)', async () => {

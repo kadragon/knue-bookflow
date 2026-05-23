@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { createPlannedLoan, type PlannedLoanPayload } from '../api';
+import { ApiError, createPlannedLoan, type PlannedLoanPayload } from '../api';
 import type { FeedbackState } from '../components/FeedbackSnackbar';
 
 // Trace: spec_id: SPEC-loan-plan-001, task_id: TASK-043
@@ -26,11 +26,12 @@ export function usePlannedLoanMutation(
       setFeedback({ open: true, message: successMessage, severity: 'success' });
     },
     onError: (error) => {
-      const raw =
-        error instanceof Error ? error.message : '등록에 실패했습니다.';
-      const message = /already exists/i.test(raw)
-        ? '이미 대출 예정에 있습니다.'
-        : raw;
+      const message =
+        error instanceof ApiError && error.code === 'DUPLICATE_PLANNED_LOAN'
+          ? '이미 대출 예정에 있습니다.'
+          : error instanceof Error
+            ? error.message
+            : '등록에 실패했습니다.';
       setFeedback({ open: true, message, severity: 'error' });
     },
   });

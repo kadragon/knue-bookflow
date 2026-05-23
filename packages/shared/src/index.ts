@@ -316,3 +316,14 @@ export interface AladinBookInfo {
 export interface AladinBookResponse {
   book: AladinBookInfo;
 }
+
+// =============================================================================
+// API Error Contract
+// =============================================================================
+
+export type ApiErrorCode = 'DUPLICATE_PLANNED_LOAN';
+
+export interface ApiErrorBody {
+  code: ApiErrorCode;
+  message: string;
+}
