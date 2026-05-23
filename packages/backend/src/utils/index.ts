@@ -4,6 +4,7 @@
  */
 
 export * from './branch-volumes';
+export * from './catalog-view';
 export * from './constants';
 export * from './date';
 export * from './logger';

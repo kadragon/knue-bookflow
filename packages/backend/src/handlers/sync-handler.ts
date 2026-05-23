@@ -29,7 +29,7 @@ import type {
   SyncResponse,
   SyncSummary,
 } from '../types';
-import { ALADIN_LOOKUP_CONCURRENCY } from '../utils';
+import { ALADIN_LOOKUP_CONCURRENCY, parsePublication } from '../utils';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
 type SyncErrorCode =
@@ -163,32 +163,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   return summary;
 }
 
-export function parsePublication(publication: string | null): {
-  publisher: string | null;
-  year: string | null;
-} {
-  if (!publication) {
-    return { publisher: null, year: null };
-  }
-
-  const match = publication.match(/[^:]+:\s*(.+?),\s*(\d{4})\s*$/);
-  if (match) {
-    return {
-      publisher: match[1]?.trim() || null,
-      year: match[2] || null,
-    };
-  }
-
-  const publisherOnlyMatch = publication.match(/[^:]+:\s*(.+)$/);
-  if (publisherOnlyMatch) {
-    return {
-      publisher: publisherOnlyMatch[1]?.trim() || null,
-      year: null,
-    };
-  }
-
-  return { publisher: null, year: null };
-}
+export { parsePublication } from '../utils';
 
 function toBranchVolumes(acqRequest: AcqRequest): BranchAvailability[] {
   if (!acqRequest.branch) {
