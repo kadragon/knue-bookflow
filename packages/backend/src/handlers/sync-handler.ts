@@ -163,8 +163,6 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   return summary;
 }
 
-export { parsePublication } from '../utils';
-
 function toBranchVolumes(acqRequest: AcqRequest): BranchAvailability[] {
   if (!acqRequest.branch) {
     return [];

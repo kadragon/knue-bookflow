@@ -17,8 +17,6 @@ import {
   summarizeAvailability,
 } from '../utils';
 
-export { parsePublication } from '../utils';
-
 function createAvailabilityFetcher(): AvailabilityFetcher {
   const client = createLibraryClient();
   return createCachedFetcher(async (libraryId: number) => {

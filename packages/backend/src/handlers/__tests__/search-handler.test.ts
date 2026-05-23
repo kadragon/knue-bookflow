@@ -12,7 +12,8 @@ import type {
   SearchBook,
   SearchBookItem,
 } from '../../types';
-import { handleSearchBooksApi, parsePublication } from '../search-handler';
+import { parsePublication } from '../../utils';
+import { handleSearchBooksApi } from '../search-handler';
 
 // Mock LibraryClient
 vi.mock('../../services', () => ({

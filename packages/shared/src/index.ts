@@ -321,7 +321,7 @@ export interface AladinBookResponse {
 // API Error Contract
 // =============================================================================
 
-export type ApiErrorCode = 'DUPLICATE_PLANNED_LOAN';
+export type ApiErrorCode = 'DUPLICATE_PLANNED_LOAN' | 'INVALID_REQUEST';
 
 export interface ApiErrorBody {
   code: ApiErrorCode;

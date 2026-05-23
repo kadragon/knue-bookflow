@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { NewBooksResponse } from '../../types';
-import { handleNewBooksApi, parsePublication } from '../new-books-handler';
+import { parsePublication } from '../../utils';
+import { handleNewBooksApi } from '../new-books-handler';
 
 // Mock services
 const mockGetNewBooks = vi.fn();

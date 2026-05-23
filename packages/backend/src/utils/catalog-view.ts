@@ -70,6 +70,8 @@ export function summarizeAvailability(
   };
 }
 
+// Shared across all handlers that call createCachedFetcher() without an explicit cache argument.
+// clearAvailabilityCache() affects all of them.
 const availabilityCache = new Map<
   number,
   { value: PlannedLoanAvailability | null; expiresAt: number }
@@ -92,18 +94,22 @@ export function createCachedFetcher(
     const now = Date.now();
     const cached = cache.get(libraryId);
     if (cached && cached.expiresAt > now) {
+      cache.delete(libraryId);
+      cache.set(libraryId, cached);
       return cached.value;
     }
 
     const value = await baseFetcher(libraryId);
 
-    if (cache.size >= maxSize) {
-      const oldestKey = cache.keys().next().value;
-      if (oldestKey !== undefined) {
-        cache.delete(oldestKey);
+    if (value !== null) {
+      if (cache.size >= maxSize && !cache.has(libraryId)) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey !== undefined) {
+          cache.delete(oldestKey);
+        }
       }
+      cache.set(libraryId, { value, expiresAt: now + ttlMs });
     }
-    cache.set(libraryId, { value, expiresAt: now + ttlMs });
     return value;
   };
 }

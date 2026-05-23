@@ -166,10 +166,13 @@ export async function handleCreatePlannedLoan(
     const { payload, error } = validatePayload(body);
 
     if (error || !payload) {
-      return new Response(JSON.stringify({ error }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ code: 'INVALID_REQUEST', message: error }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     const existing = await repo.findByLibraryBiblioId(payload.libraryId);

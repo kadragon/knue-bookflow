@@ -158,8 +158,9 @@ describe('handleCreatePlannedLoan', () => {
 
     const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
     expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string };
-    expect(body.error).toMatch(/libraryId/);
+    const body = (await response.json()) as { code: string; message: string };
+    expect(body.code).toBe('INVALID_REQUEST');
+    expect(body.message).toMatch(/libraryId/);
   });
 
   it('accepts branch volumes that use id/name/volume shape (TEST-loan-plan-007)', async () => {

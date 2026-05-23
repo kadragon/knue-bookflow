@@ -16,7 +16,6 @@ import type { BookViewModel, DueStatus, Env } from '../types';
 import { isReadStatus } from '../utils/read-status';
 
 export type { BookViewModel, DueStatus };
-export { deriveBookViewModel, sortBooks };
 
 type BookRepo = Pick<
   ReturnType<typeof createBookRepository>,
