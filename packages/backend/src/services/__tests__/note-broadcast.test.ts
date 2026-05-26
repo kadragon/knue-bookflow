@@ -93,6 +93,7 @@ describe('selectNoteCandidate', () => {
 
     expect(results.has(1)).toBe(false);
     expect(results.has(2)).toBe(true);
+    expect(results.has(3)).toBe(true);
   });
 
   it('falls back to all candidates when all are within cooldown window', () => {

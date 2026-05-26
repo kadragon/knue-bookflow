@@ -172,9 +172,11 @@ export function selectNoteCandidate(
   const cooldownDays = options?.cooldownDays ?? NOTE_COOLDOWN_DAYS;
   const threshold = now.getTime() - cooldownDays * DAY_MS;
 
-  const eligible = candidates.filter(
-    (c) => !c.lastSentAt || new Date(c.lastSentAt).getTime() < threshold,
-  );
+  const eligible = candidates.filter((c) => {
+    if (!c.lastSentAt) return true;
+    const ts = new Date(c.lastSentAt).getTime();
+    return Number.isFinite(ts) && ts < threshold;
+  });
   const pool = eligible.length > 0 ? eligible : candidates;
 
   const weights = pool.map((c) => 1 / (c.sendCount + 1));
