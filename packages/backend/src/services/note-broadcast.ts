@@ -37,6 +37,8 @@ export interface NoteBroadcastDeps {
   repository?: NoteBroadcastRepository;
   fetchFn?: typeof fetch;
   randomFn?: () => number;
+  now?: Date;
+  cooldownDays?: number;
   telegramMessageRepository?: {
     save(telegramMessageId: number, noteId: number): Promise<void>;
   };
@@ -177,8 +179,15 @@ export function selectNoteCandidate(
     const ts = new Date(c.lastSentAt).getTime();
     return Number.isFinite(ts) && ts < threshold;
   });
+  if (eligible.length === 0) {
+    console.warn(
+      '[NoteBroadcast] All candidates in cooldown; bypassing filter',
+    );
+  }
   const pool = eligible.length > 0 ? eligible : candidates;
 
+  // Weight by 1/(sendCount+1): unsent notes (sendCount=0) get weight 1.0,
+  // frequently sent ones decay (sendCount=4 → 0.2).
   const weights = pool.map((c) => 1 / (c.sendCount + 1));
   const total = weights.reduce((sum, w) => sum + w, 0);
   const target = randomFn() * total;
@@ -298,7 +307,10 @@ export async function broadcastDailyNote(
 
   let noteSuccess = false;
   const candidates = await repository.getNoteCandidates();
-  const candidate = selectNoteCandidate(candidates, randomFn);
+  const candidate = selectNoteCandidate(candidates, randomFn, {
+    now: deps.now,
+    cooldownDays: deps.cooldownDays,
+  });
 
   if (!candidate) {
     console.log('[NoteBroadcast] No notes available to send; skipping');
