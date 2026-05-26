@@ -30,7 +30,7 @@ export interface NoteCandidate {
 
 export interface NoteBroadcastRepository {
   getNoteCandidates(): Promise<NoteCandidate[]>;
-  incrementSendCount(noteId: number): Promise<void>;
+  incrementSendCount(noteId: number, now?: Date): Promise<void>;
 }
 
 export interface NoteBroadcastDeps {
@@ -144,8 +144,8 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
     }));
   }
 
-  async incrementSendCount(noteId: number): Promise<void> {
-    const now = new Date().toISOString();
+  async incrementSendCount(noteId: number, now?: Date): Promise<void> {
+    const nowIso = (now ?? new Date()).toISOString();
 
     await this.db
       .prepare(`
@@ -156,7 +156,7 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
           send_count = send_count + 1,
           last_sent_at = excluded.last_sent_at
       `)
-      .bind(noteId, now)
+      .bind(noteId, nowIso)
       .run();
   }
 }
@@ -338,7 +338,7 @@ export async function broadcastDailyNote(
           );
         }
         if (mappingSaved) {
-          await repository.incrementSendCount(candidate.note.id);
+          await repository.incrementSendCount(candidate.note.id, deps.now);
           noteSuccess = true;
         }
       } else {

@@ -163,8 +163,8 @@ describe('selectNoteCandidate', () => {
     expect(pick?.note.id).toBe(1);
   });
 
-  it('boundary: randomFn()=0.9999 picks last pool entry when weight fills exactly', () => {
-    // Single candidate: weight=1, total=1, target=0.9999 < 1.0 → returned via loop (not fallback)
+  it('boundary: randomFn()=0.9999 near-1 target still returned via loop (not fallback)', () => {
+    // Single candidate: weight=1, total=1, target=0.9999 < 1.0 → cumulative=1.0 > 0.9999 → loop exits
     const candidates: NoteCandidate[] = [
       createCandidate({
         note: { id: 7 } as NoteRecord,
@@ -178,8 +178,38 @@ describe('selectNoteCandidate', () => {
     expect(pick?.note.id).toBe(7);
   });
 
-  it('invalid lastSentAt treated as in-cooldown (excluded from eligible pool)', () => {
-    // NaN timestamp: Number.isFinite(NaN) === false → excluded from eligible
+  it('boundary: randomFn()=1 exercises pool[pool.length - 1] fallback', () => {
+    // target=1.0*total=1.0, loop: cumulative=1.0, 1.0 < 1.0 is false → fallback return
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 7 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 1, { now: NOW });
+
+    expect(pick?.note.id).toBe(7);
+  });
+
+  it('invalid lastSentAt (NaN) excluded from eligible; sole NaN candidate still returned via cooldown fallback', () => {
+    // NaN timestamp: Number.isFinite(NaN) === false → excluded from eligible → pool falls back to candidates
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: 'not-a-date',
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 0, { now: NOW });
+
+    // NaN guard excluded the only candidate from eligible, cooldown fallback returns it anyway
+    expect(pick?.note.id).toBe(1);
+  });
+
+  it('invalid lastSentAt excluded when eligible candidates exist', () => {
     const candidates: NoteCandidate[] = [
       createCandidate({
         note: { id: 1 } as NoteRecord,
@@ -653,7 +683,7 @@ describe('broadcastDailyNote', () => {
     expect(body.text).toBe(formatNoteMessage(candidate));
     expect(body.text).toContain('📚 *Test Book*');
     expect(body.text).toContain('_Test Author_');
-    expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
+    expect(repository.incrementSendCount).toHaveBeenCalledWith(42, undefined);
   });
 
   it('does not increment send count when mapping save fails', async () => {
@@ -761,8 +791,8 @@ describe('broadcastDailyNote', () => {
       telegramMessageRepository,
     });
 
-    // incrementSendCount must be called with note_id=2 (the only eligible candidate)
-    expect(repository.incrementSendCount).toHaveBeenCalledWith(2);
+    // incrementSendCount must be called with note_id=2 and injected now
+    expect(repository.incrementSendCount).toHaveBeenCalledWith(2, frozenNow);
   });
 
   it('stores telegram_message_id -> note_id mapping after successful send', async () => {
