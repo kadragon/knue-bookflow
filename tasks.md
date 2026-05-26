@@ -1,3 +1,11 @@
+## Deferred: feat/diverse-note-selection (PR #130) — P3 out-of-scope items
+
+- [ ] `note-broadcast.ts:178` — Log when cooldown fallback triggers (`[NoteBroadcast] All candidates in cooldown; bypassing filter`)
+- [ ] `note-broadcast.ts:180` — Add comment explaining inverse-rank weighting policy (`1/(sendCount+1)`)
+- [ ] `note-broadcast.ts:299` — Plumb `now`/`cooldownDays` through `NoteBroadcastDeps` for integration-test clock injection
+- [ ] `note-broadcast.test.ts` — Add test with `lastSentAt: 'not-a-date'` to pin NaN behavior
+- [ ] `note-broadcast.test.ts:101-126` — Add boundary tests: `randomFn() => 0` and `randomFn() => 0.9999`
+
 ## Sprint: feat/cron-observability
 
 Done-when:

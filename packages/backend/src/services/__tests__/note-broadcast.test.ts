@@ -21,6 +21,7 @@ function createCandidate(
     note: NoteRecord;
     book: BookRecord;
     sendCount: number;
+    lastSentAt: string | null;
   }> = {},
 ): NoteCandidate {
   const book: BookRecord = {
@@ -51,34 +52,96 @@ function createCandidate(
     book,
     note,
     sendCount: overrides.sendCount ?? 0,
+    lastSentAt: overrides.lastSentAt ?? null,
   };
 }
 
 describe('selectNoteCandidate', () => {
-  it('picks randomly among notes with the lowest sendCount', () => {
-    const candidates: NoteCandidate[] = [
-      createCandidate({
-        note: { id: 1, book_id: 1, page_number: 5, content: 'A' },
-        sendCount: 3,
-      }),
-      createCandidate({
-        note: { id: 2, book_id: 1, page_number: 6, content: 'B' },
-        sendCount: 1,
-      }),
-      createCandidate({
-        note: { id: 3, book_id: 1, page_number: 7, content: 'C' },
-        sendCount: 1,
-      }),
-    ];
-
-    const pick = selectNoteCandidate(candidates, () => 0.8); // Should select the second candidate in the lowest tier
-
-    expect([2, 3]).toContain(pick?.note.id);
-    expect(pick?.sendCount).toBe(1);
-  });
+  const NOW = new Date('2026-05-26T03:00:00Z');
 
   it('returns null when there are no candidates', () => {
     expect(selectNoteCandidate([])).toBeNull();
+  });
+
+  it('cooldown filter excludes notes sent within 7 days', () => {
+    const recentAt = new Date(
+      NOW.getTime() - 2 * 24 * 60 * 60 * 1000,
+    ).toISOString(); // 2 days ago
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 1,
+        lastSentAt: recentAt,
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+      createCandidate({
+        note: { id: 3 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const results = new Set<number>();
+    for (let i = 0; i <= 100; i++) {
+      const pick = selectNoteCandidate(candidates, () => i / 100, { now: NOW });
+      if (pick?.note.id) results.add(pick.note.id);
+    }
+
+    expect(results.has(1)).toBe(false);
+    expect(results.has(2)).toBe(true);
+    expect(results.has(3)).toBe(true);
+  });
+
+  it('falls back to all candidates when all are within cooldown window', () => {
+    const recentAt = new Date(
+      NOW.getTime() - 1 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 2,
+        lastSentAt: recentAt,
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 3,
+        lastSentAt: recentAt,
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 0, { now: NOW });
+
+    expect(pick).not.toBeNull();
+    expect([1, 2]).toContain(pick?.note.id);
+  });
+
+  it('weighted random favors lower sendCount but allows higher to be picked', () => {
+    // weights: id=1 sendCount=0 → 1/(0+1)=1.0, id=2 sendCount=4 → 1/(4+1)=0.2, total=1.2
+    // cumulative[0]=1.0, cumulative[1]=1.2
+    // randomFn()=0.5 → target=0.6 → falls in bucket 0 (cumulative 1.0 > 0.6) → id=1
+    // randomFn()=0.95 → target=1.14 → falls in bucket 1 (cumulative 1.2 > 1.14) → id=2
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 4,
+        lastSentAt: null,
+      }),
+    ];
+
+    const pickLow = selectNoteCandidate(candidates, () => 0.5, { now: NOW });
+    const pickHigh = selectNoteCandidate(candidates, () => 0.95, { now: NOW });
+
+    expect(pickLow?.note.id).toBe(1);
+    expect(pickHigh?.note.id).toBe(2);
   });
 });
 

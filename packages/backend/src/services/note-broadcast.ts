@@ -19,11 +19,13 @@ import { createTelegramMessageRepository } from './telegram-message-repository';
 const MARKDOWN_V2_SPECIAL_CHARS = /([_*[\]()~`>#+\-=|{}.!\\])/g;
 
 export const NOTE_BROADCAST_CRON = '0 3 * * *';
+export const NOTE_COOLDOWN_DAYS = 7;
 
 export interface NoteCandidate {
   book: BookRecord;
   note: NoteRecord;
   sendCount: number;
+  lastSentAt: string | null;
 }
 
 export interface NoteBroadcastRepository {
@@ -63,6 +65,7 @@ interface NoteCandidateRow {
   book_created_at?: string | null;
   book_updated_at?: string | null;
   send_count: number | null;
+  last_sent_at: string | null;
 }
 
 export function createNoteBroadcastRepository(
@@ -99,7 +102,8 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
           b.is_read,
           b.created_at AS book_created_at,
           b.updated_at AS book_updated_at,
-          COALESCE(s.send_count, 0) AS send_count
+          COALESCE(s.send_count, 0) AS send_count,
+          s.last_sent_at
         FROM notes n
         JOIN books b ON b.id = n.book_id
         LEFT JOIN note_send_stats s ON s.note_id = n.id
@@ -134,6 +138,7 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
         updated_at: row.book_updated_at ?? undefined,
       },
       sendCount: row.send_count ?? 0,
+      lastSentAt: row.last_sent_at ?? null,
     }));
   }
 
@@ -157,19 +162,35 @@ class D1NoteBroadcastRepository implements NoteBroadcastRepository {
 export function selectNoteCandidate(
   candidates: NoteCandidate[],
   randomFn: () => number = Math.random,
+  options?: { now?: Date; cooldownDays?: number },
 ): NoteCandidate | null {
   if (candidates.length === 0) {
     return null;
   }
 
-  const minSendCount = candidates.reduce(
-    (min, c) => Math.min(min, c.sendCount),
-    Infinity,
-  );
+  const now = options?.now ?? new Date();
+  const cooldownDays = options?.cooldownDays ?? NOTE_COOLDOWN_DAYS;
+  const threshold = now.getTime() - cooldownDays * DAY_MS;
 
-  const lowest = candidates.filter((c) => c.sendCount === minSendCount);
-  const idx = Math.floor(randomFn() * lowest.length);
-  return lowest[idx] ?? null;
+  const eligible = candidates.filter((c) => {
+    if (!c.lastSentAt) return true;
+    const ts = new Date(c.lastSentAt).getTime();
+    return Number.isFinite(ts) && ts < threshold;
+  });
+  const pool = eligible.length > 0 ? eligible : candidates;
+
+  const weights = pool.map((c) => 1 / (c.sendCount + 1));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const target = randomFn() * total;
+
+  let cumulative = 0;
+  for (let i = 0; i < pool.length; i++) {
+    cumulative += weights[i]!;
+    if (target < cumulative) {
+      return pool[i]!;
+    }
+  }
+  return pool[pool.length - 1]!;
 }
 
 export function formatNoteMessage(candidate: NoteCandidate): string {

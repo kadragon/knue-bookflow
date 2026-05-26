@@ -29,3 +29,6 @@ coverage/
 
 # Harness sweep stamp
 tools/.sweep-stamp
+
+# Antigravity CLI local state
+.antigravitycli/
