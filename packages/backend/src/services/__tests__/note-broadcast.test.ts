@@ -143,6 +143,95 @@ describe('selectNoteCandidate', () => {
     expect(pickLow?.note.id).toBe(1);
     expect(pickHigh?.note.id).toBe(2);
   });
+
+  it('boundary: randomFn()=0 always picks first pool entry', () => {
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 0, { now: NOW });
+
+    expect(pick?.note.id).toBe(1);
+  });
+
+  it('boundary: randomFn()=0.9999 near-1 target still returned via loop (not fallback)', () => {
+    // Single candidate: weight=1, total=1, target=0.9999 < 1.0 → cumulative=1.0 > 0.9999 → loop exits
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 7 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 0.9999, { now: NOW });
+
+    expect(pick?.note.id).toBe(7);
+  });
+
+  it('boundary: randomFn()=1 exercises pool[pool.length - 1] fallback', () => {
+    // target=1.0*total=1.0, loop: cumulative=1.0, 1.0 < 1.0 is false → fallback return
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 7 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 1, { now: NOW });
+
+    expect(pick?.note.id).toBe(7);
+  });
+
+  it('invalid lastSentAt (NaN) excluded from eligible; sole NaN candidate still returned via cooldown fallback', () => {
+    // NaN timestamp: Number.isFinite(NaN) === false → excluded from eligible → pool falls back to candidates
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: 'not-a-date',
+      }),
+    ];
+
+    const pick = selectNoteCandidate(candidates, () => 0, { now: NOW });
+
+    // NaN guard excluded the only candidate from eligible, cooldown fallback returns it anyway
+    expect(pick?.note.id).toBe(1);
+  });
+
+  it('invalid lastSentAt excluded when eligible candidates exist', () => {
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: 'not-a-date',
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+
+    const results = new Set<number>();
+    for (let i = 0; i <= 100; i++) {
+      const pick = selectNoteCandidate(candidates, () => i / 100, { now: NOW });
+      if (pick?.note.id) results.add(pick.note.id);
+    }
+
+    expect(results.has(1)).toBe(false);
+    expect(results.has(2)).toBe(true);
+  });
 });
 
 describe('formatNoteMessage', () => {
@@ -594,7 +683,7 @@ describe('broadcastDailyNote', () => {
     expect(body.text).toBe(formatNoteMessage(candidate));
     expect(body.text).toContain('📚 *Test Book*');
     expect(body.text).toContain('_Test Author_');
-    expect(repository.incrementSendCount).toHaveBeenCalledWith(42);
+    expect(repository.incrementSendCount).toHaveBeenCalledWith(42, undefined);
   });
 
   it('does not increment send count when mapping save fails', async () => {
@@ -657,6 +746,53 @@ describe('broadcastDailyNote', () => {
     expect(sent).toBe(true);
     // Only 1 call for the note message; no due-soon call
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('respects injected now/cooldownDays from deps for cooldown filtering', async () => {
+    const frozenNow = new Date('2026-01-01T03:00:00Z');
+    // lastSentAt 1 day ago — within default 7-day cooldown, so note_id=1 is in cooldown
+    const recentAt = new Date(
+      frozenNow.getTime() - 1 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ result: { message_id: 42 } }),
+    });
+
+    const candidates: NoteCandidate[] = [
+      createCandidate({
+        note: { id: 1 } as NoteRecord,
+        sendCount: 1,
+        lastSentAt: recentAt,
+      }),
+      createCandidate({
+        note: { id: 2 } as NoteRecord,
+        sendCount: 0,
+        lastSentAt: null,
+      }),
+    ];
+    const repository: NoteBroadcastRepository = {
+      getNoteCandidates: vi.fn().mockResolvedValue(candidates),
+      incrementSendCount: vi.fn(),
+    };
+    const telegramMessageRepository = {
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+
+    // Inject now so cooldown is evaluated at frozenNow, not Date.now()
+    await broadcastDailyNote(baseEnv, {
+      repository,
+      fetchFn: mockFetch,
+      randomFn: () => 0,
+      now: frozenNow,
+      telegramMessageRepository,
+    });
+
+    // incrementSendCount must be called with note_id=2 and injected now
+    expect(repository.incrementSendCount).toHaveBeenCalledWith(2, frozenNow);
   });
 
   it('stores telegram_message_id -> note_id mapping after successful send', async () => {
