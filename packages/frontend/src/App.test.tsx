@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -115,5 +115,68 @@ describe('App Component', () => {
 
     await screen.findByText('대출 중');
     expect(screen.queryByText('1번째 대여')).toBeNull();
+  });
+
+  it('flips read status optimistically without refetching the list', async () => {
+    let booksGetCount = 0;
+    let resolvePatch: (value: Response) => void = () => {};
+    const patchGate = new Promise<Response>((resolve) => {
+      resolvePatch = resolve;
+    });
+
+    fetchMock.mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        const method = init?.method ?? 'GET';
+
+        if (url.includes('/read-status') && method === 'PATCH') {
+          return patchGate;
+        }
+        if (url.includes('/api/books')) {
+          booksGetCount += 1;
+          return new Response(JSON.stringify({ items: [createBook()] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ error: 'Not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    );
+
+    renderApp();
+
+    const finishButton = await screen.findByRole('button', { name: '완독' });
+    expect(finishButton.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(finishButton);
+
+    // Optimistic: pressed state updates before the (still-pending) PATCH resolves.
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole('button', { name: '완독' })
+          .getAttribute('aria-pressed'),
+      ).toBe('true'),
+    );
+
+    // Resolve the slow PATCH; the list must not be refetched.
+    resolvePatch(
+      new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await waitFor(() => expect(booksGetCount).toBe(1));
+    expect(
+      screen.getByRole('button', { name: '완독' }).getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 });
