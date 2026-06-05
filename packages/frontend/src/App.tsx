@@ -132,11 +132,13 @@ function BookCard({
   onNoteClick,
   onReadStatusChange,
   onBookClick,
+  isUpdating,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
   onReadStatusChange: (book: BookItem, readStatus: ReadStatus) => void;
   onBookClick: (book: BookItem) => void;
+  isUpdating: boolean;
 }) {
   const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
 
@@ -322,6 +324,7 @@ function BookCard({
               onReadStatusChange(book, newStatus)
             }
             size="small"
+            disabled={isUpdating}
           />
         </Box>
       </CardContent>
@@ -962,6 +965,7 @@ function BookshelfPage() {
                 onNoteClick={handleNoteClick}
                 onReadStatusChange={handleReadStatusChange}
                 onBookClick={handleBookClick}
+                isUpdating={readStatusMutation.isPending}
               />
             ))}
           </Box>
