@@ -60,6 +60,7 @@ import {
   shouldShowDdayChip,
 } from './loanStatusPresentation';
 import BookDetailPage from './pages/BookDetailPage';
+import BookRequestsPage from './pages/BookRequestsPage';
 import NewBooksPage from './pages/NewBooksPage';
 import PlannedLoansPage from './pages/PlannedLoansPage';
 import SearchBooksPage from './pages/SearchBooksPage';
@@ -993,6 +994,7 @@ export default function App() {
         <Route path="/planned" element={<PlannedLoansPage />} />
         <Route path="/new-books" element={<NewBooksPage />} />
         <Route path="/search" element={<SearchBooksPage />} />
+        <Route path="/requests" element={<BookRequestsPage />} />
       </Routes>
       <BottomNavigation />
     </>

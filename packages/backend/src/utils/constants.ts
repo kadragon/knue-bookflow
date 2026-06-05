@@ -17,5 +17,8 @@ export const ALADIN_LOOKUP_TIMEOUT_MS = 3000;
 export const ALADIN_LOOKUP_CONCURRENCY = 10;
 export const ALADIN_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+export const ALADIN_SEARCH_TIMEOUT_MS = 5000;
+export const ALADIN_SEARCH_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 export const AVAILABILITY_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export const MAX_AVAILABILITY_CACHE_SIZE = 500;

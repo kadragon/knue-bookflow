@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Charge } from '../../types';
 import {
   __clearAladinIsbnCache,
+  __clearAladinKeywordCache,
   AladinClient,
   fetchNewBooksInfo,
   identifyNewBooks,
@@ -481,5 +482,92 @@ describe('identifyNewBooks', () => {
     const newBooks = identifyNewBooks(charges);
 
     expect(newBooks).toHaveLength(0);
+  });
+});
+
+describe('AladinClient.searchByKeyword', () => {
+  let client: AladinClient;
+
+  beforeEach(() => {
+    __clearAladinKeywordCache();
+    client = new AladinClient('test-api-key');
+    mockFetch.mockReset();
+  });
+
+  function mockSearchOnce(items: unknown[], totalResults = items.length) {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ totalResults, item: items }),
+    });
+  }
+
+  const sampleItem = {
+    title: '클린 코드',
+    link: 'https://www.aladin.co.kr/shop/1',
+    author: '로버트 마틴',
+    pubDate: '2013-12-24',
+    description: 'desc',
+    isbn: '8966262473',
+    isbn13: '9788966262472',
+    itemId: 1,
+    priceSales: 0,
+    priceStandard: 0,
+    stockStatus: '',
+    cover: 'https://image.aladin.co.kr/1.jpg',
+    categoryId: 0,
+    categoryName: '',
+    publisher: '인사이트',
+  };
+
+  it('builds the ItemSearch request and returns items', async () => {
+    mockSearchOnce([sampleItem, { ...sampleItem, isbn13: '9788960777330' }], 2);
+
+    const items = await client.searchByKeyword('클린 코드', 10, 0);
+
+    expect(items).toHaveLength(2);
+    expect(items[0].isbn13).toBe('9788966262472');
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('/ItemSearch.aspx?');
+    expect(calledUrl).toContain('ttbkey=test-api-key');
+    expect(calledUrl).toContain('QueryType=Keyword');
+    expect(calledUrl).toContain('SearchTarget=Book');
+    expect(calledUrl).toContain('MaxResults=10');
+    expect(calledUrl).toContain('start=1');
+  });
+
+  it('caches results and skips a second fetch for the same query', async () => {
+    mockSearchOnce([], 0);
+
+    await client.searchByKeyword('foo', 10, 0);
+    await client.searchByKeyword('foo', 10, 0);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps offset to a 1-based start page', async () => {
+    mockSearchOnce([], 0);
+
+    await client.searchByKeyword('bar', 10, 20);
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('start=3'); // floor(20/10) + 1
+  });
+
+  it('returns an empty array for a blank query without fetching', async () => {
+    const items = await client.searchByKeyword('   ', 10, 0);
+
+    expect(items).toEqual([]);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('throws on a non-ok upstream response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+
+    await expect(client.searchByKeyword('boom', 10, 0)).rejects.toThrow();
   });
 });

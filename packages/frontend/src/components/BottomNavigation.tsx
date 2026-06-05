@@ -1,6 +1,7 @@
 import {
   AutoStories as AutoStoriesIcon,
   BookmarkAdd as BookmarkAddIcon,
+  LibraryAdd as LibraryAddIcon,
   MenuBook as MenuBookIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
@@ -17,6 +18,7 @@ const navigationItems = [
   { label: '검색', value: '/search', icon: <SearchIcon /> },
   { label: '신작', value: '/new-books', icon: <AutoStoriesIcon /> },
   { label: '대출 예정', value: '/planned', icon: <BookmarkAddIcon /> },
+  { label: '신청', value: '/requests', icon: <LibraryAddIcon /> },
 ];
 
 export function BottomNavigation() {

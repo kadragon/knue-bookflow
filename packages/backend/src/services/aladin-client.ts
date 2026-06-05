@@ -7,6 +7,8 @@
 
 import type {
   AladinItemLookupResponse,
+  AladinItemSearchResponse,
+  AladinSearchItem,
   BookInfo,
   Charge,
   ChargeWithBookInfo,
@@ -15,6 +17,8 @@ import {
   ALADIN_CACHE_TTL_MS,
   ALADIN_LOOKUP_CONCURRENCY,
   ALADIN_LOOKUP_TIMEOUT_MS,
+  ALADIN_SEARCH_CACHE_TTL_MS,
+  ALADIN_SEARCH_TIMEOUT_MS,
   isToday,
 } from '../utils';
 
@@ -36,10 +40,23 @@ export function __clearAladinIsbnCache(): void {
   isbnCache.clear();
 }
 
+// Separate module-level cache for keyword search results. Keyword results drift
+// over time (new releases), so a shorter TTL than the ISBN cache is used.
+const keywordCache = new Map<
+  string,
+  { value: AladinSearchItem[]; expiresAt: number }
+>();
+
+/** Clear the module-level keyword cache. Call this in test beforeEach to isolate tests. */
+export function __clearAladinKeywordCache(): void {
+  keywordCache.clear();
+}
+
 export class AladinClient {
   constructor(
     private apiKey: string,
     private cacheTtlMs = ALADIN_CACHE_TTL_MS,
+    private searchCacheTtlMs = ALADIN_SEARCH_CACHE_TTL_MS,
   ) {}
 
   /**
@@ -136,6 +153,82 @@ export class AladinClient {
         `[AladinClient] Lookup failed for ISBN ${cleanIsbn}: ${errorMessage}`,
       );
       return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Keyword search via Aladin ItemSearch.aspx.
+   * Unlike lookupByIsbn, this THROWS on upstream failure (non-ok, timeout,
+   * network) so the caller can surface a 502 instead of an empty result.
+   * @param query - Keyword query (title/author/etc.)
+   * @param max - Page size (1-50)
+   * @param offset - Item offset; mapped to Aladin's 1-based `start` page
+   * @param timeoutMs - Abort timeout in milliseconds
+   * @returns Raw Aladin search items (empty array if no matches)
+   */
+  async searchByKeyword(
+    query: string,
+    max = 10,
+    offset = 0,
+    timeoutMs = ALADIN_SEARCH_TIMEOUT_MS,
+  ): Promise<AladinSearchItem[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    // Aladin paginates by 1-based page number, not byte offset.
+    const start = Math.floor(offset / max) + 1;
+    const cacheKey = `${trimmed}|${max}|${start}`;
+
+    const cached = keywordCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
+    const params = new URLSearchParams({
+      ttbkey: this.apiKey,
+      Query: trimmed,
+      QueryType: 'Keyword',
+      SearchTarget: 'Book',
+      MaxResults: String(max),
+      start: String(start),
+      output: 'js',
+      Version: '20131101',
+      Cover: 'Big',
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${BASE_URL}/ItemSearch.aspx?${params}`, {
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Aladin ItemSearch error: ${response.status}`);
+      }
+
+      const data: AladinItemSearchResponse = await response.json();
+      const items = data.item ?? [];
+
+      keywordCache.set(cacheKey, {
+        value: items,
+        expiresAt: Date.now() + this.searchCacheTtlMs,
+      });
+
+      console.log(
+        `[AladinClient] Keyword "${trimmed}" returned ${items.length} items`,
+      );
+      return items;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Aladin ItemSearch timeout after ${timeoutMs}ms`);
+      }
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }

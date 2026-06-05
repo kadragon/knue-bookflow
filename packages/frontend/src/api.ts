@@ -5,9 +5,14 @@ import type {
   ApiResponse,
   BookDetailResponse,
   BookItem,
+  BookRequestsResponse,
+  BookRequestViewModel,
   BranchVolume,
   CatalogBookItem,
+  CreateBookRequestPayload,
   DueStatus,
+  ExternalSearchResponse,
+  ExternalSearchResultItem,
   LoanState,
   NewBookItem,
   NewBooksResponse,
@@ -39,9 +44,14 @@ export type {
   ApiResponse,
   BookDetailResponse,
   BookItem,
+  BookRequestsResponse,
+  BookRequestViewModel,
   BranchVolume,
   CatalogBookItem,
+  CreateBookRequestPayload,
   DueStatus,
+  ExternalSearchResponse,
+  ExternalSearchResultItem,
   LoanState,
   NewBookItem,
   NewBooksResponse,
@@ -289,6 +299,65 @@ export const getBookByIsbn = async (
   });
 
   await handleApiError(res, 'Failed to fetch book information');
+
+  return res.json();
+};
+
+export const searchExternalBooks = async (
+  query: string,
+  max: number = 10,
+  offset: number = 0,
+): Promise<ExternalSearchResponse> => {
+  const params = new URLSearchParams({
+    query,
+    max: max.toString(),
+    offset: offset.toString(),
+  });
+  const res = await fetch(`/api/external-search?${params}`, {
+    headers: { Accept: 'application/json' },
+  });
+
+  await handleApiError(res, 'Failed to search external books');
+
+  return res.json();
+};
+
+export const getBookRequests = async (): Promise<BookRequestsResponse> => {
+  const res = await fetch('/api/book-requests', {
+    headers: { Accept: 'application/json' },
+  });
+
+  await handleApiError(res, 'Failed to load book requests');
+
+  return res.json();
+};
+
+export const createBookRequest = async (
+  payload: CreateBookRequestPayload,
+): Promise<{ item: BookRequestViewModel }> => {
+  const res = await fetch('/api/book-requests', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  await handleApiError(res, 'Failed to save book request');
+
+  return res.json();
+};
+
+export const deleteBookRequest = async (
+  id: number,
+): Promise<{ success: boolean }> => {
+  const res = await fetch(`/api/book-requests/${id}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+
+  await handleApiError(res, 'Failed to delete book request');
 
   return res.json();
 };

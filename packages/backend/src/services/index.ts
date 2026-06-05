@@ -10,6 +10,7 @@ export {
   identifyNewBooks,
 } from './aladin-client';
 export * from './book-repository';
+export * from './book-request-repository';
 export * from './book-shelf';
 export * from './cron-run-repository';
 export * from './library-client';
