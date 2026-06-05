@@ -104,6 +104,16 @@ export async function handleCreateBookRequest(
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    // Concurrent insert lost the isbn13 UNIQUE race (repo tags it) → 409, not 500.
+    if ((error as { code?: string }).code === 'DUPLICATE_BOOK_REQUEST') {
+      return new Response(
+        JSON.stringify({
+          code: 'DUPLICATE_BOOK_REQUEST',
+          message: '이미 신청한 도서입니다.',
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
     console.error('[BookRequest] Failed to create book request', error);
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
       status: 500,

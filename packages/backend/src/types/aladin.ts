@@ -52,6 +52,10 @@ export interface AladinItemSearchResponse {
   searchCategoryId?: number;
   searchCategoryName?: string;
   item: AladinSearchItem[];
+  // Aladin returns HTTP 200 with these set when the request fails
+  // (expired key, quota exceeded, invalid params).
+  errorCode?: number;
+  errorMessage?: string;
 }
 
 export type AladinSearchItem = Omit<AladinItem, 'bookDtlContents'>;

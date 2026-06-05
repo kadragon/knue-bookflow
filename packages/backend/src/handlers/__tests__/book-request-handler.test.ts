@@ -128,6 +128,28 @@ describe('handleCreateBookRequest', () => {
     expect(body.code).toBe('DUPLICATE_BOOK_REQUEST');
   });
 
+  it('returns 409 when create loses the isbn13 UNIQUE race', async () => {
+    // findByIsbn13 pre-check passes (empty), but a concurrent insert already
+    // committed, so create hits the UNIQUE constraint and tags the error.
+    const repo = new FakeBookRequestRepo();
+    repo.create = async () => {
+      throw Object.assign(
+        new Error('UNIQUE constraint failed: book_requests.isbn13'),
+        { code: 'DUPLICATE_BOOK_REQUEST' },
+      );
+    };
+
+    const res = await handleCreateBookRequest(
+      makeEnv(),
+      postReq(payload),
+      repo,
+    );
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe('DUPLICATE_BOOK_REQUEST');
+  });
+
   it('returns 400 on invalid JSON body', async () => {
     const repo = new FakeBookRequestRepo();
     const req = new Request('http://localhost/api/book-requests', {

@@ -47,8 +47,10 @@ describe('handleExternalSearch', () => {
     expect(search).not.toHaveBeenCalled();
   });
 
-  it('returns mapped Aladin items', async () => {
-    const search = vi.fn().mockResolvedValue([item]);
+  it('returns mapped Aladin items and the real totalResults', async () => {
+    const search = vi
+      .fn()
+      .mockResolvedValue({ items: [item], totalResults: 42 });
     const req = new Request(
       'http://localhost/api/external-search?query=클린 코드',
     );
@@ -70,11 +72,15 @@ describe('handleExternalSearch', () => {
       coverUrl: 'https://image.aladin.co.kr/1.jpg',
       aladinLink: 'https://www.aladin.co.kr/shop/1',
     });
+    expect(body.meta.totalResults).toBe(42);
     expect(search).toHaveBeenCalledWith('클린 코드', 10, 0);
   });
 
   it('filters out items without isbn13', async () => {
-    const search = vi.fn().mockResolvedValue([item, { ...item, isbn13: '' }]);
+    const search = vi.fn().mockResolvedValue({
+      items: [item, { ...item, isbn13: '' }],
+      totalResults: 2,
+    });
     const req = new Request('http://localhost/api/external-search?query=x');
     const res = await handleExternalSearch(makeEnv(), req, search);
 
@@ -83,7 +89,7 @@ describe('handleExternalSearch', () => {
   });
 
   it('returns 200 with empty items when Aladin has no results', async () => {
-    const search = vi.fn().mockResolvedValue([]);
+    const search = vi.fn().mockResolvedValue({ items: [], totalResults: 0 });
     const req = new Request('http://localhost/api/external-search?query=zzz');
     const res = await handleExternalSearch(makeEnv(), req, search);
 
@@ -92,12 +98,14 @@ describe('handleExternalSearch', () => {
     expect(body.items).toEqual([]);
   });
 
-  it('returns 502 when the Aladin upstream fails', async () => {
+  it('returns 502 with an UPSTREAM_ERROR code when the Aladin upstream fails', async () => {
     const search = vi.fn().mockRejectedValue(new Error('boom'));
     const req = new Request('http://localhost/api/external-search?query=x');
     const res = await handleExternalSearch(makeEnv(), req, search);
 
     expect(res.status).toBe(502);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe('UPSTREAM_ERROR');
   });
 
   it('returns 400 on invalid max without calling search', async () => {

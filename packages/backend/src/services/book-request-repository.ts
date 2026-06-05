@@ -30,26 +30,39 @@ export class BookRequestRepository {
   ): Promise<BookRequestRecord> {
     const now = new Date().toISOString();
 
-    const created = await this.db
-      .prepare(
-        `INSERT INTO book_requests (
+    let created: BookRequestRecord | null;
+    try {
+      created = await this.db
+        .prepare(
+          `INSERT INTO book_requests (
           isbn13, isbn, title, author, publisher, pub_date,
           cover_url, aladin_link, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-      )
-      .bind(
-        record.isbn13,
-        record.isbn,
-        record.title,
-        record.author,
-        record.publisher,
-        record.pub_date,
-        record.cover_url,
-        record.aladin_link,
-        now,
-        now,
-      )
-      .first<BookRequestRecord>();
+        )
+        .bind(
+          record.isbn13,
+          record.isbn,
+          record.title,
+          record.author,
+          record.publisher,
+          record.pub_date,
+          record.cover_url,
+          record.aladin_link,
+          now,
+          now,
+        )
+        .first<BookRequestRecord>();
+    } catch (error) {
+      // A concurrent insert of the same isbn13 loses the UNIQUE race here
+      // (the findByIsbn13 pre-check passed for both). Tag it so the handler
+      // returns 409 instead of a generic 500.
+      if (error instanceof Error && /UNIQUE constraint/i.test(error.message)) {
+        throw Object.assign(new Error('Book request already exists'), {
+          code: 'DUPLICATE_BOOK_REQUEST',
+        });
+      }
+      throw error;
+    }
 
     if (!created) {
       throw new Error('Failed to create book request');

@@ -365,8 +365,10 @@ export default function SearchBooksPage() {
   } = usePlannedLoanMutation();
 
   // When the KNUE catalog has no match, fall back to Aladin so the user can
-  // request a book the library does not hold.
-  const knueEmpty = !!data && data.items.length === 0 && !!queryParam.trim();
+  // request a book the library does not hold. Gate on the total match count,
+  // not the current page — an out-of-range page (e.g. ?page=999) has an empty
+  // items array even when the library does hold the book.
+  const knueEmpty = !!data && data.meta.totalCount === 0 && !!queryParam.trim();
 
   const {
     data: aladinData,
@@ -484,7 +486,7 @@ export default function SearchBooksPage() {
               </Typography>
             </Box>
 
-            {data.items.length === 0 ? (
+            {data.meta.totalCount === 0 ? (
               <Box>
                 <Box
                   sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}

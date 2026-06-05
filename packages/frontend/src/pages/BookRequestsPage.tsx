@@ -118,7 +118,7 @@ function BookRequestCard({ item, onRemove }: BookRequestCardProps) {
           color="text.disabled"
           sx={{ display: 'block', mt: 0.5 }}
         >
-          추가일: {item.createdAt.split('T')[0] || ''}
+          추가일: {item.createdAt ? item.createdAt.substring(0, 10) : ''}
         </Typography>
       </CardContent>
 

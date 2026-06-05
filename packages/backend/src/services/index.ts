@@ -5,6 +5,7 @@
 
 export {
   AladinClient,
+  type AladinKeywordSearchResult,
   createAladinClient,
   fetchNewBooksInfo,
   identifyNewBooks,

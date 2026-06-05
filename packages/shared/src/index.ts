@@ -384,7 +384,8 @@ export type CreateBookRequestPayload = CreateBookRequestRequest;
 export type ApiErrorCode =
   | 'DUPLICATE_PLANNED_LOAN'
   | 'DUPLICATE_BOOK_REQUEST'
-  | 'INVALID_REQUEST';
+  | 'INVALID_REQUEST'
+  | 'UPSTREAM_ERROR';
 
 export interface ApiErrorBody {
   code: ApiErrorCode;

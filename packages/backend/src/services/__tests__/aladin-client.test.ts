@@ -519,13 +519,21 @@ describe('AladinClient.searchByKeyword', () => {
     publisher: '인사이트',
   };
 
-  it('builds the ItemSearch request and returns items', async () => {
-    mockSearchOnce([sampleItem, { ...sampleItem, isbn13: '9788960777330' }], 2);
+  it('builds the ItemSearch request and returns items + totalResults', async () => {
+    mockSearchOnce(
+      [sampleItem, { ...sampleItem, isbn13: '9788960777330' }],
+      42,
+    );
 
-    const items = await client.searchByKeyword('클린 코드', 10, 0);
+    const { items, totalResults } = await client.searchByKeyword(
+      '클린 코드',
+      10,
+      0,
+    );
 
     expect(items).toHaveLength(2);
     expect(items[0].isbn13).toBe('9788966262472');
+    expect(totalResults).toBe(42);
 
     const calledUrl = mockFetch.mock.calls[0][0] as string;
     expect(calledUrl).toContain('/ItemSearch.aspx?');
@@ -554,10 +562,10 @@ describe('AladinClient.searchByKeyword', () => {
     expect(calledUrl).toContain('start=3'); // floor(20/10) + 1
   });
 
-  it('returns an empty array for a blank query without fetching', async () => {
-    const items = await client.searchByKeyword('   ', 10, 0);
+  it('returns an empty result for a blank query without fetching', async () => {
+    const result = await client.searchByKeyword('   ', 10, 0);
 
-    expect(items).toEqual([]);
+    expect(result).toEqual({ items: [], totalResults: 0 });
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -569,5 +577,19 @@ describe('AladinClient.searchByKeyword', () => {
     });
 
     await expect(client.searchByKeyword('boom', 10, 0)).rejects.toThrow();
+  });
+
+  it('throws when Aladin returns HTTP 200 with an errorCode body', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        errorCode: 100,
+        errorMessage: '잘못된 TTBKey입니다.',
+      }),
+    });
+
+    await expect(client.searchByKeyword('boom', 10, 0)).rejects.toThrow(
+      /Aladin ItemSearch error/,
+    );
   });
 });

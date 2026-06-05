@@ -42,9 +42,14 @@ export function __clearAladinIsbnCache(): void {
 
 // Separate module-level cache for keyword search results. Keyword results drift
 // over time (new releases), so a shorter TTL than the ISBN cache is used.
+export interface AladinKeywordSearchResult {
+  items: AladinSearchItem[];
+  totalResults: number;
+}
+
 const keywordCache = new Map<
   string,
-  { value: AladinSearchItem[]; expiresAt: number }
+  { value: AladinKeywordSearchResult; expiresAt: number }
 >();
 
 /** Clear the module-level keyword cache. Call this in test beforeEach to isolate tests. */
@@ -166,22 +171,24 @@ export class AladinClient {
    * @param max - Page size (1-50)
    * @param offset - Item offset; mapped to Aladin's 1-based `start` page
    * @param timeoutMs - Abort timeout in milliseconds
-   * @returns Raw Aladin search items (empty array if no matches)
+   * @returns Aladin search items plus the total match count
    */
   async searchByKeyword(
     query: string,
     max = 10,
     offset = 0,
     timeoutMs = ALADIN_SEARCH_TIMEOUT_MS,
-  ): Promise<AladinSearchItem[]> {
+  ): Promise<AladinKeywordSearchResult> {
     const trimmed = query.trim();
     if (!trimmed) {
-      return [];
+      return { items: [], totalResults: 0 };
     }
 
     // Aladin paginates by 1-based page number, not byte offset.
     const start = Math.floor(offset / max) + 1;
-    const cacheKey = `${trimmed}|${max}|${start}`;
+    // Key includes apiKey: the cache is module-level and shared across all
+    // AladinClient instances in the isolate, so results must not bleed across keys.
+    const cacheKey = `${this.apiKey}|${trimmed}|${max}|${start}`;
 
     const cached = keywordCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
@@ -213,17 +220,30 @@ export class AladinClient {
       }
 
       const data: AladinItemSearchResponse = await response.json();
+
+      // Aladin signals failures (expired key, quota, bad params) with HTTP 200
+      // and an errorCode in the body — treat that as an error, not empty results.
+      if (data.errorCode) {
+        throw new Error(
+          `Aladin ItemSearch error: ${data.errorMessage ?? 'unknown'} (code: ${data.errorCode})`,
+        );
+      }
+
       const items = data.item ?? [];
+      const result: AladinKeywordSearchResult = {
+        items,
+        totalResults: data.totalResults ?? items.length,
+      };
 
       keywordCache.set(cacheKey, {
-        value: items,
+        value: result,
         expiresAt: Date.now() + this.searchCacheTtlMs,
       });
 
       console.log(
         `[AladinClient] Keyword "${trimmed}" returned ${items.length} items`,
       );
-      return items;
+      return result;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw new Error(`Aladin ItemSearch timeout after ${timeoutMs}ms`);

@@ -4,6 +4,7 @@
  * Intended to be called by the frontend only when GET /api/search returns 0 hits.
  */
 
+import type { AladinKeywordSearchResult } from '../services';
 import { createAladinClient } from '../services';
 import type { AladinSearchItem, Env, ExternalSearchResultItem } from '../types';
 import { parsePaginationParams } from '../utils';
@@ -12,7 +13,7 @@ type KeywordSearchFn = (
   query: string,
   max: number,
   offset: number,
-) => Promise<AladinSearchItem[]>;
+) => Promise<AladinKeywordSearchResult>;
 
 function toResultItem(item: AladinSearchItem): ExternalSearchResultItem {
   return {
@@ -73,7 +74,7 @@ export async function handleExternalSearch(
   const trimmed = query.trim();
 
   try {
-    const items = await searchByKeyword(trimmed, max, offset);
+    const { items, totalResults } = await searchByKeyword(trimmed, max, offset);
     // A request needs an isbn13 to be recordable; drop items without one.
     const results = items.filter((i) => i.isbn13).map(toResultItem);
 
@@ -82,7 +83,7 @@ export async function handleExternalSearch(
         items: results,
         meta: {
           count: results.length,
-          totalResults: results.length,
+          totalResults,
           offset,
           max,
           query: trimmed,
@@ -97,9 +98,15 @@ export async function handleExternalSearch(
     );
   } catch (error) {
     console.error('[ExternalSearch] Aladin search failed', error);
-    return new Response(JSON.stringify({ error: 'Aladin API unavailable' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        code: 'UPSTREAM_ERROR',
+        message: 'Aladin API unavailable',
+      }),
+      {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
   }
 }
