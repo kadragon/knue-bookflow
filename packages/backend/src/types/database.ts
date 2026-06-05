@@ -79,6 +79,24 @@ export interface PlannedLoanRecord {
   updated_at?: string;
 }
 
+/**
+ * Book request record (희망도서 신청 목록).
+ * Books the KNUE library does not hold, recorded locally from Aladin search.
+ */
+export interface BookRequestRecord {
+  id?: number;
+  isbn13: string;
+  isbn: string | null;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  pub_date: string | null;
+  cover_url: string | null;
+  aladin_link: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export type CronPhase =
   | 'note_broadcast'
   | 'renewal'

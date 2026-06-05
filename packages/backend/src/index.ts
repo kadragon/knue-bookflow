@@ -7,6 +7,11 @@
 
 import { handleGetBookByIsbn } from './handlers/aladin-handler';
 import {
+  handleCreateBookRequest,
+  handleDeleteBookRequest,
+  handleGetBookRequests,
+} from './handlers/book-request-handler';
+import {
   handleBooksApi,
   handleGetBook,
   handleUpdateReadStatus,
@@ -15,6 +20,7 @@ import {
   handleGetCronRuns,
   handleGetLatestCronRuns,
 } from './handlers/cron-runs-handler';
+import { handleExternalSearch } from './handlers/external-search-handler';
 import { handleNewBooksApi } from './handlers/new-books-handler';
 import {
   handleCreateNote,
@@ -163,6 +169,11 @@ export default {
       return handleSearchBooksApi(request);
     }
 
+    // External (Aladin) keyword search — books the library does not hold
+    if (url.pathname === '/api/external-search' && request.method === 'GET') {
+      return handleExternalSearch(env, request);
+    }
+
     // Aladin book lookup by ISBN
     const aladinIsbnMatch = url.pathname.match(/^\/api\/aladin\/isbn\/(.+)$/);
     if (aladinIsbnMatch && request.method === 'GET') {
@@ -186,6 +197,24 @@ export default {
     if (plannedLoanMatch && request.method === 'DELETE') {
       const plannedId = parseInt(plannedLoanMatch[1], 10);
       return handleDeletePlannedLoan(env, plannedId);
+    }
+
+    // Book requests API endpoints (희망도서 신청 목록)
+    if (url.pathname === '/api/book-requests') {
+      if (request.method === 'GET') {
+        return handleGetBookRequests(env);
+      }
+      if (request.method === 'POST') {
+        return handleCreateBookRequest(env, request);
+      }
+    }
+
+    const bookRequestMatch = url.pathname.match(
+      /^\/api\/book-requests\/(\d+)$/,
+    );
+    if (bookRequestMatch && request.method === 'DELETE') {
+      const requestId = parseInt(bookRequestMatch[1], 10);
+      return handleDeleteBookRequest(env, requestId);
     }
 
     // Library-DB sync endpoint

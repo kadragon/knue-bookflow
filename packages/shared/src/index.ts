@@ -318,10 +318,74 @@ export interface AladinBookResponse {
 }
 
 // =============================================================================
+// External Search (Aladin keyword search) + Book Requests (희망도서 신청)
+// =============================================================================
+
+/** A book found via Aladin keyword search that the KNUE library does not hold. */
+export interface ExternalSearchResultItem {
+  isbn13: string;
+  isbn: string | null;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  pubDate: string | null;
+  coverUrl: string | null;
+  aladinLink: string | null;
+  description: string | null;
+}
+
+export interface ExternalSearchResponse {
+  items: ExternalSearchResultItem[];
+  meta: {
+    count: number;
+    totalResults: number;
+    offset: number;
+    max: number;
+    query: string;
+  };
+}
+
+/** A locally-recorded book request (희망도서 신청 목록 항목). */
+export interface BookRequestViewModel {
+  id: number;
+  isbn13: string;
+  isbn: string | null;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  pubDate: string | null;
+  coverUrl: string | null;
+  aladinLink: string | null;
+  createdAt: string;
+}
+
+export interface BookRequestsResponse {
+  items: BookRequestViewModel[];
+}
+
+export interface CreateBookRequestRequest {
+  isbn13: string;
+  isbn?: string | null;
+  title: string;
+  author?: string | null;
+  publisher?: string | null;
+  pubDate?: string | null;
+  coverUrl?: string | null;
+  aladinLink?: string | null;
+}
+
+/** Alias for compatibility with frontend payload naming */
+export type CreateBookRequestPayload = CreateBookRequestRequest;
+
+// =============================================================================
 // API Error Contract
 // =============================================================================
 
-export type ApiErrorCode = 'DUPLICATE_PLANNED_LOAN' | 'INVALID_REQUEST';
+export type ApiErrorCode =
+  | 'DUPLICATE_PLANNED_LOAN'
+  | 'DUPLICATE_BOOK_REQUEST'
+  | 'INVALID_REQUEST'
+  | 'UPSTREAM_ERROR';
 
 export interface ApiErrorBody {
   code: ApiErrorCode;

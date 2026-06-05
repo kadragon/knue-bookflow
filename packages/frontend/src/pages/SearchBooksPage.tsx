@@ -1,5 +1,6 @@
 import {
   BookmarkAdd as BookmarkAddIcon,
+  LibraryAdd as LibraryAddIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
 import {
@@ -22,12 +23,14 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { SearchBookItem } from '../api';
-import { searchBooks } from '../api';
+import type { ExternalSearchResultItem, SearchBookItem } from '../api';
+import { searchBooks, searchExternalBooks } from '../api';
+import { buildFromAladinItem } from '../bookRequestPayload';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { Header } from '../components/Header';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from '../constants';
+import { useBookRequestMutation } from '../hooks/useBookRequestMutation';
 import { usePlannedLoanMutation } from '../hooks/usePlannedLoanMutation';
 import { buildFromSearch } from '../plannedLoanPayload';
 
@@ -223,6 +226,97 @@ function SearchBookCard({
   );
 }
 
+function AladinBookCard({
+  item,
+  onRequest,
+  isSaving,
+}: {
+  item: ExternalSearchResultItem;
+  onRequest: (item: ExternalSearchResultItem) => void;
+  isSaving: boolean;
+}) {
+  return (
+    <Card variant="outlined" sx={{ display: 'flex', minHeight: 160 }}>
+      <Box
+        sx={{
+          width: 120,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.paper',
+          p: 2,
+        }}
+      >
+        {item.coverUrl ? (
+          <CardMedia
+            component="img"
+            image={item.coverUrl}
+            alt={item.title}
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              borderRadius: 1,
+            }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 1,
+              bgcolor: 'action.hover',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" align="center">
+              No Cover
+            </Typography>
+          </Box>
+        )}
+      </Box>
+      <CardContent
+        sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}
+      >
+        <Typography
+          variant="h6"
+          component="h3"
+          sx={{ fontSize: '1rem', fontWeight: 600 }}
+        >
+          {item.title}
+        </Typography>
+        {item.author && (
+          <Typography variant="body2" color="text.secondary">
+            {item.author}
+          </Typography>
+        )}
+        {item.publisher && (
+          <Typography variant="caption" color="text.secondary">
+            {item.publisher}
+            {item.pubDate && ` · ${item.pubDate}`}
+          </Typography>
+        )}
+        <Typography variant="caption" color="text.secondary">
+          ISBN: {item.isbn13}
+        </Typography>
+        <Button
+          variant="contained"
+          color="secondary"
+          startIcon={<LibraryAddIcon />}
+          onClick={() => onRequest(item)}
+          disabled={isSaving}
+          sx={{ alignSelf: 'flex-start', mt: 1 }}
+        >
+          신청
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
  * Validates and sanitizes page parameter from URL
  * Returns 1 for invalid values (NaN, zero, negative)
@@ -270,6 +364,29 @@ export default function SearchBooksPage() {
     closeFeedback,
   } = usePlannedLoanMutation();
 
+  // When the KNUE catalog has no match, fall back to Aladin so the user can
+  // request a book the library does not hold. Gate on the total match count,
+  // not the current page — an out-of-range page (e.g. ?page=999) has an empty
+  // items array even when the library does hold the book.
+  const knueEmpty = !!data && data.meta.totalCount === 0 && !!queryParam.trim();
+
+  const {
+    data: aladinData,
+    isLoading: aladinLoading,
+    isError: aladinIsError,
+  } = useQuery({
+    queryKey: ['externalSearch', queryParam],
+    queryFn: () => searchExternalBooks(queryParam, 10, 0),
+    enabled: knueEmpty,
+  });
+
+  const {
+    mutate: requestMutate,
+    isPending: isRequestPending,
+    feedback: requestFeedback,
+    closeFeedback: closeRequestFeedback,
+  } = useBookRequestMutation();
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
@@ -287,6 +404,10 @@ export default function SearchBooksPage() {
 
   const handlePlan = (book: SearchBookItem) => {
     planMutate(buildFromSearch(book));
+  };
+
+  const handleRequest = (item: ExternalSearchResultItem) => {
+    requestMutate(buildFromAladinItem(item));
   };
 
   const totalPages = data?.meta.totalCount
@@ -365,9 +486,64 @@ export default function SearchBooksPage() {
               </Typography>
             </Box>
 
-            {data.items.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
-                <Typography>검색 결과가 없습니다.</Typography>
+            {data.meta.totalCount === 0 ? (
+              <Box>
+                <Box
+                  sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}
+                >
+                  <Typography>학교 도서관에 없는 책이에요.</Typography>
+                </Box>
+
+                {aladinLoading && (
+                  <Box
+                    sx={{ display: 'flex', justifyContent: 'center', py: 4 }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                )}
+
+                {aladinIsError && (
+                  <Alert severity="error" sx={{ mb: 4 }}>
+                    알라딘 검색에 실패했어요. 잠시 후 다시 시도해 주세요.
+                  </Alert>
+                )}
+
+                {aladinData && aladinData.items.length > 0 && (
+                  <>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 700, mb: 2 }}
+                    >
+                      알라딘 검색 결과 · 신청 가능
+                    </Typography>
+                    <Stack spacing={2} sx={{ mb: 4 }}>
+                      {aladinData.items.map((item) => (
+                        <AladinBookCard
+                          key={item.isbn13}
+                          item={item}
+                          onRequest={handleRequest}
+                          isSaving={isRequestPending}
+                        />
+                      ))}
+                    </Stack>
+                  </>
+                )}
+
+                {aladinData &&
+                  aladinData.items.length === 0 &&
+                  !aladinLoading && (
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        py: 4,
+                        color: 'text.secondary',
+                      }}
+                    >
+                      <Typography>
+                        알라딘에서도 결과를 찾지 못했어요.
+                      </Typography>
+                    </Box>
+                  )}
               </Box>
             ) : (
               <>
@@ -405,6 +581,10 @@ export default function SearchBooksPage() {
       </Container>
 
       <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
+      <FeedbackSnackbar
+        feedback={requestFeedback}
+        onClose={closeRequestFeedback}
+      />
 
       <BookDetailModal
         isbn={selectedIsbn}

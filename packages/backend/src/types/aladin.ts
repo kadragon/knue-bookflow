@@ -36,6 +36,30 @@ export interface AladinItem {
   bookDtlContents?: string; // Table of Contents (목차)
 }
 
+/**
+ * Aladin ItemSearch.aspx response (keyword search).
+ * Same item shape as ItemLookUp minus the optional ToC field.
+ */
+export interface AladinItemSearchResponse {
+  version: string;
+  title: string;
+  link: string;
+  pubDate: string;
+  totalResults: number;
+  startIndex: number;
+  itemsPerPage: number;
+  query: string;
+  searchCategoryId?: number;
+  searchCategoryName?: string;
+  item: AladinSearchItem[];
+  // Aladin returns HTTP 200 with these set when the request fails
+  // (expired key, quota exceeded, invalid params).
+  errorCode?: number;
+  errorMessage?: string;
+}
+
+export type AladinSearchItem = Omit<AladinItem, 'bookDtlContents'>;
+
 export interface BookInfo {
   isbn: string;
   isbn13: string;
