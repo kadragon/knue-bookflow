@@ -59,6 +59,7 @@ import {
   getLoanStatusChip,
   shouldShowDdayChip,
 } from './loanStatusPresentation';
+import { patchBooksReadStatus } from './optimisticReadStatus';
 import BookDetailPage from './pages/BookDetailPage';
 import BookRequestsPage from './pages/BookRequestsPage';
 import NewBooksPage from './pages/NewBooksPage';
@@ -132,11 +133,13 @@ function BookCard({
   onNoteClick,
   onReadStatusChange,
   onBookClick,
+  isUpdating,
 }: {
   book: BookItem;
   onNoteClick: (book: BookItem) => void;
   onReadStatusChange: (book: BookItem, readStatus: ReadStatus) => void;
   onBookClick: (book: BookItem) => void;
+  isUpdating: boolean;
 }) {
   const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
 
@@ -322,6 +325,7 @@ function BookCard({
               onReadStatusChange(book, newStatus)
             }
             size="small"
+            disabled={isUpdating}
           />
         </Box>
       </CardContent>
@@ -840,10 +844,21 @@ function BookshelfPage() {
       bookId: number;
       readStatus: ReadStatus;
     }) => updateReadStatus(bookId, readStatus),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['books'] });
+    // Optimistic: patch the cached list immediately and skip the full refetch,
+    // so the button reflects the change instantly instead of waiting for the
+    // PATCH round-trip plus a fresh GET /api/books.
+    onMutate: async ({ bookId, readStatus }) => {
+      await queryClient.cancelQueries({ queryKey: ['books'] });
+      const previous = queryClient.getQueryData<ApiResponse>(['books']);
+      queryClient.setQueryData<ApiResponse>(['books'], (data) =>
+        patchBooksReadStatus(data, bookId, readStatus),
+      );
+      return { previous };
     },
-    onError: () => {
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['books'], context.previous);
+      }
       setNotification({
         type: 'error',
         message: '독서 상태 변경에 실패했습니다.',
@@ -951,6 +966,7 @@ function BookshelfPage() {
                 onNoteClick={handleNoteClick}
                 onReadStatusChange={handleReadStatusChange}
                 onBookClick={handleBookClick}
+                isUpdating={readStatusMutation.isPending}
               />
             ))}
           </Box>

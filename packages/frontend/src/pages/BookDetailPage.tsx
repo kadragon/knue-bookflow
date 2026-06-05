@@ -34,6 +34,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  type ApiResponse,
+  type BookDetailResponse,
   type BookItem,
   createNote,
   deleteNote,
@@ -51,6 +53,10 @@ import {
   getLoanStatusChip,
   shouldShowDdayChip,
 } from '../loanStatusPresentation';
+import {
+  patchBookDetailReadStatus,
+  patchBooksReadStatus,
+} from '../optimisticReadStatus';
 import { NOTES_LIST_SX } from './bookDetailLayout';
 
 function formatDate(dateStr: string): string {
@@ -521,11 +527,34 @@ export default function BookDetailPage() {
   const readStatusMutation = useMutation({
     mutationFn: (readStatus: ReadStatus) =>
       updateReadStatus(bookId, readStatus),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['book', bookId] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
+    // Optimistic: patch both the detail and list caches in place and skip the
+    // refetch, so the status flips instantly instead of blocking on the PATCH
+    // round-trip plus two fresh GETs.
+    onMutate: async (readStatus) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['book', bookId] }),
+        queryClient.cancelQueries({ queryKey: ['books'] }),
+      ]);
+      const previousDetail = queryClient.getQueryData<BookDetailResponse>([
+        'book',
+        bookId,
+      ]);
+      const previousList = queryClient.getQueryData<ApiResponse>(['books']);
+      queryClient.setQueryData<BookDetailResponse>(['book', bookId], (data) =>
+        patchBookDetailReadStatus(data, readStatus),
+      );
+      queryClient.setQueryData<ApiResponse>(['books'], (data) =>
+        patchBooksReadStatus(data, bookId, readStatus),
+      );
+      return { previousDetail, previousList };
     },
-    onError: () => {
+    onError: (_err, _vars, context) => {
+      if (context?.previousDetail) {
+        queryClient.setQueryData(['book', bookId], context.previousDetail);
+      }
+      if (context?.previousList) {
+        queryClient.setQueryData(['books'], context.previousList);
+      }
       setNotification({
         type: 'error',
         message: '독서 상태 변경에 실패했습니다.',
