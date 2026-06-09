@@ -221,21 +221,33 @@ export async function drawPracticeNote(
     return null;
   }
 
-  if (!force) {
-    const todayKST = kstDayNumber(now);
-    const alreadyDrawn = candidates.find((c) => {
-      if (!c.lastSentAt) return false;
-      const ts = new Date(c.lastSentAt).getTime();
-      if (!Number.isFinite(ts)) return false;
-      return kstDayNumber(new Date(ts)) === todayKST;
-    });
+  const todayKST = kstDayNumber(now);
+  const alreadyDrawnNoteId = candidates.reduce<number | null>((found, c) => {
+    if (found !== null) return found;
+    if (!c.lastSentAt) return null;
+    const ts = new Date(c.lastSentAt).getTime();
+    if (!Number.isFinite(ts)) return null;
+    return kstDayNumber(new Date(ts)) === todayKST ? (c.note.id ?? null) : null;
+  }, null);
 
-    if (alreadyDrawn) {
-      return alreadyDrawn;
-    }
+  if (!force && alreadyDrawnNoteId !== null) {
+    const alreadyDrawn = candidates.find(
+      (c) => c.note.id === alreadyDrawnNoteId,
+    );
+    if (alreadyDrawn) return alreadyDrawn;
   }
 
-  const selected = selectNoteCandidate(candidates, randomFn, {
+  const pool =
+    force && alreadyDrawnNoteId !== null
+      ? (() => {
+          const filtered = candidates.filter(
+            (c) => c.note.id !== alreadyDrawnNoteId,
+          );
+          return filtered.length > 0 ? filtered : candidates;
+        })()
+      : candidates;
+
+  const selected = selectNoteCandidate(pool, randomFn, {
     now,
     cooldownDays: deps.cooldownDays,
   });

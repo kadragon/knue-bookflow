@@ -1,6 +1,6 @@
 /**
  * Due-soon Telegram broadcast service
- * (Note broadcast removed; see note-selection.ts for practice-sheet selection)
+ * Exports: DAILY_CRON, formatDueSoonMessage, broadcastDueSoonBooks
  */
 
 import type { BookRecord, Env } from '../types';

@@ -20,7 +20,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { getPracticeNote } from '../api';
 
@@ -33,12 +33,7 @@ const FONT_LABEL: Record<FontFamily, string> = {
   'Nanum Pen Script': '나눔 펜스크립트',
 };
 
-const LINE_HEIGHTS: Record<number, string> = {
-  18: '18px',
-  24: '24px',
-  32: '32px',
-  40: '40px',
-};
+const FONT_SIZES = [18, 24, 32, 40] as const;
 
 function guideBackground(mode: GuideMode, lineHeight: number): string {
   const lineColor = 'rgba(80, 110, 200, 0.18)';
@@ -76,17 +71,25 @@ export default function PracticePage() {
   const [font, setFont] = useState<FontFamily>('Pretendard Variable');
   const [fontSize, setFontSize] = useState(24);
   const [guide, setGuide] = useState<GuideMode>('lines');
-  const [forceKey, setForceKey] = useState(0);
+
+  const kstToday = new Date().toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Seoul',
+  });
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['practice', 'today', forceKey],
-    queryFn: () => getPracticeNote(forceKey > 0),
-    staleTime: Infinity, // stable all day; forceKey bump triggers refetch
+    queryKey: ['practice', 'today', kstToday],
+    queryFn: () => getPracticeNote(false),
+    staleTime: Infinity,
     retry: false,
   });
 
-  const handleRedraw = () => {
-    setForceKey((k) => k + 1);
+  const handleRedraw = async () => {
+    const newData = await getPracticeNote(true);
+    queryClient.setQueryData(['practice', 'today', kstToday], newData);
   };
 
   const handlePrint = async () => {
@@ -182,8 +185,8 @@ export default function PracticePage() {
             label="크기"
             onChange={(e) => setFontSize(Number(e.target.value))}
           >
-            {Object.entries(LINE_HEIGHTS).map(([px]) => (
-              <MenuItem key={px} value={Number(px)}>
+            {FONT_SIZES.map((px) => (
+              <MenuItem key={px} value={px}>
                 {px}px
               </MenuItem>
             ))}
@@ -303,10 +306,6 @@ export default function PracticePage() {
               '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
             p: '12mm',
             boxSizing: 'border-box',
-            // Apply guide background
-            backgroundImage: guideBackground(guide, fontSize + 8),
-            backgroundSize: `100% ${fontSize + 8}px`,
-            backgroundPosition: `0 ${(fontSize + 8) * 1.5}px`, // offset past header
             // Print: fill page
             '@media print': {
               width: '100%',
@@ -356,6 +355,11 @@ export default function PracticePage() {
               wordBreak: 'break-word',
               m: 0,
               p: 0,
+              backgroundImage: guideBackground(guide, fontSize + 8),
+              backgroundSize: `100% ${fontSize + 8}px`,
+              backgroundPosition: '0 0',
+              WebkitPrintColorAdjust: 'exact',
+              printColorAdjust: 'exact',
             }}
           >
             {data.note.content}

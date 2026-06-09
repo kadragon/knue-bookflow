@@ -365,11 +365,13 @@ export const deleteBookRequest = async (
 
 export const getPracticeNote = async (
   force = false,
-): Promise<PracticeSheetResponse> => {
+): Promise<PracticeSheetResponse | null> => {
   const url = force ? '/api/practice/today?force=1' : '/api/practice/today';
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
   });
+
+  if (res.status === 404) return null;
 
   await handleApiError(res, 'Failed to fetch practice note');
 

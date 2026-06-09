@@ -107,9 +107,8 @@ Set via Wrangler. Never commit values.
 | `LIBRARY_USER_ID` | KNUE Pyxis login |
 | `LIBRARY_PASSWORD` | KNUE Pyxis login |
 | `ALADIN_API_KEY` | Aladin metadata lookup |
-| `TELEGRAM_BOT_TOKEN` | Telegram broadcast + webhook |
+| `TELEGRAM_BOT_TOKEN` | Telegram due-soon broadcast |
 | `TELEGRAM_CHAT_ID` | Default broadcast target |
-| `TELEGRAM_WEBHOOK_SECRET` | Webhook signature verification (required in production) |
 
 ```bash
 bun run --cwd packages/backend wrangler secret put TELEGRAM_BOT_TOKEN

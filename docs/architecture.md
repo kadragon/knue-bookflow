@@ -79,10 +79,9 @@ Migrations live in `packages/backend/migrations/NNNN_description.sql`. Applied l
 
 | Surface | Entry | Notes |
 |---------|-------|-------|
-| Cron `0 3 * * *` UTC (12:00 KST) | `scheduled()` in `index.ts` | Wraps note broadcast + renewal pipeline in `ctx.waitUntil` |
+| Cron `0 3 * * *` UTC (12:00 KST) | `scheduled()` in `index.ts` | Runs due-soon broadcast + renewal pipeline in `ctx.waitUntil` |
 | `GET /api/books`, `/api/notes`, `/api/planned-loans`, `/api/search`, `/api/aladin/:isbn` | `fetch()` in `index.ts` | All JSON; pagination via `utils/pagination.ts` |
 | `POST /trigger` | sync-handler | Manual sync entrypoint |
-| Telegram webhook | `telegram-webhook-handler.ts` | Requires `TELEGRAM_WEBHOOK_SECRET` in production |
 | Static assets | `[assets] ASSETS` | Frontend dist served from Worker |
 
 ## Key Abstractions
