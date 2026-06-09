@@ -4,11 +4,13 @@
  */
 
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import CreateIcon from '@mui/icons-material/Create';
 import PrintIcon from '@mui/icons-material/Print';
 import {
   Box,
   Button,
   CircularProgress,
+  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -39,7 +41,7 @@ const LINE_HEIGHTS: Record<number, string> = {
 };
 
 function guideBackground(mode: GuideMode, lineHeight: number): string {
-  const lineColor = 'rgba(180,180,180,0.4)';
+  const lineColor = 'rgba(80, 110, 200, 0.18)';
   if (mode === 'none') return 'transparent';
   if (mode === 'lines') {
     return `repeating-linear-gradient(
@@ -99,28 +101,48 @@ export default function PracticePage() {
   });
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f0f0f0', pb: 8 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f2ede5', pb: 8 }}>
       {/* Controls — hidden in print */}
       <Box
         sx={{
           displayPrint: 'none',
-          px: 2,
+          px: 3,
           py: 1.5,
-          backgroundColor: 'background.paper',
-          boxShadow: 1,
+          backgroundColor: '#faf7f2',
+          borderBottom: '1px solid rgba(0,0,0,0.08)',
           display: 'flex',
           flexWrap: 'wrap',
           gap: 2,
           alignItems: 'center',
         }}
       >
-        <Typography variant="subtitle1" fontWeight={600} sx={{ mr: 1 }}>
-          글씨 연습장
-        </Typography>
+        {/* Title */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mr: 1 }}>
+          <CreateIcon
+            sx={{ fontSize: 18, color: 'text.secondary', opacity: 0.7 }}
+          />
+          <Typography
+            sx={{
+              fontFamily: '"Fraunces", serif',
+              fontWeight: 700,
+              fontSize: '1.05rem',
+              letterSpacing: '-0.01em',
+              color: 'text.primary',
+            }}
+          >
+            글씨 연습장
+          </Typography>
+        </Box>
+
+        <Divider orientation="vertical" flexItem sx={{ opacity: 0.4 }} />
 
         {/* Opacity */}
-        <Box sx={{ width: 140 }}>
-          <Typography variant="caption" color="text.secondary">
+        <Box sx={{ width: 130 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mb: 0.25 }}
+          >
             글자 농도
           </Typography>
           <Slider
@@ -130,11 +152,14 @@ export default function PracticePage() {
             step={0.05}
             onChange={(_e, v) => setOpacity(v as number)}
             size="small"
+            sx={{ color: 'text.secondary' }}
           />
         </Box>
 
+        <Divider orientation="vertical" flexItem sx={{ opacity: 0.4 }} />
+
         {/* Font */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
+        <FormControl size="small" sx={{ minWidth: 155 }}>
           <InputLabel>폰트</InputLabel>
           <Select
             value={font}
@@ -150,7 +175,7 @@ export default function PracticePage() {
         </FormControl>
 
         {/* Font size */}
-        <FormControl size="small" sx={{ minWidth: 90 }}>
+        <FormControl size="small" sx={{ minWidth: 85 }}>
           <InputLabel>크기</InputLabel>
           <Select
             value={fontSize}
@@ -165,12 +190,22 @@ export default function PracticePage() {
           </Select>
         </FormControl>
 
+        <Divider orientation="vertical" flexItem sx={{ opacity: 0.4 }} />
+
         {/* Guide mode */}
         <ToggleButtonGroup
           value={guide}
           exclusive
           size="small"
           onChange={(_e, v) => v && setGuide(v as GuideMode)}
+          sx={{
+            '& .MuiToggleButton-root': {
+              fontSize: '0.75rem',
+              px: 1.5,
+              py: 0.5,
+              borderColor: 'rgba(0,0,0,0.15)',
+            },
+          }}
         >
           <ToggleButton value="none">없음</ToggleButton>
           <ToggleButton value="lines">줄선</ToggleButton>
@@ -183,6 +218,7 @@ export default function PracticePage() {
             variant="outlined"
             size="small"
             onClick={handleRedraw}
+            sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
           >
             다시 뽑기
           </Button>
@@ -191,6 +227,11 @@ export default function PracticePage() {
             variant="contained"
             size="small"
             onClick={handlePrint}
+            sx={{
+              backgroundColor: '#4a5568',
+              '&:hover': { backgroundColor: '#2d3748' },
+              boxShadow: 'none',
+            }}
           >
             인쇄
           </Button>
@@ -200,23 +241,50 @@ export default function PracticePage() {
       {/* Sheet area */}
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 8 }}>
-          <CircularProgress />
+          <CircularProgress size={32} sx={{ color: '#8a7a6a' }} />
         </Box>
       )}
 
       {isError && (
-        <Box sx={{ displayPrint: 'none', textAlign: 'center', mt: 8 }}>
-          <Typography color="error">노트를 불러오지 못했습니다.</Typography>
-          <Button onClick={() => refetch()} sx={{ mt: 2 }}>
+        <Box sx={{ displayPrint: 'none', textAlign: 'center', mt: 10 }}>
+          <Typography sx={{ color: 'error.main', mb: 2 }}>
+            노트를 불러오지 못했습니다.
+          </Typography>
+          <Button
+            onClick={() => refetch()}
+            variant="outlined"
+            size="small"
+            sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
+          >
             다시 시도
           </Button>
         </Box>
       )}
 
       {!isLoading && !isError && !data && (
-        <Box sx={{ displayPrint: 'none', textAlign: 'center', mt: 8 }}>
-          <Typography color="text.secondary">
-            연습할 노트가 없습니다. 독서 노트를 먼저 작성해주세요.
+        <Box
+          sx={{
+            displayPrint: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            mt: 12,
+            gap: 1.5,
+          }}
+        >
+          <CreateIcon sx={{ fontSize: 40, color: 'rgba(0,0,0,0.18)' }} />
+          <Typography
+            sx={{
+              color: 'text.secondary',
+              fontFamily: '"Fraunces", serif',
+              fontSize: '1rem',
+              letterSpacing: '0.01em',
+            }}
+          >
+            연습할 노트가 없습니다
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
+            독서 노트를 먼저 작성해주세요.
           </Typography>
         </Box>
       )}
@@ -230,8 +298,9 @@ export default function PracticePage() {
             minHeight: '210mm',
             mx: 'auto',
             mt: 3,
-            backgroundColor: '#fff',
-            boxShadow: 3,
+            backgroundColor: '#fffef9',
+            boxShadow:
+              '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
             p: '12mm',
             boxSizing: 'border-box',
             // Apply guide background
@@ -245,24 +314,35 @@ export default function PracticePage() {
               mt: 0,
               boxShadow: 'none',
               p: 0,
+              backgroundColor: '#fff',
             },
           }}
         >
           {/* Header */}
-          <Typography
-            variant="caption"
+          <Box
             sx={{
-              display: 'block',
-              mb: `${(fontSize + 8) * 1}px`,
-              color: 'text.secondary',
-              fontFamily: font,
-              lineHeight: 1.4,
-              '@media print': { color: '#555' },
+              mb: `${(fontSize + 8) * 0.5}px`,
+              pb: `${(fontSize + 8) * 0.5}px`,
+              borderBottom: '1px solid rgba(0,0,0,0.12)',
+              '@media print': { borderBottom: '1px solid #ccc' },
             }}
           >
-            {today} · {data.book.title} · {data.book.author}
-            {data.note.pageNumber ? ` · p.${data.note.pageNumber}` : ''}
-          </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'text.secondary',
+                fontFamily: font,
+                lineHeight: 1.5,
+                fontSize: '0.72rem',
+                letterSpacing: '0.02em',
+                '@media print': { color: '#666' },
+              }}
+            >
+              {today} · {data.book.title} · {data.book.author}
+              {data.note.pageNumber ? ` · p.${data.note.pageNumber}` : ''}
+            </Typography>
+          </Box>
 
           {/* Traceable content */}
           <Typography
