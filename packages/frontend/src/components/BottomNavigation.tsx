@@ -1,6 +1,7 @@
 import {
   AutoStories as AutoStoriesIcon,
   BookmarkAdd as BookmarkAddIcon,
+  Create as CreateIcon,
   LibraryAdd as LibraryAddIcon,
   MenuBook as MenuBookIcon,
   Search as SearchIcon,
@@ -19,6 +20,7 @@ const navigationItems = [
   { label: '신작', value: '/new-books', icon: <AutoStoriesIcon /> },
   { label: '대출 예정', value: '/planned', icon: <BookmarkAddIcon /> },
   { label: '신청', value: '/requests', icon: <LibraryAddIcon /> },
+  { label: '연습장', value: '/practice', icon: <CreateIcon /> },
 ];
 
 export function BottomNavigation() {
@@ -31,7 +33,14 @@ export function BottomNavigation() {
 
   return (
     <Paper
-      sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000 }}
+      sx={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        displayPrint: 'none',
+      }}
       elevation={3}
     >
       <MuiBottomNavigation value={location.pathname} onChange={handleChange}>

@@ -64,6 +64,7 @@ import BookDetailPage from './pages/BookDetailPage';
 import BookRequestsPage from './pages/BookRequestsPage';
 import NewBooksPage from './pages/NewBooksPage';
 import PlannedLoansPage from './pages/PlannedLoansPage';
+import PracticePage from './pages/PracticePage';
 import SearchBooksPage from './pages/SearchBooksPage';
 
 // Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-scheduler-001, task_id: TASK-019, TASK-023, TASK-029, TASK-070
@@ -1011,6 +1012,7 @@ export default function App() {
         <Route path="/new-books" element={<NewBooksPage />} />
         <Route path="/search" element={<SearchBooksPage />} />
         <Route path="/requests" element={<BookRequestsPage />} />
+        <Route path="/practice" element={<PracticePage />} />
       </Routes>
       <BottomNavigation />
     </>

@@ -158,6 +158,22 @@ export interface BookDetailResponse {
 }
 
 // =============================================================================
+// Practice Sheet Types
+// =============================================================================
+
+export interface PracticeSheetBook {
+  id: number;
+  title: string;
+  author: string;
+  publisher: string | null;
+}
+
+export interface PracticeSheetResponse {
+  note: NoteViewModel;
+  book: PracticeSheetBook;
+}
+
+// =============================================================================
 // Planned Loans (formerly src/types/api.ts)
 // =============================================================================
 

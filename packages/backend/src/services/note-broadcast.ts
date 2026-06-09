@@ -1,9 +1,9 @@
 /**
- * Daily Telegram note broadcast service
- * Trace: spec_id: SPEC-notes-telegram-002, task_id: TASK-036
+ * Due-soon Telegram broadcast service
+ * Exports: DAILY_CRON, formatDueSoonMessage, broadcastDueSoonBooks
  */
 
-import type { BookRecord, Env, NoteRecord } from '../types';
+import type { BookRecord, Env } from '../types';
 import {
   DAY_MS,
   DUE_SOON_BROADCAST_DAYS,
@@ -14,219 +14,10 @@ import {
   MAX_RENEWALS_PER_LOAN,
 } from '../utils';
 import { createBookRepository } from './book-repository';
-import { createTelegramMessageRepository } from './telegram-message-repository';
 
 const MARKDOWN_V2_SPECIAL_CHARS = /([_*[\]()~`>#+\-=|{}.!\\])/g;
 
-export const NOTE_BROADCAST_CRON = '0 3 * * *';
-export const NOTE_COOLDOWN_DAYS = 7;
-
-export interface NoteCandidate {
-  book: BookRecord;
-  note: NoteRecord;
-  sendCount: number;
-  lastSentAt: string | null;
-}
-
-export interface NoteBroadcastRepository {
-  getNoteCandidates(): Promise<NoteCandidate[]>;
-  incrementSendCount(noteId: number, now?: Date): Promise<void>;
-}
-
-export interface NoteBroadcastDeps {
-  repository?: NoteBroadcastRepository;
-  fetchFn?: typeof fetch;
-  randomFn?: () => number;
-  now?: Date;
-  cooldownDays?: number;
-  telegramMessageRepository?: {
-    save(telegramMessageId: number, noteId: number): Promise<void>;
-  };
-}
-
-interface NoteCandidateRow {
-  note_id: number;
-  book_id: number;
-  page_number: number;
-  content: string;
-  note_created_at?: string | null;
-  note_updated_at?: string | null;
-  charge_id: string;
-  isbn: string;
-  isbn13: string | null;
-  title: string;
-  author: string;
-  publisher: string | null;
-  cover_url: string | null;
-  description: string | null;
-  pub_date: string | null;
-  charge_date: string;
-  due_date: string;
-  renew_count: number;
-  is_read?: number | null;
-  book_created_at?: string | null;
-  book_updated_at?: string | null;
-  send_count: number | null;
-  last_sent_at: string | null;
-}
-
-export function createNoteBroadcastRepository(
-  db: D1Database,
-): NoteBroadcastRepository {
-  return new D1NoteBroadcastRepository(db);
-}
-
-class D1NoteBroadcastRepository implements NoteBroadcastRepository {
-  constructor(private readonly db: D1Database) {}
-
-  async getNoteCandidates(): Promise<NoteCandidate[]> {
-    const result = await this.db
-      .prepare(`
-        SELECT
-          n.id AS note_id,
-          n.book_id,
-          n.page_number,
-          n.content,
-          n.created_at AS note_created_at,
-          n.updated_at AS note_updated_at,
-          b.charge_id,
-          b.isbn,
-          b.isbn13,
-          b.title,
-          b.author,
-          b.publisher,
-          b.cover_url,
-          b.description,
-          b.pub_date,
-          b.charge_date,
-          b.due_date,
-          b.renew_count,
-          b.is_read,
-          b.created_at AS book_created_at,
-          b.updated_at AS book_updated_at,
-          COALESCE(s.send_count, 0) AS send_count,
-          s.last_sent_at
-        FROM notes n
-        JOIN books b ON b.id = n.book_id
-        LEFT JOIN note_send_stats s ON s.note_id = n.id
-      `)
-      .all<NoteCandidateRow>();
-
-    return result.results.map((row) => ({
-      note: {
-        id: row.note_id,
-        book_id: row.book_id,
-        page_number: row.page_number,
-        content: row.content,
-        created_at: row.note_created_at ?? undefined,
-        updated_at: row.note_updated_at ?? undefined,
-      },
-      book: {
-        id: row.book_id,
-        charge_id: row.charge_id,
-        isbn: row.isbn,
-        isbn13: row.isbn13,
-        title: row.title,
-        author: row.author,
-        publisher: row.publisher,
-        cover_url: row.cover_url,
-        description: row.description,
-        pub_date: row.pub_date,
-        charge_date: row.charge_date,
-        due_date: row.due_date,
-        renew_count: row.renew_count,
-        is_read: row.is_read ?? 0,
-        created_at: row.book_created_at ?? undefined,
-        updated_at: row.book_updated_at ?? undefined,
-      },
-      sendCount: row.send_count ?? 0,
-      lastSentAt: row.last_sent_at ?? null,
-    }));
-  }
-
-  async incrementSendCount(noteId: number, now?: Date): Promise<void> {
-    const nowIso = (now ?? new Date()).toISOString();
-
-    await this.db
-      .prepare(`
-        INSERT INTO note_send_stats (note_id, send_count, last_sent_at)
-        VALUES (?, 1, ?)
-        ON CONFLICT(note_id)
-        DO UPDATE SET
-          send_count = send_count + 1,
-          last_sent_at = excluded.last_sent_at
-      `)
-      .bind(noteId, nowIso)
-      .run();
-  }
-}
-
-export function selectNoteCandidate(
-  candidates: NoteCandidate[],
-  randomFn: () => number = Math.random,
-  options?: { now?: Date; cooldownDays?: number },
-): NoteCandidate | null {
-  if (candidates.length === 0) {
-    return null;
-  }
-
-  const now = options?.now ?? new Date();
-  const cooldownDays = options?.cooldownDays ?? NOTE_COOLDOWN_DAYS;
-  const threshold = now.getTime() - cooldownDays * DAY_MS;
-
-  const eligible = candidates.filter((c) => {
-    if (!c.lastSentAt) return true;
-    const ts = new Date(c.lastSentAt).getTime();
-    return Number.isFinite(ts) && ts < threshold;
-  });
-  if (eligible.length === 0) {
-    console.warn(
-      '[NoteBroadcast] All candidates in cooldown; bypassing filter',
-    );
-  }
-  const pool = eligible.length > 0 ? eligible : candidates;
-
-  // Weight by 1/(sendCount+1): unsent notes (sendCount=0) get weight 1.0,
-  // frequently sent ones decay (sendCount=4 → 0.2).
-  const weights = pool.map((c) => 1 / (c.sendCount + 1));
-  const total = weights.reduce((sum, w) => sum + w, 0);
-  const target = randomFn() * total;
-
-  let cumulative = 0;
-  for (let i = 0; i < pool.length; i++) {
-    cumulative += weights[i]!;
-    if (target < cumulative) {
-      return pool[i]!;
-    }
-  }
-  return pool[pool.length - 1]!;
-}
-
-export function formatNoteMessage(candidate: NoteCandidate): string {
-  const { book, note } = candidate;
-  const escapeMarkdownV2 = (value: string): string =>
-    value.replace(MARKDOWN_V2_SPECIAL_CHARS, '\\$1');
-
-  const quoteLines = (value: string): string =>
-    value
-      .split('\n')
-      .map((line) => `> ${line}`)
-      .join('\n');
-
-  const title = escapeMarkdownV2(book.title);
-  const authorLine = book.author
-    ? `_${escapeMarkdownV2(book.author)}_\n`
-    : '_(Unknown Author)_\n';
-  const pageValue = note.page_number ?? '?';
-  const page = escapeMarkdownV2(`p.${pageValue}`);
-  const content = note.content
-    ? quoteLines(escapeMarkdownV2(note.content))
-    : '';
-
-  const contentSection = content ? `\n\n${content}` : '';
-
-  return `📚 *${title}*\n${authorLine}${page}${contentSection}`;
-}
+export const DAILY_CRON = '0 3 * * *';
 
 export function formatDueSoonMessage(books: BookRecord[]): string {
   if (books.length === 0) return '';
@@ -273,7 +64,7 @@ async function sendTelegramMessage(
   if (!response.ok) {
     const details = await response.text().catch(() => '');
     console.error(
-      `[NoteBroadcast] Telegram send failed: ${response.status} ${response.statusText} ${details}`,
+      `[DueSoonBroadcast] Telegram send failed: ${response.status} ${response.statusText} ${details}`,
     );
     return null;
   }
@@ -281,73 +72,11 @@ async function sendTelegramMessage(
   const data = await response.json<{ result?: { message_id?: number } }>();
   if (!data.result?.message_id) {
     console.error(
-      '[NoteBroadcast] Telegram response missing result.message_id',
+      '[DueSoonBroadcast] Telegram response missing result.message_id',
     );
     return null;
   }
   return data.result.message_id;
-}
-
-export async function broadcastDailyNote(
-  env: Env,
-  deps: NoteBroadcastDeps = {},
-): Promise<boolean> {
-  const repository =
-    deps.repository ?? createNoteBroadcastRepository(env.DB as D1Database);
-  const fetchFn = deps.fetchFn ?? fetch;
-  const randomFn = deps.randomFn ?? Math.random;
-  const telegramMessageRepository =
-    deps.telegramMessageRepository ??
-    createTelegramMessageRepository(env.DB as D1Database);
-
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
-    console.warn('[NoteBroadcast] Telegram credentials missing; skipping send');
-    return false;
-  }
-
-  let noteSuccess = false;
-  const candidates = await repository.getNoteCandidates();
-  const candidate = selectNoteCandidate(candidates, randomFn, {
-    now: deps.now,
-    cooldownDays: deps.cooldownDays,
-  });
-
-  if (!candidate) {
-    console.log('[NoteBroadcast] No notes available to send; skipping');
-  } else {
-    const message = formatNoteMessage(candidate);
-    const messageId = await sendTelegramMessage(
-      env.TELEGRAM_BOT_TOKEN,
-      env.TELEGRAM_CHAT_ID,
-      message,
-      fetchFn,
-    );
-
-    if (messageId !== null) {
-      if (candidate.note.id) {
-        // Save mapping first. If it fails, skip incrementSendCount to keep
-        // both writes consistent (no mapping → no send count increment).
-        let mappingSaved = false;
-        try {
-          await telegramMessageRepository.save(messageId, candidate.note.id);
-          mappingSaved = true;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          console.error(
-            `[NoteBroadcast] Failed to save message mapping: ${msg}`,
-          );
-        }
-        if (mappingSaved) {
-          await repository.incrementSendCount(candidate.note.id, deps.now);
-          noteSuccess = true;
-        }
-      } else {
-        noteSuccess = true;
-      }
-    }
-  }
-
-  return noteSuccess;
 }
 
 export interface DueSoonBroadcastDeps {

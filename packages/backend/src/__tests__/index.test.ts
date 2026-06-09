@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncBooksCore } from '../handlers/sync-handler';
 import worker from '../index';
-import { NOTE_BROADCAST_CRON } from '../services';
+import { DAILY_CRON } from '../services';
 import type { Env } from '../types';
 
 // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
@@ -77,14 +77,14 @@ describe('scheduled handler', () => {
 
   it('should handle note broadcast cron and trigger broadcast and sync', async () => {
     const mockEvent = {
-      cron: NOTE_BROADCAST_CRON,
+      cron: DAILY_CRON,
       scheduledTime: Date.now(),
     } as ScheduledEvent;
 
     await worker.scheduled(mockEvent, mockEnv, mockCtx);
 
-    // Should call waitUntil twice: note broadcast and renewal-then-notify
-    expect(waitUntilSpy).toHaveBeenCalledTimes(2);
+    // Should call waitUntil once: renewal-then-notify (note broadcast removed)
+    expect(waitUntilSpy).toHaveBeenCalledTimes(1);
 
     const pending = collectWaitUntilPromises();
     await Promise.allSettled(pending);
@@ -92,7 +92,7 @@ describe('scheduled handler', () => {
 
   it('should log scheduled sync start when cron triggers', async () => {
     const mockEvent = {
-      cron: NOTE_BROADCAST_CRON,
+      cron: DAILY_CRON,
       scheduledTime: Date.now(),
     } as ScheduledEvent;
 
@@ -116,7 +116,7 @@ describe('scheduled handler', () => {
     globalThis.fetch = mockFetch as typeof fetch;
 
     const mockEvent = {
-      cron: NOTE_BROADCAST_CRON,
+      cron: DAILY_CRON,
       scheduledTime: Date.now(),
     } as ScheduledEvent;
 
@@ -135,7 +135,7 @@ describe('scheduled handler', () => {
   it('should log a scheduled sync summary when completed', async () => {
     consoleLogSpy.mockClear();
     const mockEvent = {
-      cron: NOTE_BROADCAST_CRON,
+      cron: DAILY_CRON,
       scheduledTime: Date.now(),
     } as ScheduledEvent;
 
@@ -179,33 +179,5 @@ describe('scheduled handler', () => {
       `[BookFlow] Unknown cron '${oldRenewalCron}', skipping renewal workflow`,
     );
     expect(mockCtx.waitUntil).not.toHaveBeenCalled();
-  });
-});
-
-describe('POST /webhook/telegram', () => {
-  it('routes to telegram webhook handler and returns 401 without secret', async () => {
-    const env: Env = {
-      DB: {} as D1Database,
-      ALADIN_API_KEY: '',
-      LIBRARY_USER_ID: '',
-      LIBRARY_PASSWORD: '',
-      TELEGRAM_BOT_TOKEN: 'tok',
-      TELEGRAM_CHAT_ID: '123',
-      TELEGRAM_WEBHOOK_SECRET: 'secret',
-      ENVIRONMENT: 'test',
-      ASSETS: {} as Fetcher,
-    };
-    const ctx = {
-      waitUntil: vi.fn(),
-      passThroughOnException: vi.fn(),
-    } as unknown as ExecutionContext;
-
-    const req = new Request('https://example.com/webhook/telegram', {
-      method: 'POST',
-      body: JSON.stringify({ update_id: 1 }),
-    });
-
-    const res = await worker.fetch(req, env, ctx);
-    expect(res.status).toBe(401);
   });
 });

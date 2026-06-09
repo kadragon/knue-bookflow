@@ -33,23 +33,19 @@ import {
   handleDeletePlannedLoan,
   handleGetPlannedLoans,
 } from './handlers/planned-loans-handler';
+import { handlePracticeDraw } from './handlers/practice-handler';
 import { handleSearchBooksApi } from './handlers/search-handler';
 import { handleSyncBooks, syncBooksCore } from './handlers/sync-handler';
 import {
-  createTelegramWebhookDeps,
-  handleTelegramWebhook,
-} from './handlers/telegram-webhook-handler';
-import {
-  broadcastDailyNote,
   broadcastDueSoonBooks,
   checkAndRenewBooks,
   createAladinClient,
   createBookRepository,
   createCronRunRepository,
   createLibraryClient,
+  DAILY_CRON,
   type ICronRunRepository,
   logRenewalResults,
-  NOTE_BROADCAST_CRON,
   type RenewalConfig,
 } from './services';
 import type {
@@ -112,13 +108,8 @@ export default {
     ctx: ExecutionContext,
   ): Promise<void> {
     // Trace: spec_id: SPEC-scheduler-001, task_id: TASK-070
-    if (event.cron === NOTE_BROADCAST_CRON) {
+    if (event.cron === DAILY_CRON) {
       const repo = createCronRunRepository(env.DB as D1Database);
-      ctx.waitUntil(
-        runPhase(repo, 'note_broadcast', event.cron, () =>
-          handleNoteBroadcast(env),
-        ),
-      );
       ctx.waitUntil(handleRenewalThenNotify(repo, event.cron, env));
     } else {
       console.warn(
@@ -272,13 +263,9 @@ export default {
       }
     }
 
-    // Telegram webhook endpoint
-    if (url.pathname === '/webhook/telegram' && request.method === 'POST') {
-      return handleTelegramWebhook(
-        request,
-        env,
-        createTelegramWebhookDeps(env, env.DB as D1Database),
-      );
+    // Practice sheet endpoint
+    if (url.pathname === '/api/practice/today' && request.method === 'GET') {
+      return handlePracticeDraw(env, request);
     }
 
     // Manual trigger endpoint (access controlled via Zero Trust)
@@ -324,31 +311,6 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 };
-
-/**
- * Daily note broadcast handler (Telegram)
- */
-async function handleNoteBroadcast(env: Env): Promise<PhaseResult> {
-  console.log(
-    `[NoteBroadcast] Starting daily note broadcast at ${new Date().toISOString()}`,
-  );
-
-  try {
-    const sent = await broadcastDailyNote(env);
-    if (sent) {
-      console.log('[NoteBroadcast] Sent one note to Telegram');
-      return { status: 'success', detail: 'sent one note' };
-    }
-    console.log(
-      '[NoteBroadcast] No note sent (missing creds, no notes, or failure)',
-    );
-    return { status: 'skipped', detail: 'no note sent' };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[NoteBroadcast] Broadcast failed: ${message}`);
-    return { status: 'failure', detail: message };
-  }
-}
 
 /**
  * Sequential handler: renewal → sync → due-soon notification

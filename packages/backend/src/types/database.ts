@@ -97,11 +97,7 @@ export interface BookRequestRecord {
   updated_at?: string;
 }
 
-export type CronPhase =
-  | 'note_broadcast'
-  | 'renewal'
-  | 'sync'
-  | 'due_soon_broadcast';
+export type CronPhase = 'renewal' | 'sync' | 'due_soon_broadcast';
 
 export interface CronRunRecord {
   id?: number;

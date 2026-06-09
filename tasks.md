@@ -1,3 +1,10 @@
+## Review Backlog
+
+### PR #136 — feat/practice-sheet (2026-06-09)
+
+- [ ] [debt] Migration 0004 header comment says "for Telegram broadcast" and references SPEC-notes-telegram-001; table is now used by practice sheet draw tracker (source: pr-review-toolkit:review-pr) — `packages/backend/migrations/0004_note_send_stats.sql`
+- [ ] [debt] `D1NoteSelectionRepository` not exported — cannot be directly unit-tested without going through factory (source: pr-review-toolkit:review-pr) — `packages/backend/src/services/note-selection.ts:93`
+
 ## Deferred: feat/aladin-book-request (PR #134) — P3 out-of-scope items
 
 - [ ] `SearchBooksPage.tsx` — Isolate 신청 pending state per Aladin card (track the in-flight `isbn13`) so clicking one card does not disable every other card's button. Currently all cards share `isRequestPending` (matches the bookshelf read-status disable-all pattern). [agy P3]
