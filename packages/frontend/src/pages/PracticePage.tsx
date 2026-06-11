@@ -21,17 +21,12 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { getPracticeNote } from '../api';
 
 type GuideMode = 'none' | 'lines' | 'grid';
-type FontFamily = 'Pretendard Variable' | 'Gaegu' | 'Nanum Pen Script';
 
-const FONT_LABEL: Record<FontFamily, string> = {
-  'Pretendard Variable': '프리텐다드',
-  Gaegu: '개구체',
-  'Nanum Pen Script': '나눔 펜스크립트',
-};
+const PRACTICE_FONT = 'Yeon Sung';
 
 const FONT_SIZES = [18, 24, 32, 40] as const;
 
@@ -47,28 +42,73 @@ function guideBackground(mode: GuideMode, lineHeight: number): string {
       ${lineColor} ${lineHeight}px
     )`;
   }
-  // grid
-  return `
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0px,
-      transparent ${lineHeight - 1}px,
-      ${lineColor} ${lineHeight - 1}px,
-      ${lineColor} ${lineHeight}px
-    ),
-    repeating-linear-gradient(
-      to right,
-      transparent 0px,
-      transparent ${lineHeight - 1}px,
-      ${lineColor} ${lineHeight - 1}px,
-      ${lineColor} ${lineHeight}px
-    )
-  `;
+  // grid mode is rendered per-cell by <GridSheet>, not via background
+  return 'transparent';
+}
+
+const GRID_LINE = 'rgba(80, 110, 200, 0.18)';
+
+/** Manuscript-paper grid: one character centered per square cell, responsive columns. */
+function GridSheet({
+  content,
+  cell,
+  fontSize,
+  opacity,
+}: {
+  content: string;
+  cell: number;
+  fontSize: number;
+  opacity: number;
+}) {
+  const lines = content.split('\n');
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(auto-fill, ${cell}px)`,
+        borderTop: `1px solid ${GRID_LINE}`,
+        borderLeft: `1px solid ${GRID_LINE}`,
+        WebkitPrintColorAdjust: 'exact',
+        printColorAdjust: 'exact',
+        '@media print': { borderColor: '#ccc' },
+      }}
+    >
+      {lines.map((line, li) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
+        <Fragment key={li}>
+          {Array.from(line).map((ch, ci) => (
+            <Box
+              // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
+              key={ci}
+              sx={{
+                width: cell,
+                height: cell,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRight: `1px solid ${GRID_LINE}`,
+                borderBottom: `1px solid ${GRID_LINE}`,
+                fontFamily: PRACTICE_FONT,
+                fontSize: `${fontSize}px`,
+                lineHeight: 1,
+                color: `rgba(0,0,0,${opacity})`,
+                WebkitPrintColorAdjust: 'exact',
+                printColorAdjust: 'exact',
+                '@media print': { borderColor: '#ccc' },
+              }}
+            >
+              {ch === ' ' ? ' ' : ch}
+            </Box>
+          ))}
+          {li < lines.length - 1 && <Box sx={{ gridColumn: '1 / -1' }} />}
+        </Fragment>
+      ))}
+    </Box>
+  );
 }
 
 export default function PracticePage() {
   const [opacity, setOpacity] = useState(0.35);
-  const [font, setFont] = useState<FontFamily>('Pretendard Variable');
   const [fontSize, setFontSize] = useState(24);
   const [guide, setGuide] = useState<GuideMode>('lines');
 
@@ -160,22 +200,6 @@ export default function PracticePage() {
         </Box>
 
         <Divider orientation="vertical" flexItem sx={{ opacity: 0.4 }} />
-
-        {/* Font */}
-        <FormControl size="small" sx={{ minWidth: 155 }}>
-          <InputLabel>폰트</InputLabel>
-          <Select
-            value={font}
-            label="폰트"
-            onChange={(e) => setFont(e.target.value as FontFamily)}
-          >
-            {(Object.keys(FONT_LABEL) as FontFamily[]).map((f) => (
-              <MenuItem key={f} value={f} style={{ fontFamily: f }}>
-                {FONT_LABEL[f]}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
 
         {/* Font size */}
         <FormControl size="small" sx={{ minWidth: 85 }}>
@@ -331,7 +355,7 @@ export default function PracticePage() {
               sx={{
                 display: 'block',
                 color: 'text.secondary',
-                fontFamily: font,
+                fontFamily: PRACTICE_FONT,
                 lineHeight: 1.5,
                 fontSize: '0.72rem',
                 letterSpacing: '0.02em',
@@ -344,26 +368,35 @@ export default function PracticePage() {
           </Box>
 
           {/* Traceable content */}
-          <Typography
-            component="pre"
-            sx={{
-              fontFamily: font,
-              fontSize: `${fontSize}px`,
-              lineHeight: `${fontSize + 8}px`,
-              color: `rgba(0,0,0,${opacity})`,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              m: 0,
-              p: 0,
-              backgroundImage: guideBackground(guide, fontSize + 8),
-              backgroundSize: `100% ${fontSize + 8}px`,
-              backgroundPosition: '0 0',
-              WebkitPrintColorAdjust: 'exact',
-              printColorAdjust: 'exact',
-            }}
-          >
-            {data.note.content}
-          </Typography>
+          {guide === 'grid' ? (
+            <GridSheet
+              content={data.note.content}
+              cell={fontSize + 8}
+              fontSize={fontSize}
+              opacity={opacity}
+            />
+          ) : (
+            <Typography
+              component="pre"
+              sx={{
+                fontFamily: PRACTICE_FONT,
+                fontSize: `${fontSize}px`,
+                lineHeight: `${fontSize + 8}px`,
+                color: `rgba(0,0,0,${opacity})`,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                m: 0,
+                p: 0,
+                backgroundImage: guideBackground(guide, fontSize + 8),
+                backgroundSize: `100% ${fontSize + 8}px`,
+                backgroundPosition: '0 0',
+                WebkitPrintColorAdjust: 'exact',
+                printColorAdjust: 'exact',
+              }}
+            >
+              {data.note.content}
+            </Typography>
+          )}
         </Box>
       )}
 
