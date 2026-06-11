@@ -73,36 +73,54 @@ function GridSheet({
         '@media print': { borderColor: '#ccc' },
       }}
     >
-      {lines.map((line, li) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
-        <Fragment key={li}>
-          {Array.from(line).map((ch, ci) => (
-            <Box
-              // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
-              key={ci}
-              sx={{
-                width: cell,
-                height: cell,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRight: `1px solid ${GRID_LINE}`,
-                borderBottom: `1px solid ${GRID_LINE}`,
-                fontFamily: PRACTICE_FONT,
-                fontSize: `${fontSize}px`,
-                lineHeight: 1,
-                color: `rgba(0,0,0,${opacity})`,
-                WebkitPrintColorAdjust: 'exact',
-                printColorAdjust: 'exact',
-                '@media print': { borderColor: '#ccc' },
-              }}
-            >
-              {ch === ' ' ? ' ' : ch}
-            </Box>
-          ))}
-          {li < lines.length - 1 && <Box sx={{ gridColumn: '1 / -1' }} />}
-        </Fragment>
-      ))}
+      {lines.map((line, li) => {
+        const chars = Array.from(line);
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
+          <Fragment key={li}>
+            {/* Empty source line → one full-height blank cell so blank paragraphs keep their row */}
+            {chars.length === 0 ? (
+              <Box
+                sx={{
+                  width: cell,
+                  height: cell,
+                  borderRight: `1px solid ${GRID_LINE}`,
+                  borderBottom: `1px solid ${GRID_LINE}`,
+                  WebkitPrintColorAdjust: 'exact',
+                  printColorAdjust: 'exact',
+                  '@media print': { borderColor: '#ccc' },
+                }}
+              />
+            ) : (
+              chars.map((ch, ci) => (
+                <Box
+                  // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
+                  key={ci}
+                  sx={{
+                    width: cell,
+                    height: cell,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRight: `1px solid ${GRID_LINE}`,
+                    borderBottom: `1px solid ${GRID_LINE}`,
+                    fontFamily: PRACTICE_FONT,
+                    fontSize: `${fontSize}px`,
+                    lineHeight: 1,
+                    color: `rgba(0,0,0,${opacity})`,
+                    WebkitPrintColorAdjust: 'exact',
+                    printColorAdjust: 'exact',
+                    '@media print': { borderColor: '#ccc' },
+                  }}
+                >
+                  {ch === ' ' ? ' ' : ch}
+                </Box>
+              ))
+            )}
+            {li < lines.length - 1 && <Box sx={{ gridColumn: '1 / -1' }} />}
+          </Fragment>
+        );
+      })}
     </Box>
   );
 }
