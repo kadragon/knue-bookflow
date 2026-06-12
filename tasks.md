@@ -1,5 +1,16 @@
 ## Review Backlog
 
+### PR #138 — feat/practice-edit-single-page (2026-06-12)
+
+- [ ] [debt] Invalidate `['notes', bookId]` / `['book', bookId]` / `['books']` after practice-page note edit; other note edit flows do, so detail/list views stay stale until staleTime expires (source: codex) — `packages/frontend/src/pages/PracticePage.tsx:174`
+- [ ] [debt] Disable 다시 뽑기 while `editing || saving`: redraw during pending save lets the stale captured `data` overwrite the fresh draw (race), and redraw mid-edit silently discards the draft (source: codex, agy) — `packages/frontend/src/pages/PracticePage.tsx:316`
+- [ ] [debt] Move `setQueryData`/`setEditing(false)` out of the try block in `handleEditSave`; a post-PUT throw shows "저장에 실패했습니다" even though the save persisted (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:174`
+- [ ] [debt] Harden single-page print against browser default margins: add `page-break-inside: avoid` / `break-inside: avoid` on `.practice-sheet` (source: agy) — `packages/frontend/src/pages/PracticePage.tsx:530`
+- [ ] [constraint] Missing tests: saveError display path (PUT failure keeps editor open + shows error), 저장 disabled on blank draft, redraw closes editor (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.edit.test.tsx`
+- [ ] [debt] `autoFocus` on the edit TextField so the editor is immediately typable (source: agy) — `packages/frontend/src/pages/PracticePage.tsx:351`
+- [ ] [debt] (pre-existing, surfaced by review) 인쇄 button lacks `disabled={isLoading || !data}` — printing with no data yields a blank page (source: agy, verifier: pre-existing on main) — `packages/frontend/src/pages/PracticePage.tsx:321`
+- [ ] [debt] (pre-existing, surfaced by review) `handleRedraw` has no try/catch; failed redraw is a silent no-op (source: pr-review-toolkit:review-pr, verifier: pre-existing on main) — `packages/frontend/src/pages/PracticePage.tsx:155`
+
 ### PR #137 — feat/practice-yeonsung-grid (2026-06-11)
 
 - [ ] [debt] GridSheet right-of-text empty area shows only the container `borderTop`, no cell borders — visual inconsistency when a row has fewer chars than the responsive column count (source: agy) — `packages/frontend/src/pages/PracticePage.tsx:65`
