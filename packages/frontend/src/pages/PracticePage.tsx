@@ -5,6 +5,7 @@
 
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CreateIcon from '@mui/icons-material/Create';
+import EditIcon from '@mui/icons-material/Edit';
 import PrintIcon from '@mui/icons-material/Print';
 import {
   Box,
@@ -16,13 +17,15 @@ import {
   MenuItem,
   Select,
   Slider,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
-import { getPracticeNote } from '../api';
+import { getPracticeNote, updateNote } from '../api';
+import { fillPracticeContent } from './practiceFill';
 
 type GuideMode = 'none' | 'lines' | 'grid';
 
@@ -129,6 +132,10 @@ export default function PracticePage() {
   const [opacity, setOpacity] = useState(0.35);
   const [fontSize, setFontSize] = useState(24);
   const [guide, setGuide] = useState<GuideMode>('lines');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const kstToday = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -148,6 +155,32 @@ export default function PracticePage() {
   const handleRedraw = async () => {
     const newData = await getPracticeNote(true);
     queryClient.setQueryData(['practice', 'today', kstToday], newData);
+    setEditing(false);
+  };
+
+  const handleEditStart = () => {
+    if (!data) return;
+    setDraft(data.note.content);
+    setSaveError(null);
+    setEditing(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!data) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await updateNote(data.note.id, { content: draft });
+      queryClient.setQueryData(['practice', 'today', kstToday], {
+        ...data,
+        note: res.note,
+      });
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePrint = async () => {
@@ -162,7 +195,15 @@ export default function PracticePage() {
   });
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f2ede5', pb: 8 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        backgroundColor: '#f2ede5',
+        pb: 8,
+        // Print: no extra padding/height so nothing spills onto a second page
+        '@media print': { minHeight: 0, pb: 0, backgroundColor: '#fff' },
+      }}
+    >
       {/* Controls — hidden in print */}
       <Box
         sx={{
@@ -259,6 +300,16 @@ export default function PracticePage() {
 
         <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
           <Button
+            startIcon={<EditIcon />}
+            variant="outlined"
+            size="small"
+            onClick={handleEditStart}
+            disabled={!data || editing}
+            sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
+          >
+            수정
+          </Button>
+          <Button
             startIcon={<AutorenewIcon />}
             variant="outlined"
             size="small"
@@ -282,6 +333,61 @@ export default function PracticePage() {
           </Button>
         </Box>
       </Box>
+
+      {/* Note editor — hidden in print */}
+      {editing && data && (
+        <Box
+          sx={{
+            displayPrint: 'none',
+            px: 3,
+            py: 2,
+            backgroundColor: '#faf7f2',
+            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1,
+          }}
+        >
+          <TextField
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            multiline
+            minRows={4}
+            fullWidth
+            size="small"
+            label="노트 내용 수정"
+            sx={{ backgroundColor: '#fff' }}
+          />
+          {saveError && (
+            <Typography variant="caption" color="error">
+              {saveError}
+            </Typography>
+          )}
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+            <Button
+              size="small"
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              sx={{ color: 'text.secondary' }}
+            >
+              취소
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleEditSave}
+              disabled={saving || !draft.trim()}
+              sx={{
+                backgroundColor: '#4a5568',
+                '&:hover': { backgroundColor: '#2d3748' },
+                boxShadow: 'none',
+              }}
+            >
+              저장
+            </Button>
+          </Box>
+        </Box>
+      )}
 
       {/* Sheet area */}
       {isLoading && (
@@ -338,9 +444,10 @@ export default function PracticePage() {
         <Box
           className="practice-sheet"
           sx={{
-            // Screen: centered paper
+            // Screen: centered paper, exactly one A4 landscape page
             width: '297mm',
-            minHeight: '210mm',
+            height: '210mm',
+            overflow: 'hidden',
             mx: 'auto',
             mt: 3,
             backgroundColor: '#fffef9',
@@ -348,9 +455,10 @@ export default function PracticePage() {
               '0 4px 24px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06)',
             p: '12mm',
             boxSizing: 'border-box',
-            // Print: fill page
+            // Print: fill the single page; overflow stays clipped
             '@media print': {
               width: '100%',
+              height: '185mm',
               mx: 0,
               mt: 0,
               boxShadow: 'none',
@@ -385,10 +493,10 @@ export default function PracticePage() {
             </Typography>
           </Box>
 
-          {/* Traceable content */}
+          {/* Traceable content — repeated to fill one page, clipped past it */}
           {guide === 'grid' ? (
             <GridSheet
-              content={data.note.content}
+              content={fillPracticeContent(data.note.content, fontSize)}
               cell={fontSize + 8}
               fontSize={fontSize}
               opacity={opacity}
@@ -412,7 +520,7 @@ export default function PracticePage() {
                 printColorAdjust: 'exact',
               }}
             >
-              {data.note.content}
+              {fillPracticeContent(data.note.content, fontSize)}
             </Typography>
           )}
         </Box>
