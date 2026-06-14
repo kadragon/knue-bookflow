@@ -3,11 +3,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      'react-transition-group/TransitionGroupContext':
-        'react-transition-group/cjs/TransitionGroupContext.js',
-    },
+  optimizeDeps: {
+    include: ['react-transition-group', '@mui/material'],
   },
   test: {
     environment: 'jsdom',
