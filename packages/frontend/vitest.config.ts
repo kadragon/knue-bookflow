@@ -3,13 +3,13 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  ssr: {
+    noExternal: ['@mui/material', 'react-transition-group'],
+  },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.tsx', 'src/**/*.test.ts'],
     globals: true,
-    deps: {
-      inline: ['@mui/material', 'react-transition-group'],
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html'],
