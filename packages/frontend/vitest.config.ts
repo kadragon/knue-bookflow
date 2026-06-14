@@ -7,6 +7,11 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.tsx', 'src/**/*.test.ts'],
     globals: true,
+    server: {
+      deps: {
+        inline: ['react-transition-group'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html'],
@@ -14,3 +19,4 @@ export default defineConfig({
     },
   },
 });
+
