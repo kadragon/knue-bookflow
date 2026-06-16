@@ -1,5 +1,11 @@
 ## Review Backlog
 
+### PR #140 — fix/practice-sheet-no-repeat (2026-06-16)
+
+- [ ] [doc] Update stale JSX comment "repeated to fill one page, clipped past it" → now rendered as-is (source: review) — `packages/frontend/src/pages/PracticePage.tsx:496`
+- [ ] [debt] Guide lines/grid only span text rows for short notes; no filler to cover the rest of the A4 sheet (source: codex) — `packages/frontend/src/pages/PracticePage.tsx`
+- [ ] [debt] `fillPracticeContent` accepts `_fontSize` but never uses it; callers in PracticePage.tsx still pass `fontSize` unnecessarily — remove param and update call sites, or add API stability comment (source: review) — `packages/frontend/src/pages/practiceFill.ts:2`
+
 ### PR #138 — feat/practice-edit-single-page (2026-06-12)
 
 - [ ] [debt] Invalidate `['notes', bookId]` / `['book', bookId]` / `['books']` after practice-page note edit; other note edit flows do, so detail/list views stay stale until staleTime expires (source: codex) — `packages/frontend/src/pages/PracticePage.tsx:174`
