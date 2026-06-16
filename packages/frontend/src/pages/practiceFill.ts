@@ -1,6 +1,3 @@
-export function fillPracticeContent(
-  content: string,
-  _fontSize: number,
-): string {
+export function fillPracticeContent(content: string): string {
   return content.trim();
 }

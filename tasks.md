@@ -1,5 +1,9 @@
 ## Review Backlog
 
+### PR #141 — fix/practice-sheet-review-140 (2026-06-16)
+
+- [ ] [test] Add regression test for `alignContent: 'start'` on GridSheet — mount component, assert CSS prop is set; needs a new PracticePage test file (jsdom CSS reliability caveat) (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:357`
+
 ### PR #140 — fix/practice-sheet-no-repeat (2026-06-16)
 
 - [ ] [doc] Update stale JSX comment "repeated to fill one page, clipped past it" → now rendered as-is (source: review) — `packages/frontend/src/pages/PracticePage.tsx:496`
