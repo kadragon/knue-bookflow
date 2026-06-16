@@ -29,7 +29,7 @@ function urlOf(input: RequestInfo | URL): string {
       : input.url;
 }
 
-function renderPractice() {
+function renderPractice(): { queryClient: QueryClient } {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -40,6 +40,7 @@ function renderPractice() {
       </ThemeProvider>
     </QueryClientProvider>,
   );
+  return { queryClient };
 }
 
 describe('PracticePage note editing', () => {
@@ -120,5 +121,100 @@ describe('PracticePage note editing', () => {
     expect(
       screen.getAllByText(/오탈자가 있는 문장이다\./).length,
     ).toBeGreaterThan(0);
+  });
+
+  it('shows error and keeps editor open when PUT fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = urlOf(input);
+        if (url.startsWith('/api/practice/today')) {
+          return new Response(JSON.stringify({ note, book }), { status: 200 });
+        }
+        if (url === '/api/notes/5' && init?.method === 'PUT') {
+          return new Response(JSON.stringify({ error: '서버 오류' }), {
+            status: 500,
+          });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderPractice();
+    await openEditor();
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('서버 오류')).toBeTruthy();
+    });
+    expect(screen.queryByRole('textbox')).not.toBeNull();
+    expect(
+      (screen.getByRole('button', { name: '저장' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it('저장 button is disabled when draft is blank', async () => {
+    renderPractice();
+    await openEditor();
+
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '   ' } });
+
+    const saveBtn = screen.getByRole('button', {
+      name: '저장',
+    }) as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(true);
+  });
+
+  it('다시 뽑기 is disabled while editing', async () => {
+    renderPractice();
+    await openEditor();
+
+    const redrawBtn = screen.getByRole('button', {
+      name: /다시 뽑기/i,
+    }) as HTMLButtonElement;
+    expect(redrawBtn.disabled).toBe(true);
+  });
+
+  it('shows redrawError when 다시 뽑기 API fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = urlOf(input);
+        if (url === '/api/practice/today') {
+          return new Response(JSON.stringify({ note, book }), { status: 200 });
+        }
+        if (url === '/api/practice/today?force=1') {
+          return new Response(JSON.stringify({ error: '서버 오류' }), {
+            status: 500,
+          });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderPractice();
+    await screen.findByRole('button', { name: /다시 뽑기/i });
+
+    fireEvent.click(screen.getByRole('button', { name: /다시 뽑기/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('서버 오류')).toBeTruthy();
+    });
+  });
+
+  it('invalidates note/book/books caches after successful save', async () => {
+    const { queryClient } = renderPractice();
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await openEditor();
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith({ queryKey: ['notes', 1] });
+    });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['book', 1] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['books'] });
   });
 });
