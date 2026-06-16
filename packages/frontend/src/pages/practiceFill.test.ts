@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fillPracticeContent } from './practiceFill';
 
 describe('fillPracticeContent', () => {
-  it('returns content as-is (no repeat)', () => {
+  it('passes through content unchanged', () => {
     const content = '짧은 독서 노트 문장입니다.';
     expect(fillPracticeContent(content, 24)).toBe(content);
   });
@@ -13,5 +13,11 @@ describe('fillPracticeContent', () => {
 
   it('trims surrounding whitespace', () => {
     expect(fillPracticeContent('  hello  ', 24)).toBe('hello');
+  });
+
+  it('fontSize has no effect on output', () => {
+    expect(fillPracticeContent('hello', 12)).toBe(
+      fillPracticeContent('hello', 48),
+    );
   });
 });
