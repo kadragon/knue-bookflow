@@ -121,4 +121,54 @@ describe('PracticePage note editing', () => {
       screen.getAllByText(/오탈자가 있는 문장이다\./).length,
     ).toBeGreaterThan(0);
   });
+
+  it('shows error and keeps editor open when PUT fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = urlOf(input);
+        if (url.startsWith('/api/practice/today')) {
+          return new Response(JSON.stringify({ note, book }), { status: 200 });
+        }
+        if (url === '/api/notes/5' && init?.method === 'PUT') {
+          return new Response(JSON.stringify({ error: '서버 오류' }), {
+            status: 500,
+          });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    renderPractice();
+    await openEditor();
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('서버 오류')).toBeTruthy();
+    });
+    expect(screen.queryByRole('textbox')).not.toBeNull();
+  });
+
+  it('저장 button is disabled when draft is blank', async () => {
+    renderPractice();
+    await openEditor();
+
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '   ' } });
+
+    const saveBtn = screen.getByRole('button', {
+      name: '저장',
+    }) as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(true);
+  });
+
+  it('다시 뽑기 is disabled while editing', async () => {
+    renderPractice();
+    await openEditor();
+
+    const redrawBtn = screen.getByRole('button', {
+      name: /다시 뽑기/i,
+    }) as HTMLButtonElement;
+    expect(redrawBtn.disabled).toBe(true);
+  });
 });

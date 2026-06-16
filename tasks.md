@@ -48,6 +48,28 @@
 - [x] `note-broadcast.test.ts` — Add test with `lastSentAt: 'not-a-date'` to pin NaN behavior
 - [x] `note-broadcast.test.ts:101-126` — Add boundary tests: `randomFn() => 0` and `randomFn() => 0.9999`
 
+## Sprint: fix/practice-page-debt-pr138
+
+status: active
+
+**Scope:** `packages/frontend/src/pages/PracticePage.tsx`, `packages/frontend/src/pages/PracticePage.edit.test.tsx`
+
+**Acceptance criteria:**
+- [ ] `handleEditSave`: invalidate `['notes', bookId]`, `['book', bookId]`, `['books']` after PUT succeeds
+- [ ] `handleEditSave`: `setQueryData` + `setEditing(false)` moved outside try block (runs even if post-PUT logic throws)
+- [ ] 다시 뽑기 button: disabled when `editing || saving`
+- [ ] 인쇄 button: `disabled={isLoading || !data}`
+- [ ] Edit TextField: `autoFocus` added
+- [ ] `handleRedraw`: wrapped in try/catch, shows error snackbar on failure
+- [ ] `.practice-sheet`: `page-break-inside: avoid; break-inside: avoid` in print styles
+- [ ] Tests added: saveError path (PUT failure keeps editor open + shows error), 저장 disabled on blank draft, redraw closes editor
+
+**Out of scope:** guide-lines coverage gap, GraphQL clusters, GridSheet visual fixes
+
+**Lint/test:** `bun run typecheck && bun run test`
+
+---
+
 ## Sprint: feat/cron-observability
 
 Done-when:

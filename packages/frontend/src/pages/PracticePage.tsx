@@ -128,6 +128,7 @@ export default function PracticePage() {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [redrawError, setRedrawError] = useState<string | null>(null);
 
   const kstToday = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -145,9 +146,16 @@ export default function PracticePage() {
   });
 
   const handleRedraw = async () => {
-    const newData = await getPracticeNote(true);
-    queryClient.setQueryData(['practice', 'today', kstToday], newData);
-    setEditing(false);
+    setRedrawError(null);
+    try {
+      const newData = await getPracticeNote(true);
+      queryClient.setQueryData(['practice', 'today', kstToday], newData);
+      setEditing(false);
+    } catch (err) {
+      setRedrawError(
+        err instanceof Error ? err.message : '다시 뽑기에 실패했습니다.',
+      );
+    }
   };
 
   const handleEditStart = () => {
@@ -161,17 +169,23 @@ export default function PracticePage() {
     if (!data) return;
     setSaving(true);
     setSaveError(null);
+    let result: Awaited<ReturnType<typeof updateNote>> | undefined;
     try {
-      const res = await updateNote(data.note.id, { content: draft });
-      queryClient.setQueryData(['practice', 'today', kstToday], {
-        ...data,
-        note: res.note,
-      });
-      setEditing(false);
+      result = await updateNote(data.note.id, { content: draft });
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : '저장에 실패했습니다.');
     } finally {
       setSaving(false);
+    }
+    if (result) {
+      queryClient.setQueryData(['practice', 'today', kstToday], {
+        ...data,
+        note: result.note,
+      });
+      queryClient.invalidateQueries({ queryKey: ['notes', data.note.bookId] });
+      queryClient.invalidateQueries({ queryKey: ['book', data.note.bookId] });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      setEditing(false);
     }
   };
 
@@ -306,6 +320,7 @@ export default function PracticePage() {
             variant="outlined"
             size="small"
             onClick={handleRedraw}
+            disabled={editing || saving}
             sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
           >
             다시 뽑기
@@ -315,6 +330,7 @@ export default function PracticePage() {
             variant="contained"
             size="small"
             onClick={handlePrint}
+            disabled={isLoading || !data}
             sx={{
               backgroundColor: '#4a5568',
               '&:hover': { backgroundColor: '#2d3748' },
@@ -348,6 +364,7 @@ export default function PracticePage() {
             fullWidth
             size="small"
             label="노트 내용 수정"
+            autoFocus
             sx={{ backgroundColor: '#fff' }}
           />
           {saveError && (
@@ -378,6 +395,14 @@ export default function PracticePage() {
               저장
             </Button>
           </Box>
+        </Box>
+      )}
+
+      {redrawError && !editing && (
+        <Box sx={{ displayPrint: 'none', px: 3, py: 1 }}>
+          <Typography variant="caption" color="error">
+            {redrawError}
+          </Typography>
         </Box>
       )}
 
@@ -458,6 +483,8 @@ export default function PracticePage() {
               boxShadow: 'none',
               p: 0,
               backgroundColor: '#fff',
+              pageBreakInside: 'avoid',
+              breakInside: 'avoid',
             },
           }}
         >
