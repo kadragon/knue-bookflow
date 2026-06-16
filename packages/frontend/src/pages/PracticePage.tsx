@@ -129,6 +129,7 @@ export default function PracticePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [redrawError, setRedrawError] = useState<string | null>(null);
+  const [redrawing, setRedrawing] = useState(false);
 
   const kstToday = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric',
@@ -147,14 +148,21 @@ export default function PracticePage() {
 
   const handleRedraw = async () => {
     setRedrawError(null);
+    setRedrawing(true);
     try {
       const newData = await getPracticeNote(true);
+      if (!newData) {
+        setRedrawError('다시 뽑기할 노트가 없습니다.');
+        return;
+      }
       queryClient.setQueryData(['practice', 'today', kstToday], newData);
       setEditing(false);
     } catch (err) {
       setRedrawError(
         err instanceof Error ? err.message : '다시 뽑기에 실패했습니다.',
       );
+    } finally {
+      setRedrawing(false);
     }
   };
 
@@ -162,6 +170,7 @@ export default function PracticePage() {
     if (!data) return;
     setDraft(data.note.content);
     setSaveError(null);
+    setRedrawError(null);
     setEditing(true);
   };
 
@@ -310,7 +319,7 @@ export default function PracticePage() {
             variant="outlined"
             size="small"
             onClick={handleEditStart}
-            disabled={!data || editing}
+            disabled={!data || editing || saving || redrawing}
             sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
           >
             수정
@@ -320,7 +329,7 @@ export default function PracticePage() {
             variant="outlined"
             size="small"
             onClick={handleRedraw}
-            disabled={editing || saving}
+            disabled={editing || saving || redrawing}
             sx={{ borderColor: 'rgba(0,0,0,0.2)', color: 'text.secondary' }}
           >
             다시 뽑기
