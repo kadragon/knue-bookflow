@@ -2,22 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { fillPracticeContent } from './practiceFill';
 
 describe('fillPracticeContent', () => {
-  it('passes through content unchanged', () => {
+  it('preserves content with no surrounding whitespace', () => {
     const content = '짧은 독서 노트 문장입니다.';
-    expect(fillPracticeContent(content, 24)).toBe(content);
+    expect(fillPracticeContent(content)).toBe(content);
   });
 
   it('returns empty string for blank content', () => {
-    expect(fillPracticeContent('   \n  ', 24)).toBe('');
+    expect(fillPracticeContent('   \n  ')).toBe('');
   });
 
   it('trims surrounding whitespace', () => {
-    expect(fillPracticeContent('  hello  ', 24)).toBe('hello');
+    expect(fillPracticeContent('  hello  ')).toBe('hello');
   });
 
-  it('fontSize has no effect on output', () => {
-    expect(fillPracticeContent('hello', 12)).toBe(
-      fillPracticeContent('hello', 48),
+  it('preserves internal whitespace and newlines', () => {
+    expect(fillPracticeContent('first line\nsecond line')).toBe(
+      'first line\nsecond line',
     );
   });
 });

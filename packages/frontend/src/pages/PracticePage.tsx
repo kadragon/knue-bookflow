@@ -64,16 +64,21 @@ function GridSheet({
   opacity: number;
 }) {
   const lines = content.split('\n');
+  const gridBg = (color: string) =>
+    `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`;
   return (
     <Box
       sx={{
         display: 'grid',
         gridTemplateColumns: `repeat(auto-fill, ${cell}px)`,
-        borderTop: `1px solid ${GRID_LINE}`,
-        borderLeft: `1px solid ${GRID_LINE}`,
+        alignContent: 'start',
+        height: '100%',
+        backgroundImage: gridBg(GRID_LINE),
+        backgroundSize: `${cell}px ${cell}px`,
+        backgroundPosition: '0 0',
         WebkitPrintColorAdjust: 'exact',
         printColorAdjust: 'exact',
-        '@media print': { borderColor: '#ccc' },
+        '@media print': { backgroundImage: gridBg('#ccc') },
       }}
     >
       {lines.map((line, li) => {
@@ -83,17 +88,7 @@ function GridSheet({
           <Fragment key={li}>
             {/* Empty source line → one full-height blank cell so blank paragraphs keep their row */}
             {chars.length === 0 ? (
-              <Box
-                sx={{
-                  width: cell,
-                  height: cell,
-                  borderRight: `1px solid ${GRID_LINE}`,
-                  borderBottom: `1px solid ${GRID_LINE}`,
-                  WebkitPrintColorAdjust: 'exact',
-                  printColorAdjust: 'exact',
-                  '@media print': { borderColor: '#ccc' },
-                }}
-              />
+              <Box sx={{ width: cell, height: cell }} />
             ) : (
               chars.map((ch, ci) => (
                 <Box
@@ -105,15 +100,12 @@ function GridSheet({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRight: `1px solid ${GRID_LINE}`,
-                    borderBottom: `1px solid ${GRID_LINE}`,
                     fontFamily: PRACTICE_FONT,
                     fontSize: `${fontSize}px`,
                     lineHeight: 1,
                     color: `rgba(0,0,0,${opacity})`,
                     WebkitPrintColorAdjust: 'exact',
                     printColorAdjust: 'exact',
-                    '@media print': { borderColor: '#ccc' },
                   }}
                 >
                   {ch === ' ' ? ' ' : ch}
@@ -448,6 +440,8 @@ export default function PracticePage() {
             width: '297mm',
             height: '210mm',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
             mx: 'auto',
             mt: 3,
             backgroundColor: '#fffef9',
@@ -493,36 +487,39 @@ export default function PracticePage() {
             </Typography>
           </Box>
 
-          {/* Traceable content — repeated to fill one page, clipped past it */}
-          {guide === 'grid' ? (
-            <GridSheet
-              content={fillPracticeContent(data.note.content, fontSize)}
-              cell={fontSize + 8}
-              fontSize={fontSize}
-              opacity={opacity}
-            />
-          ) : (
-            <Typography
-              component="pre"
-              sx={{
-                fontFamily: PRACTICE_FONT,
-                fontSize: `${fontSize}px`,
-                lineHeight: `${fontSize + 8}px`,
-                color: `rgba(0,0,0,${opacity})`,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                m: 0,
-                p: 0,
-                backgroundImage: guideBackground(guide, fontSize + 8),
-                backgroundSize: `100% ${fontSize + 8}px`,
-                backgroundPosition: '0 0',
-                WebkitPrintColorAdjust: 'exact',
-                printColorAdjust: 'exact',
-              }}
-            >
-              {fillPracticeContent(data.note.content, fontSize)}
-            </Typography>
-          )}
+          {/* Traceable content — fills the remaining sheet height, clipped by overflow */}
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            {guide === 'grid' ? (
+              <GridSheet
+                content={fillPracticeContent(data.note.content)}
+                cell={fontSize + 8}
+                fontSize={fontSize}
+                opacity={opacity}
+              />
+            ) : (
+              <Typography
+                component="pre"
+                sx={{
+                  fontFamily: PRACTICE_FONT,
+                  fontSize: `${fontSize}px`,
+                  lineHeight: `${fontSize + 8}px`,
+                  color: `rgba(0,0,0,${opacity})`,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  m: 0,
+                  p: 0,
+                  height: '100%',
+                  backgroundImage: guideBackground(guide, fontSize + 8),
+                  backgroundSize: `100% ${fontSize + 8}px`,
+                  backgroundPosition: '0 0',
+                  WebkitPrintColorAdjust: 'exact',
+                  printColorAdjust: 'exact',
+                }}
+              >
+                {fillPracticeContent(data.note.content)}
+              </Typography>
+            )}
+          </Box>
         </Box>
       )}
 
