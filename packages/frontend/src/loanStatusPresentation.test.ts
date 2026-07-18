@@ -17,21 +17,23 @@ describe('loanStatusPresentation', () => {
       ['ok', { label: '대출 중', color: 'success' }],
     ];
 
-    it.each(
-      activeLoanCases,
-    )('returns correct chip for active loan with due status: %s', (dueStatus, expected) => {
-      expect(getLoanStatusChip('on_loan', dueStatus)).toEqual(expected);
-    });
+    it.each(activeLoanCases)(
+      'returns correct chip for active loan with due status: %s',
+      (dueStatus, expected) => {
+        expect(getLoanStatusChip('on_loan', dueStatus)).toEqual(expected);
+      },
+    );
 
     const allDueStatuses: DueStatus[] = ['overdue', 'due_soon', 'ok'];
-    it.each(
-      allDueStatuses,
-    )('returns returned chip regardless of due status: %s', (dueStatus) => {
-      expect(getLoanStatusChip('returned', dueStatus)).toEqual({
-        label: '반납 완료',
-        color: 'default',
-      });
-    });
+    it.each(allDueStatuses)(
+      'returns returned chip regardless of due status: %s',
+      (dueStatus) => {
+        expect(getLoanStatusChip('returned', dueStatus)).toEqual({
+          label: '반납 완료',
+          color: 'default',
+        });
+      },
+    );
   });
 
   it('shows D-day chip only for active loans', () => {
