@@ -1,16 +1,5 @@
 ## Review Backlog
 
-### PR #141 — fix/practice-sheet-review-140 (2026-06-16)
-
-- [ ] [test] Add regression test for `alignContent: 'start'` on GridSheet — mount component, assert CSS prop is set; needs a new PracticePage test file (jsdom CSS reliability caveat) (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:357`
-
-### PR #137 — feat/practice-yeonsung-grid (2026-06-11)
-
-- [ ] [debt] `content.split('\n')` has no null guard; `<pre>` path renders nothing on null but GridSheet would throw. TS prevents today (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:63`
-- [ ] [debt] `Array.from(line)` splits grapheme clusters (ZWJ/flag/skin-tone emoji) into separate cells; consider `Intl.Segmenter` (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:79`
-- [ ] [debt] NBSP substitution `ch === ' ' ? ' ' : ch` is redundant in a fixed-width centered flex cell; could render `{ch}` directly (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:100`
-- [ ] [debt] `guideBackground` grid branch is dead code — grid routes to GridSheet before the fn is called; could add a `never` exhaustive check (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:43`
-
 ### PR #136 — feat/practice-sheet (2026-06-09)
 
 - [ ] [debt] Migration 0004 header comment says "for Telegram broadcast" and references SPEC-notes-telegram-001; table is now used by practice sheet draw tracker (source: pr-review-toolkit:review-pr) — `packages/backend/migrations/0004_note_send_stats.sql`
