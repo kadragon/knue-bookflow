@@ -33,23 +33,41 @@ const PRACTICE_FONT = 'Yeon Sung';
 
 const FONT_SIZES = [18, 24, 32, 40] as const;
 
-function guideBackground(mode: GuideMode, lineHeight: number): string {
+/** Guide modes drawn as a CSS background — 'grid' is excluded, <GridSheet> renders it per-cell. */
+type LineGuideMode = Exclude<GuideMode, 'grid'>;
+
+function guideBackground(mode: LineGuideMode, lineHeight: number): string {
   const lineColor = 'rgba(80, 110, 200, 0.18)';
-  if (mode === 'none') return 'transparent';
-  if (mode === 'lines') {
-    return `repeating-linear-gradient(
+  switch (mode) {
+    case 'none':
+      return 'transparent';
+    case 'lines':
+      return `repeating-linear-gradient(
       to bottom,
       transparent 0px,
       transparent ${lineHeight - 1}px,
       ${lineColor} ${lineHeight - 1}px,
       ${lineColor} ${lineHeight}px
     )`;
+    default: {
+      const exhaustive: never = mode;
+      return exhaustive;
+    }
   }
-  // grid mode is rendered per-cell by <GridSheet>, not via background
-  return 'transparent';
 }
 
 const GRID_LINE = 'rgba(80, 110, 200, 0.18)';
+
+const graphemeSegmenter =
+  typeof Intl !== 'undefined' && 'Segmenter' in Intl
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
+
+/** Split a line into user-perceived characters so emoji clusters stay in one cell. */
+function toGraphemes(line: string): string[] {
+  if (!graphemeSegmenter) return Array.from(line);
+  return Array.from(graphemeSegmenter.segment(line), (s) => s.segment);
+}
 
 /** Manuscript-paper grid: one character centered per square cell, responsive columns. */
 function GridSheet({
@@ -63,7 +81,8 @@ function GridSheet({
   fontSize: number;
   opacity: number;
 }) {
-  const lines = content.split('\n');
+  // `?? ''` is defensive only — TS types content as string; guards a null slipping in at runtime
+  const lines = (content ?? '').split('\n');
   const gridBg = (color: string) =>
     `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`;
   return (
@@ -82,7 +101,7 @@ function GridSheet({
       }}
     >
       {lines.map((line, li) => {
-        const chars = Array.from(line);
+        const chars = toGraphemes(line);
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: cells are fixed positional slots, never reordered
           <Fragment key={li}>
@@ -108,7 +127,7 @@ function GridSheet({
                     printColorAdjust: 'exact',
                   }}
                 >
-                  {ch === ' ' ? ' ' : ch}
+                  {ch}
                 </Box>
               ))
             )}
