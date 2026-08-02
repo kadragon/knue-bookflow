@@ -1,5 +1,7 @@
--- Migration: Add note_send_stats table for Telegram broadcast
--- Trace:
+-- Migration: Add note_send_stats table tracking how often each note was drawn.
+-- Originally added for the Telegram broadcast note picker; the table is now
+-- read/written by the practice sheet draw tracker (services/note-selection.ts).
+-- Trace (original):
 --   spec_id: SPEC-notes-telegram-001
 --   task_id: TASK-028
 
