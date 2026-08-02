@@ -334,6 +334,11 @@ export default function SearchBooksPage() {
   const pageParam = validatePageParam(searchParams.get('page'));
   const [searchInput, setSearchInput] = useState(queryParam);
   const [selectedIsbn, setSelectedIsbn] = useState<string | null>(null);
+  // Which Aladin card is currently being requested, so a pending 신청 only
+  // disables that card's button instead of every card on the page.
+  const [pendingRequestIsbn, setPendingRequestIsbn] = useState<string | null>(
+    null,
+  );
 
   // Sync input when URL changes (e.g. back button)
   useEffect(() => {
@@ -407,8 +412,16 @@ export default function SearchBooksPage() {
   };
 
   const handleRequest = (item: ExternalSearchResultItem) => {
+    setPendingRequestIsbn(item.isbn13);
     requestMutate(buildFromAladinItem(item));
   };
+
+  // Both mutations render into one snackbar slot so the two feedback messages
+  // can never stack on top of each other; 신청 wins if both are open.
+  const activeFeedback = requestFeedback.open ? requestFeedback : feedback;
+  const closeActiveFeedback = requestFeedback.open
+    ? closeRequestFeedback
+    : closeFeedback;
 
   const totalPages = data?.meta.totalCount
     ? Math.ceil(data.meta.totalCount / MAX_RESULTS_PER_PAGE)
@@ -522,7 +535,10 @@ export default function SearchBooksPage() {
                           key={item.isbn13}
                           item={item}
                           onRequest={handleRequest}
-                          isSaving={isRequestPending}
+                          isSaving={
+                            isRequestPending &&
+                            pendingRequestIsbn === item.isbn13
+                          }
                         />
                       ))}
                     </Stack>
@@ -580,10 +596,9 @@ export default function SearchBooksPage() {
         )}
       </Container>
 
-      <FeedbackSnackbar feedback={feedback} onClose={closeFeedback} />
       <FeedbackSnackbar
-        feedback={requestFeedback}
-        onClose={closeRequestFeedback}
+        feedback={activeFeedback}
+        onClose={closeActiveFeedback}
       />
 
       <BookDetailModal

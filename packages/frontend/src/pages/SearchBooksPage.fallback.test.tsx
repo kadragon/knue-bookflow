@@ -177,6 +177,117 @@ describe('SearchBooksPage Aladin fallback', () => {
     expect(externalCalled).toBe(0);
   });
 
+  it('only disables the card being requested while the 신청 is in flight', async () => {
+    const secondItem = {
+      ...aladinItem,
+      isbn13: '9788966262489',
+      title: '리팩터링(알라딘)',
+    };
+    let releasePost: (() => void) | undefined;
+    const postGate = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+
+    fetchMock.mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = urlOf(input);
+        const method = init?.method ?? 'GET';
+
+        if (url.includes('/api/external-search')) {
+          return new Response(
+            JSON.stringify({
+              items: [aladinItem, secondItem],
+              meta: {
+                count: 2,
+                totalResults: 2,
+                offset: 0,
+                max: 10,
+                query: 'x',
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/api/book-requests') && method === 'POST') {
+          await postGate;
+          return new Response(
+            JSON.stringify({
+              item: { id: 1, ...aladinItem, createdAt: '2026-06-05' },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/api/search')) {
+          return emptyKnue();
+        }
+        return new Response(JSON.stringify({ error: 'nf' }), { status: 404 });
+      },
+    );
+
+    renderPage('클린코드');
+
+    await screen.findByText('클린 코드(알라딘)');
+    const buttons = await screen.findAllByRole('button', { name: '신청' });
+    expect(buttons).toHaveLength(2);
+
+    fireEvent.click(buttons[0] as HTMLButtonElement);
+
+    await waitFor(() =>
+      expect((buttons[0] as HTMLButtonElement).disabled).toBe(true),
+    );
+    expect((buttons[1] as HTMLButtonElement).disabled).toBe(false);
+
+    releasePost?.();
+    await waitFor(() =>
+      expect((buttons[0] as HTMLButtonElement).disabled).toBe(false),
+    );
+  });
+
+  it('renders a single snackbar shared by both feedback flows', async () => {
+    fetchMock.mockImplementation(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = urlOf(input);
+        const method = init?.method ?? 'GET';
+
+        if (url.includes('/api/external-search')) {
+          return new Response(
+            JSON.stringify({
+              items: [aladinItem],
+              meta: {
+                count: 1,
+                totalResults: 1,
+                offset: 0,
+                max: 10,
+                query: 'x',
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/api/book-requests') && method === 'POST') {
+          return new Response(
+            JSON.stringify({
+              item: { id: 1, ...aladinItem, createdAt: '2026-06-05' },
+            }),
+            { status: 201, headers: { 'Content-Type': 'application/json' } },
+          );
+        }
+        if (url.includes('/api/search')) {
+          return emptyKnue();
+        }
+        return new Response(JSON.stringify({ error: 'nf' }), { status: 404 });
+      },
+    );
+
+    renderPage('클린코드');
+
+    const requestButton = await screen.findByRole('button', { name: '신청' });
+    fireEvent.click(requestButton);
+
+    expect(await screen.findByText('신청 목록에 추가했어요.')).toBeDefined();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
   it('shows an error when the Aladin fallback request fails', async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = urlOf(input);
