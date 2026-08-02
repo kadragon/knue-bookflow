@@ -4,15 +4,8 @@
 
 - [ ] [test] Add regression test for `alignContent: 'start'` on GridSheet — mount component, assert CSS prop is set; needs a new PracticePage test file (jsdom CSS reliability caveat) (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:357`
 
-### PR #140 — fix/practice-sheet-no-repeat (2026-06-16)
-
-- [ ] [doc] Update stale JSX comment "repeated to fill one page, clipped past it" → now rendered as-is (source: review) — `packages/frontend/src/pages/PracticePage.tsx:496`
-- [ ] [debt] Guide lines/grid only span text rows for short notes; no filler to cover the rest of the A4 sheet (source: codex) — `packages/frontend/src/pages/PracticePage.tsx`
-- [ ] [debt] `fillPracticeContent` accepts `_fontSize` but never uses it; callers in PracticePage.tsx still pass `fontSize` unnecessarily — remove param and update call sites, or add API stability comment (source: review) — `packages/frontend/src/pages/practiceFill.ts:2`
-
 ### PR #137 — feat/practice-yeonsung-grid (2026-06-11)
 
-- [ ] [debt] GridSheet right-of-text empty area shows only the container `borderTop`, no cell borders — visual inconsistency when a row has fewer chars than the responsive column count (source: agy) — `packages/frontend/src/pages/PracticePage.tsx:65`
 - [ ] [debt] `content.split('\n')` has no null guard; `<pre>` path renders nothing on null but GridSheet would throw. TS prevents today (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:63`
 - [ ] [debt] `Array.from(line)` splits grapheme clusters (ZWJ/flag/skin-tone emoji) into separate cells; consider `Intl.Segmenter` (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:79`
 - [ ] [debt] NBSP substitution `ch === ' ' ? ' ' : ch` is redundant in a fixed-width centered flex cell; could render `{ch}` directly (source: pr-review-toolkit:review-pr) — `packages/frontend/src/pages/PracticePage.tsx:100`
