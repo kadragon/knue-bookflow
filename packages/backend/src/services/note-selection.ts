@@ -56,7 +56,7 @@ interface NoteCandidateRow {
   last_sent_at: string | null;
 }
 
-class D1NoteSelectionRepository implements NoteSelectionRepository {
+export class D1NoteSelectionRepository implements NoteSelectionRepository {
   constructor(private readonly db: D1Database) {}
 
   async getNoteCandidates(): Promise<NoteCandidate[]> {
