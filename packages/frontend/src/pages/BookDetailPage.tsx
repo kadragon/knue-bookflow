@@ -8,6 +8,7 @@
 import {
   ArrowBack as ArrowBackIcon,
   Delete as DeleteIcon,
+  Download as DownloadIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
 import {
@@ -28,6 +29,7 @@ import {
   Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,6 +55,11 @@ import {
   getLoanStatusChip,
   shouldShowDdayChip,
 } from '../loanStatusPresentation';
+import {
+  downloadMarkdown,
+  formatBookNotesMarkdown,
+  toMarkdownFilename,
+} from '../notesMarkdown';
 import {
   patchBookDetailReadStatus,
   patchBooksReadStatus,
@@ -256,10 +263,12 @@ function BookInfoPanel({
 
 // Notes Panel (Right Side)
 function NotesPanel({
+  book,
   bookId,
   notes,
   onNotesChanged,
 }: {
+  book: BookItem;
   bookId: number;
   notes: NoteItem[];
   onNotesChanged: () => void;
@@ -363,6 +372,13 @@ function NotesPanel({
     setDeleteConfirmId(null);
   };
 
+  const handleExportMarkdown = () => {
+    downloadMarkdown(
+      toMarkdownFilename(book.title),
+      formatBookNotesMarkdown(book, notes),
+    );
+  };
+
   return (
     <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
       <Stack spacing={3}>
@@ -376,6 +392,18 @@ function NotesPanel({
           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
             독서 노트 ({notes.length})
           </Typography>
+          <Tooltip title="개인 메모가 담긴 파일입니다. 공개 저장소에 올리지 마세요.">
+            <span>
+              <Button
+                size="small"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportMarkdown}
+                disabled={notes.length === 0}
+              >
+                Markdown 다운로드
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
 
         {error && (
@@ -631,6 +659,7 @@ export default function BookDetailPage() {
               isUpdating={readStatusMutation.isPending}
             />
             <NotesPanel
+              book={data.book}
               bookId={bookId}
               notes={data.notes}
               onNotesChanged={handleNotesChanged}
