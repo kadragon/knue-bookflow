@@ -27,8 +27,9 @@ coverage/
 *.log
 *.tsbuildinfo
 
-# Harness sweep stamp
+# Harness sweep stamps
 tools/.sweep-stamp
+.agents/.maintenance-stamp
 
 # Antigravity CLI local state
 .antigravitycli/

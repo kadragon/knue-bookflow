@@ -83,16 +83,16 @@ Migrations are append-only — add a new numbered file under `packages/backend/m
 | Environment | URL | Branch | Method |
 |-------------|-----|--------|--------|
 | Local | `http://localhost:8787` | any | `bun run dev` |
-| Production | `https://book.kadragon.work/` | `main` | `bun run deploy` after merge |
+| Production | `https://book.kadragon.work/` | `main` | Cloudflare auto-deploy on push to `main` |
 
 ### Deploy steps
 
-1. Merge feature branch into `main` (CI must be green).
-2. `git pull && bun install`
-3. `bun run build`
-4. `bun run db:migrate` if any new migrations landed.
-5. `bun run deploy` (uses `wrangler deploy` from `packages/backend`).
-6. Smoke: `curl https://book.kadragon.work/api/books` returns JSON; check Cloudflare dashboard logs.
+1. Merge the feature branch into `main` through a PR (CI must be green).
+2. Cloudflare's Git integration builds and deploys the Worker automatically — no manual `bun run deploy`.
+3. `bun run db:migrate` if any new migrations landed (not applied by the auto-deploy).
+4. Smoke: `curl https://book.kadragon.work/api/books` returns JSON; check Cloudflare dashboard logs.
+
+Manual fallback (only if the auto-deploy is unavailable): `git pull && bun install && bun run build && bun run deploy`.
 
 ### Rollback
 

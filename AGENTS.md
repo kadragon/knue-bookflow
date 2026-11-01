@@ -52,7 +52,8 @@ Prefer **context resets over compaction** for multi-session work. Write `handoff
 - D1 schema lives in numbered SQL migrations; apply remote with `bun run db:migrate`.
 - Cron `0 3 * * *` UTC (12:00 KST) drives the daily note broadcast and renewal pipeline. Sync runs are also exposed manually via `POST /trigger`.
 - `read_status`: `0` = unread, `1` = finished, `2` = abandoned (`packages/backend/src/utils/read-status.ts`, `ReadStatus` in `shared`).
-- Frontend assets are served by the Worker via `[assets] binding = ASSETS` from `packages/frontend/dist/`. Run `bun run build` (full chain) before `bun run deploy`.
+- Production deploys automatically via Cloudflare's Git integration when `main` changes; do not run `bun run deploy` after a merge. Remote D1 migrations are still applied manually (`bun run db:migrate`).
+- Frontend assets are served by the Worker via `[assets] binding = ASSETS` from `packages/frontend/dist/`; a manual deploy must run `bun run build` (full chain) first.
 - Renewal eligibility: `renewCnt == 0` AND due within 2 days, KST defaults.
 
 ## Language Policy
