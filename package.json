@@ -22,7 +22,7 @@
     "prepare": "simple-git-hooks"
   },
   "lint-staged": {
-    "*.{js,ts,jsx,tsx,json,css,mts,cts,mjs,cjs}": [
+    "*.{js,ts,jsx,tsx,json,css,mts,cts,mjs,cjs,md}": [
       "biome check --write --no-errors-on-unmatched"
     ]
   },
