@@ -4,17 +4,17 @@ Only what Biome / TypeScript / Vitest don't already enforce.
 
 ## Naming
 
-| Element | Pattern | Example |
-|---------|---------|---------|
-| Source files | `kebab-case.ts` | `note-broadcast.ts`, `library-client.ts` |
-| React components | `PascalCase.tsx` | `BookCard.tsx`, `App.tsx` |
-| Test files | `*.test.ts` / `*.test.tsx` | `filterBooks.test.ts` |
-| Handler functions | `handle{Verb}{Resource}` | `handleGetBook`, `handleCreateNote` |
-| Repository factories | `create{Resource}Repository` | `createBookRepository(db)` |
-| Migration files | `NNNN_description.sql` (zero-padded, 4 digits) | `0011_add_planned_loan_dismissals.sql` |
-| D1 columns | `snake_case` | `read_status`, `discharge_date`, `isbn13` |
-| TypeScript fields | `camelCase`; map at the repo boundary | `readStatus`, `dischargeDate` |
-| Env vars / secrets | `SCREAMING_SNAKE_CASE` | `TELEGRAM_BOT_TOKEN` |
+| Element               | Pattern                                        | Example                                   |
+| --------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Source files          | `kebab-case.ts`                                | `note-broadcast.ts`, `library-client.ts`  |
+| React components      | `PascalCase.tsx`                               | `BookCard.tsx`, `App.tsx`                 |
+| Test files            | `*.test.ts` / `*.test.tsx`                     | `filterBooks.test.ts`                     |
+| Handler functions     | `handle{Verb}{Resource}`                       | `handleGetBook`, `handleCreateNote`       |
+| Repository factories  | `create{Resource}Repository`                   | `createBookRepository(db)`                |
+| Migration files       | `NNNN_description.sql` (zero-padded, 4 digits) | `0011_add_planned_loan_dismissals.sql`    |
+| D1 columns            | `snake_case`                                   | `read_status`, `discharge_date`, `isbn13` |
+| TypeScript fields     | `camelCase`; map at the repo boundary          | `readStatus`, `dischargeDate`             |
+| Env vars / secrets    | `SCREAMING_SNAKE_CASE`                         | `TELEGRAM_BOT_TOKEN`                      |
 | Cron handler branches | switch on `event.cron === NOTE_BROADCAST_CRON` | constants in `services/note-broadcast.ts` |
 
 ## Code Style
@@ -22,7 +22,10 @@ Only what Biome / TypeScript / Vitest don't already enforce.
 ### Backend handler shape
 
 ```ts
-export async function handleCreateNote(req: Request, env: Env): Promise<Response> {
+export async function handleCreateNote(
+  req: Request,
+  env: Env,
+): Promise<Response> {
   const body = createNoteSchema.safeParse(await req.json());
   if (!body.success) return jsonError(400, body.error);
   const repo = createNoteRepository(env.DB);
@@ -70,15 +73,15 @@ JSON envelopes match the existing `/api/books`-style responses — keep `{ data,
 
 ### Status codes
 
-| Scenario | Code |
-|----------|------|
-| Success (read) | 200 |
-| Success (create) | 201 |
-| Validation error (Zod) | 400 |
+| Scenario                        | Code      |
+| ------------------------------- | --------- |
+| Success (read)                  | 200       |
+| Success (create)                | 201       |
+| Validation error (Zod)          | 400       |
 | Telegram secret mismatch / auth | 401 / 403 |
-| Not found | 404 |
-| Upstream (Pyxis/Aladin) failure | 502 |
-| Server error | 500 |
+| Not found                       | 404       |
+| Upstream (Pyxis/Aladin) failure | 502       |
+| Server error                    | 500       |
 
 ## Migrations
 
@@ -112,9 +115,9 @@ Existing log: `[FEAT]`, `[FIX]`, `[DEPS]`, `[STRUCTURAL]`, `[codex]` are observe
 
 ### Counter-examples
 
-| Don't | Do |
-|-------|-----|
-| `await env.DB.prepare("SELECT ...").first()` in a handler | Call a repository method |
-| Edit `migrations/0007_*.sql` to fix a typo | Add `migrations/0012_*.sql` with the correction |
-| `process.env.TELEGRAM_BOT_TOKEN` | Use the typed `env: Env` parameter |
-| Hardcode `"Bearer ..."` for tests | Use `.dev.vars` or test fixtures |
+| Don't                                                     | Do                                              |
+| --------------------------------------------------------- | ----------------------------------------------- |
+| `await env.DB.prepare("SELECT ...").first()` in a handler | Call a repository method                        |
+| Edit `migrations/0007_*.sql` to fix a typo                | Add `migrations/0012_*.sql` with the correction |
+| `process.env.TELEGRAM_BOT_TOKEN`                          | Use the typed `env: Env` parameter              |
+| Hardcode `"Bearer ..."` for tests                         | Use `.dev.vars` or test fixtures                |

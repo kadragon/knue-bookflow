@@ -2,17 +2,17 @@
 
 ## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Language | TypeScript 5.7 (strict, project references) |
-| Runtime | Cloudflare Workers (compat date `2024-11-01`) |
-| Database | Cloudflare D1 (binding `DB`) |
-| Frontend | React 19 + MUI 7 + Vite 7, served by the Worker via `[assets] ASSETS` |
-| Build | Bun 1.2.20 workspaces, Wrangler 4 |
-| Lint/Format | Biome 2.4 |
-| Test | Vitest 4 (`--configLoader runner`) |
-| CI | GitHub Actions (`.github/workflows/ci.yml`) |
-| Pre-commit | simple-git-hooks → `bunx lint-staged && bun run typecheck && bun run test` |
+| Layer       | Technology                                                                 |
+| ----------- | -------------------------------------------------------------------------- |
+| Language    | TypeScript 5.7 (strict, project references)                                |
+| Runtime     | Cloudflare Workers (compat date `2024-11-01`)                              |
+| Database    | Cloudflare D1 (binding `DB`)                                               |
+| Frontend    | React 19 + MUI 7 + Vite 7, served by the Worker via `[assets] ASSETS`      |
+| Build       | Bun 1.2.20 workspaces, Wrangler 4                                          |
+| Lint/Format | Biome 2.4                                                                  |
+| Test        | Vitest 4 (`--configLoader runner`)                                         |
+| CI          | GitHub Actions (`.github/workflows/ci.yml`)                                |
+| Pre-commit  | simple-git-hooks → `bunx lint-staged && bun run typecheck && bun run test` |
 
 ## Source Layout
 
@@ -77,12 +77,12 @@ Migrations live in `packages/backend/migrations/NNNN_description.sql`. Applied l
 
 ## Scheduled & External Surfaces
 
-| Surface | Entry | Notes |
-|---------|-------|-------|
-| Cron `0 3 * * *` UTC (12:00 KST) | `scheduled()` in `index.ts` | Runs due-soon broadcast + renewal pipeline in `ctx.waitUntil` |
-| `GET /api/books`, `/api/notes`, `/api/planned-loans`, `/api/search`, `/api/aladin/:isbn` | `fetch()` in `index.ts` | All JSON; pagination via `utils/pagination.ts` |
-| `POST /trigger` | sync-handler | Manual sync entrypoint |
-| Static assets | `[assets] ASSETS` | Frontend dist served from Worker |
+| Surface                                                                                  | Entry                       | Notes                                                         |
+| ---------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------- |
+| Cron `0 3 * * *` UTC (12:00 KST)                                                         | `scheduled()` in `index.ts` | Runs due-soon broadcast + renewal pipeline in `ctx.waitUntil` |
+| `GET /api/books`, `/api/notes`, `/api/planned-loans`, `/api/search`, `/api/aladin/:isbn` | `fetch()` in `index.ts`     | All JSON; pagination via `utils/pagination.ts`                |
+| `POST /trigger`                                                                          | sync-handler                | Manual sync entrypoint                                        |
+| Static assets                                                                            | `[assets] ASSETS`           | Frontend dist served from Worker                              |
 
 ## Key Abstractions
 
