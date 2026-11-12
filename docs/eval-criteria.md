@@ -14,13 +14,13 @@ For knue-bookflow features, evaluate on four dimensions. Weights are guidance, n
 
 Does the feature do what the sprint contract says, end-to-end?
 
-| Score | Description |
-|-------|-------------|
-| 5 | All contract bullets verified live (or via integration tests against D1/Worker); edge cases (no items, network failure, secret missing) handled. |
-| 4 | All contract bullets pass; one minor edge case handled by best-effort defaults. |
-| 3 | Happy path works; one edge case is documented as a known gap. |
-| 2 | Happy path works only with specific inputs; obvious failure modes not handled. |
-| 1 | Core flow does not work end-to-end. |
+| Score | Description                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 5     | All contract bullets verified live (or via integration tests against D1/Worker); edge cases (no items, network failure, secret missing) handled. |
+| 4     | All contract bullets pass; one minor edge case handled by best-effort defaults.                                                                  |
+| 3     | Happy path works; one edge case is documented as a known gap.                                                                                    |
+| 2     | Happy path works only with specific inputs; obvious failure modes not handled.                                                                   |
+| 1     | Core flow does not work end-to-end.                                                                                                              |
 
 **How to test:** exercise the endpoint or scheduled trigger; inspect D1 state via `wrangler d1 execute`; check logs.
 
@@ -28,13 +28,13 @@ Does the feature do what the sprint contract says, end-to-end?
 
 Does the change respect the layer rules (handlers → services → repositories) and the golden principles?
 
-| Score | Description |
-|-------|-------------|
-| 5 | All D1 access via repositories; Zod at every API entry; secrets via env binding; migrations append-only. |
-| 4 | One small boundary leak with a clear remediation note. |
-| 3 | Layering followed but new code copies an existing inconsistency. |
-| 2 | Raw `env.DB` use, missing validation, or in-place migration edit. |
-| 1 | Hardcoded secret, security regression, or destructive migration. |
+| Score | Description                                                                                              |
+| ----- | -------------------------------------------------------------------------------------------------------- |
+| 5     | All D1 access via repositories; Zod at every API entry; secrets via env binding; migrations append-only. |
+| 4     | One small boundary leak with a clear remediation note.                                                   |
+| 3     | Layering followed but new code copies an existing inconsistency.                                         |
+| 2     | Raw `env.DB` use, missing validation, or in-place migration edit.                                        |
+| 1     | Hardcoded secret, security regression, or destructive migration.                                         |
 
 **How to test:** grep diff for `env.DB.prepare`; verify Zod presence in new handlers; check migration files are net-new.
 
@@ -42,13 +42,13 @@ Does the change respect the layer rules (handlers → services → repositories)
 
 Are the changes covered, and does the pre-commit / CI gate pass cleanly?
 
-| Score | Description |
-|-------|-------------|
-| 5 | New tests cover the new behaviour; `bun run lint && bun run typecheck && bun run test` pass; CI green. |
-| 4 | Tests cover happy path; pre-commit / CI green; one minor case lacks a test with rationale. |
-| 3 | Pre-commit / CI green; coverage relies on existing tests catching regressions. |
-| 2 | Pre-commit / CI passes only because of `--no-verify` or similar bypass. |
-| 1 | Lint / typecheck / test failing on the branch. |
+| Score | Description                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------ |
+| 5     | New tests cover the new behaviour; `bun run lint && bun run typecheck && bun run test` pass; CI green. |
+| 4     | Tests cover happy path; pre-commit / CI green; one minor case lacks a test with rationale.             |
+| 3     | Pre-commit / CI green; coverage relies on existing tests catching regressions.                         |
+| 2     | Pre-commit / CI passes only because of `--no-verify` or similar bypass.                                |
+| 1     | Lint / typecheck / test failing on the branch.                                                         |
 
 **How to test:** run the full pre-commit chain; review diff for added test files; confirm CI run on PR.
 
@@ -56,13 +56,13 @@ Are the changes covered, and does the pre-commit / CI gate pass cleanly?
 
 Will this run safely in production?
 
-| Score | Description |
-|-------|-------------|
-| 5 | Scheduled work uses `ctx.waitUntil`; structured logs; no new secret without a `wrangler secret put` note in the PR; rollback obvious. |
-| 4 | One operational concern noted with a follow-up backlog item. |
-| 3 | Code runs but logs are sparse; rollback requires reading code. |
-| 2 | New cron / external call without observability or backoff. |
-| 1 | Could exhaust the Worker CPU budget, leak credentials, or corrupt D1 state. |
+| Score | Description                                                                                                                           |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 5     | Scheduled work uses `ctx.waitUntil`; structured logs; no new secret without a `wrangler secret put` note in the PR; rollback obvious. |
+| 4     | One operational concern noted with a follow-up backlog item.                                                                          |
+| 3     | Code runs but logs are sparse; rollback requires reading code.                                                                        |
+| 2     | New cron / external call without observability or backoff.                                                                            |
+| 1     | Could exhaust the Worker CPU budget, leak credentials, or corrupt D1 state.                                                           |
 
 **How to test:** read `scheduled()` path; check logs/traces config; verify any new secret is documented.
 

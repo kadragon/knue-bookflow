@@ -4,14 +4,14 @@ Cloudflare Workers + D1 monorepo for KNUE library auto-renewal, Aladin metadata 
 
 ## Docs Index (read on demand)
 
-| File | When to read |
-|------|--------------|
-| `docs/architecture.md` | Before changing source layout, adding a package, or crossing layer boundaries |
-| `docs/conventions.md` | Before writing a handler, repository, client, or migration |
-| `docs/workflows.md` | At the start of every implementation cycle |
-| `docs/delegation.md` | Before spawning a sub-agent or splitting work |
-| `docs/eval-criteria.md` | Before declaring a feature done |
-| `docs/runbook.md` | For build, test, deploy, secrets, and Wrangler commands |
+| File                    | When to read                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `docs/architecture.md`  | Before changing source layout, adding a package, or crossing layer boundaries |
+| `docs/conventions.md`   | Before writing a handler, repository, client, or migration                    |
+| `docs/workflows.md`     | At the start of every implementation cycle                                    |
+| `docs/delegation.md`    | Before spawning a sub-agent or splitting work                                 |
+| `docs/eval-criteria.md` | Before declaring a feature done                                               |
+| `docs/runbook.md`       | For build, test, deploy, secrets, and Wrangler commands                       |
 
 ## Golden Principles
 
@@ -27,13 +27,13 @@ Invariants. Violations block commits or fail review.
 
 Single-maintainer project — most edits are direct. Delegate only when an objective trigger fires.
 
-| Trigger (objective) | Delegate to | Model |
-|---------------------|-------------|-------|
-| First edit of session in `packages/backend/src/` | Explore agent | sonnet |
-| Change touches ≥3 directories or ≥5 files | Explore + Plan | sonnet |
-| Modifying `migrations/`, `wrangler.toml`, or `.github/workflows/` | Plan agent (impact review first) | sonnet |
-| Same failure x2 | `codex:rescue` for second opinion | (codex) |
-| Pre-merge sanity check on a diff | `/codex:review` | (codex) |
+| Trigger (objective)                                               | Delegate to                       | Model   |
+| ----------------------------------------------------------------- | --------------------------------- | ------- |
+| First edit of session in `packages/backend/src/`                  | Explore agent                     | sonnet  |
+| Change touches ≥3 directories or ≥5 files                         | Explore + Plan                    | sonnet  |
+| Modifying `migrations/`, `wrangler.toml`, or `.github/workflows/` | Plan agent (impact review first)  | sonnet  |
+| Same failure x2                                                   | `codex:rescue` for second opinion | (codex) |
+| Pre-merge sanity check on a diff                                  | `/codex:review`                   | (codex) |
 
 See `docs/delegation.md` for the Spawn Prompt Contract and full routing.
 

@@ -39,6 +39,7 @@ The primary cycle. Delegation checkpoints are **named steps**, not optional refe
 
 ```markdown
 ## Feature Name
+
 > Goal: what and why.
 > Design: docs/design/{feature}.md
 > Done-when: (concrete acceptance criteria — agreed BEFORE coding)
@@ -79,12 +80,12 @@ Adversarial multi-agent root-cause investigation. Only when a high-stakes bug su
 
 ## Permitted Side-Effects
 
-| Primary | Permitted side-effect |
-|---------|----------------------|
-| `code` | Add `[doc]` or `[constraint]` item to `tasks.md` when discovering issues |
-| `code` | Update directly-relevant docs after implementation lands |
-| `draft` | Add `backlog.md` item if doc reveals missing behavior |
-| `sweep` | Fix trivial `[doc]` items inline |
+| Primary | Permitted side-effect                                                    |
+| ------- | ------------------------------------------------------------------------ |
+| `code`  | Add `[doc]` or `[constraint]` item to `tasks.md` when discovering issues |
+| `code`  | Update directly-relevant docs after implementation lands                 |
+| `draft` | Add `backlog.md` item if doc reveals missing behavior                    |
+| `sweep` | Fix trivial `[doc]` items inline                                         |
 
 Not permitted: writing production code during `draft` or `sweep`.
 
@@ -98,6 +99,7 @@ Models lose coherence on long tasks as context fills. Symptoms: stub implementat
 
 1. **Reset over compact.** When context fills, prefer a fresh session with a structured handoff to in-place compaction.
 2. **Handoff files at the start.** Write `handoff-{feature}.md` when context is fresh and the plan is clear. Schema:
+
    ```markdown
    # Handoff: {feature}
    ## State
@@ -113,10 +115,10 @@ Models lose coherence on long tasks as context fills. Symptoms: stub implementat
 
 ## Continuous vs Sprint-Based
 
-| Approach | When | Trade-off |
-|----------|------|-----------|
-| Sprint-based | Multi-feature build, model fades after ~30-60min | More overhead, sustained quality |
-| Continuous | Single feature, capable model | Lower overhead, risks late degradation |
+| Approach     | When                                             | Trade-off                              |
+| ------------ | ------------------------------------------------ | -------------------------------------- |
+| Sprint-based | Multi-feature build, model fades after ~30-60min | More overhead, sustained quality       |
+| Continuous   | Single feature, capable model                    | Lower overhead, risks late degradation |
 
 Start continuous; add sprint decomposition only when you observe degradation.
 
@@ -128,13 +130,16 @@ Start continuous; add sprint decomposition only when you observe degradation.
 status: active | evaluating | done | failed
 
 ## Scope
+
 - bullet list of what's in / out
 
 ## Acceptance Criteria
+
 - [ ] testable bullet
 - [ ] ...
 
 ## Evaluator Feedback
+
 (populated by the evaluator at Step 5)
 ```
 

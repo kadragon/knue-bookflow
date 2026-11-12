@@ -32,24 +32,24 @@ The Worker is at `http://localhost:8787` by default; the Vite dev server runs on
 
 ## Build
 
-| Command | Purpose |
-|---------|---------|
-| `bun run build` | Full chain: shared → frontend → backend (`wrangler build`) |
+| Command                                 | Purpose                                                         |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `bun run build`                         | Full chain: shared → frontend → backend (`wrangler build`)      |
 | `bun run --cwd packages/frontend build` | Frontend only (`tsc && vite build` → `packages/frontend/dist/`) |
-| `bun run --cwd packages/backend build` | Worker only (`wrangler build`) |
-| `bun run typecheck` | `tsc --build` across project references |
+| `bun run --cwd packages/backend build`  | Worker only (`wrangler build`)                                  |
+| `bun run typecheck`                     | `tsc --build` across project references                         |
 
 The Worker serves frontend assets via the `[assets] ASSETS` binding — frontend must be built before deploying the backend.
 
 ## Test
 
-| Command | Purpose |
-|---------|---------|
-| `bun run test` | Full suite (Vitest, `--configLoader runner`) |
-| `bun run --cwd packages/backend test` | Backend only |
-| `bun run --cwd packages/frontend test` | Frontend only |
-| `bun run --cwd packages/backend test -- path/to.test.ts` | Single file |
-| `bun run --cwd packages/backend test -- --coverage` | Backend coverage (v8) |
+| Command                                                  | Purpose                                      |
+| -------------------------------------------------------- | -------------------------------------------- |
+| `bun run test`                                           | Full suite (Vitest, `--configLoader runner`) |
+| `bun run --cwd packages/backend test`                    | Backend only                                 |
+| `bun run --cwd packages/frontend test`                   | Frontend only                                |
+| `bun run --cwd packages/backend test -- path/to.test.ts` | Single file                                  |
+| `bun run --cwd packages/backend test -- --coverage`      | Backend coverage (v8)                        |
 
 ### Conventions
 
@@ -59,31 +59,31 @@ The Worker serves frontend assets via the `[assets] ASSETS` binding — frontend
 
 ## Lint & Format
 
-| Command | Purpose |
-|---------|---------|
-| `bun run lint` | `biome check .` (lint + format check) |
-| `bun run lint:fix` | `biome check --write .` |
-| `bun run format` | `biome format --write .` |
+| Command            | Purpose                               |
+| ------------------ | ------------------------------------- |
+| `bun run lint`     | `biome check .` (lint + format check) |
+| `bun run lint:fix` | `biome check --write .`               |
+| `bun run format`   | `biome format --write .`              |
 
 `lint-staged` (via `simple-git-hooks` pre-commit) runs `biome check --write --no-errors-on-unmatched` on staged files automatically.
 
 ## Database (D1)
 
-| Command | Purpose |
-|---------|---------|
-| `bun run --cwd packages/backend wrangler d1 migrations apply knue-bookflow-db --local` | Apply migrations to local D1 |
-| `bun run db:migrate` | Apply migrations to remote D1 (production) |
-| `bun run --cwd packages/backend wrangler d1 execute knue-bookflow-db --remote --command "SELECT ..."` | Ad-hoc remote query |
-| `bun run --cwd packages/backend wrangler d1 execute knue-bookflow-db --local --command "SELECT ..."` | Ad-hoc local query |
+| Command                                                                                               | Purpose                                    |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `bun run --cwd packages/backend wrangler d1 migrations apply knue-bookflow-db --local`                | Apply migrations to local D1               |
+| `bun run db:migrate`                                                                                  | Apply migrations to remote D1 (production) |
+| `bun run --cwd packages/backend wrangler d1 execute knue-bookflow-db --remote --command "SELECT ..."` | Ad-hoc remote query                        |
+| `bun run --cwd packages/backend wrangler d1 execute knue-bookflow-db --local --command "SELECT ..."`  | Ad-hoc local query                         |
 
 Migrations are append-only — add a new numbered file under `packages/backend/migrations/` for any schema change.
 
 ## Deploy
 
-| Environment | URL | Branch | Method |
-|-------------|-----|--------|--------|
-| Local | `http://localhost:8787` | any | `bun run dev` |
-| Production | `https://book.kadragon.work/` | `main` | Cloudflare auto-deploy on push to `main` |
+| Environment | URL                           | Branch | Method                                   |
+| ----------- | ----------------------------- | ------ | ---------------------------------------- |
+| Local       | `http://localhost:8787`       | any    | `bun run dev`                            |
+| Production  | `https://book.kadragon.work/` | `main` | Cloudflare auto-deploy on push to `main` |
 
 ### Deploy steps
 
@@ -102,13 +102,13 @@ Manual fallback (only if the auto-deploy is unavailable): `git pull && bun insta
 
 Set via Wrangler. Never commit values.
 
-| Secret | Used by |
-|--------|---------|
-| `LIBRARY_USER_ID` | KNUE Pyxis login |
-| `LIBRARY_PASSWORD` | KNUE Pyxis login |
-| `ALADIN_API_KEY` | Aladin metadata lookup |
+| Secret               | Used by                     |
+| -------------------- | --------------------------- |
+| `LIBRARY_USER_ID`    | KNUE Pyxis login            |
+| `LIBRARY_PASSWORD`   | KNUE Pyxis login            |
+| `ALADIN_API_KEY`     | Aladin metadata lookup      |
 | `TELEGRAM_BOT_TOKEN` | Telegram due-soon broadcast |
-| `TELEGRAM_CHAT_ID` | Default broadcast target |
+| `TELEGRAM_CHAT_ID`   | Default broadcast target    |
 
 ```bash
 bun run --cwd packages/backend wrangler secret put TELEGRAM_BOT_TOKEN
@@ -153,8 +153,8 @@ bash tools/sweep.sh --quick # lint scan only
 
 ## Environment Variables (non-secret)
 
-| Variable | Default | Notes |
-|----------|---------|-------|
+| Variable      | Default      | Notes                                                                   |
+| ------------- | ------------ | ----------------------------------------------------------------------- |
 | `ENVIRONMENT` | `production` | Set in `wrangler.toml [vars]`; used by handlers to gate dev-only paths. |
 
 ## Trace IDs

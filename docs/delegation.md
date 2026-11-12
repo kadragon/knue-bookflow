@@ -31,11 +31,11 @@ Missing any → reject the spawn (or revise before sending). Vague spawns are th
 
 ## Effort Tier (embed in spawn prompt)
 
-| Tier | Use for | Tool calls | Parallel | Model |
-|------|---------|------------|----------|-------|
-| Simple | Known-answer lookup, mechanical check, single file | 3-10 | 1 | haiku/sonnet |
-| Comparison | Multi-file review, weighing 2-4 options | 10-15 each | 2-4 | sonnet |
-| Complex | Cross-layer refactor, unknown root cause | 15+ each | up to 5 | sonnet + opus lead |
+| Tier       | Use for                                            | Tool calls | Parallel | Model              |
+| ---------- | -------------------------------------------------- | ---------- | -------- | ------------------ |
+| Simple     | Known-answer lookup, mechanical check, single file | 3-10       | 1        | haiku/sonnet       |
+| Comparison | Multi-file review, weighing 2-4 options            | 10-15 each | 2-4      | sonnet             |
+| Complex    | Cross-layer refactor, unknown root cause           | 15+ each   | up to 5  | sonnet + opus lead |
 
 Complex tier requires explicit team-size justification in the spawn prompt.
 
@@ -45,29 +45,29 @@ Complex tier requires explicit team-size justification in the spawn prompt.
 
 All triggers are **objective and measurable** — no "unfamiliar module" or "if unsure" wording.
 
-| Trigger | Delegate to | Context to pass | Model |
-|---------|-------------|-----------------|-------|
-| First edit of session in `packages/backend/src/` | Explore agent | Target dir, `docs/architecture.md` | sonnet |
-| Change touches ≥3 directories OR ≥5 files | Explore agent + Plan | Changed paths, `docs/architecture.md`, `docs/conventions.md` | sonnet |
-| Edit in `packages/backend/migrations/`, `wrangler.toml`, or `.github/workflows/` | Plan agent (impact review before edit) | Target file, recent neighbours, golden principles | sonnet |
-| Implementation task ≥3 files from backlog | Implementation subagent | Spec, `docs/conventions.md`, reference files | sonnet |
-| After implementation (always, even if direct edit) | `pr-review-toolkit:code-reviewer` or `/codex:review` | Diff, `docs/conventions.md`, golden principles | sonnet |
-| Feature complete | Product evaluator (or human) | Done-when criteria, `docs/eval-criteria.md` | opus |
+| Trigger                                                                          | Delegate to                                          | Context to pass                                              | Model  |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | ------ |
+| First edit of session in `packages/backend/src/`                                 | Explore agent                                        | Target dir, `docs/architecture.md`                           | sonnet |
+| Change touches ≥3 directories OR ≥5 files                                        | Explore agent + Plan                                 | Changed paths, `docs/architecture.md`, `docs/conventions.md` | sonnet |
+| Edit in `packages/backend/migrations/`, `wrangler.toml`, or `.github/workflows/` | Plan agent (impact review before edit)               | Target file, recent neighbours, golden principles            | sonnet |
+| Implementation task ≥3 files from backlog                                        | Implementation subagent                              | Spec, `docs/conventions.md`, reference files                 | sonnet |
+| After implementation (always, even if direct edit)                               | `pr-review-toolkit:code-reviewer` or `/codex:review` | Diff, `docs/conventions.md`, golden principles               | sonnet |
+| Feature complete                                                                 | Product evaluator (or human)                         | Done-when criteria, `docs/eval-criteria.md`                  | opus   |
 
 ### Background (non-blocking)
 
-| Trigger | Delegate to | Context |
-|---------|-------------|---------|
-| After commit on a feature branch | Code reviewer (background) | Commit hash, changed files |
-| Periodic between features | `bash tools/sweep.sh` | tasks.md / backlog.md paths |
+| Trigger                          | Delegate to                | Context                     |
+| -------------------------------- | -------------------------- | --------------------------- |
+| After commit on a feature branch | Code reviewer (background) | Commit hash, changed files  |
+| Periodic between features        | `bash tools/sweep.sh`      | tasks.md / backlog.md paths |
 
 ### Escalation
 
-| Trigger | Delegate |
-|---------|----------|
-| Same failure x2 | `codex:rescue` (second opinion / deep investigation) |
-| Plan critique pre-`ExitPlanMode` | `codex:rescue` — "review this plan, flag missing steps / wrong assumptions / risky ordering" |
-| Pre-merge sanity on a non-trivial diff | `/codex:review` |
+| Trigger                                | Delegate                                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Same failure x2                        | `codex:rescue` (second opinion / deep investigation)                                         |
+| Plan critique pre-`ExitPlanMode`       | `codex:rescue` — "review this plan, flag missing steps / wrong assumptions / risky ordering" |
+| Pre-merge sanity on a non-trivial diff | `/codex:review`                                                                              |
 
 The plan critique above is **spent once approved**. Do not re-route the same plan steps to Codex during implementation; only re-engage if the plan's scope breaks (new file/module not named, plan assumption proven wrong).
 
@@ -107,12 +107,12 @@ Pass context via **file paths**, not inline content. Sub-agents start with zero 
 
 ## Model Selection per Role
 
-| Role | Model | Reasoning |
-|------|-------|-----------|
-| Structural / mechanical checks | haiku | Cheap, fast |
-| Code review, exploration, implementation | sonnet | Solid reasoning at a reasonable cost |
-| Architecture analysis, deep debugging, product eval | opus | Subjective judgment, multi-step reasoning |
-| Sweep / GC | haiku or sonnet | Mostly grep + light judgment |
+| Role                                                | Model           | Reasoning                                 |
+| --------------------------------------------------- | --------------- | ----------------------------------------- |
+| Structural / mechanical checks                      | haiku           | Cheap, fast                               |
+| Code review, exploration, implementation            | sonnet          | Solid reasoning at a reasonable cost      |
+| Architecture analysis, deep debugging, product eval | opus            | Subjective judgment, multi-step reasoning |
+| Sweep / GC                                          | haiku or sonnet | Mostly grep + light judgment              |
 
 When in doubt, start with `sonnet`; escalate to `opus` only if quality is insufficient.
 
@@ -127,14 +127,14 @@ Anti-patterns ("unfamiliar", "complex", "if unsure", "significant") are rejected
 
 ## Workflow → Delegation Mapping
 
-| Workflow | Step | Delegate | Gate |
-|----------|------|----------|------|
-| `code` | Step 1 (scope check) | Explore / Plan if trigger fires | Mandatory |
-| `code` | Step 3 (implement) | Implementation subagent if ≥3 files | Conditional |
-| `code` | Step 4 (post-impl QA) | Code reviewer (always) | Mandatory |
-| `code` | Step 5 (feature complete) | Product evaluator | Mandatory |
-| `plan` | Pre-`ExitPlanMode` | `codex:rescue` plan critique | Mandatory |
-| `sweep` | Lint scan | `bash tools/sweep.sh` | Background |
+| Workflow | Step                      | Delegate                            | Gate        |
+| -------- | ------------------------- | ----------------------------------- | ----------- |
+| `code`   | Step 1 (scope check)      | Explore / Plan if trigger fires     | Mandatory   |
+| `code`   | Step 3 (implement)        | Implementation subagent if ≥3 files | Conditional |
+| `code`   | Step 4 (post-impl QA)     | Code reviewer (always)              | Mandatory   |
+| `code`   | Step 5 (feature complete) | Product evaluator                   | Mandatory   |
+| `plan`   | Pre-`ExitPlanMode`        | `codex:rescue` plan critique        | Mandatory   |
+| `sweep`  | Lint scan                 | `bash tools/sweep.sh`               | Background  |
 
 ## Applying Sub-Agent Output
 
