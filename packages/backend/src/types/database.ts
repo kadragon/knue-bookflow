@@ -18,6 +18,7 @@ export interface BookRecord {
   due_date: string;
   discharge_date?: string | null;
   renew_count: number;
+  is_renewable?: 0 | 1 | null;
   is_read?: number;
   created_at?: string;
   updated_at?: string;

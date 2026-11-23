@@ -21,7 +21,7 @@ Cloudflare Workers-based automatic book renewal system for Korea National Univer
 
 ## Loan due date calendar
 
-The feed shows one all-day `N권 반납` event per due date in Korea Standard Time, based on the latest library sync.
+The feed groups active loans by due date in Korea Standard Time into all-day `N권 반납` events with book titles. It includes loans the library reported as ineligible for renewal and loans that have used their renewal allowance, based on the latest sync.
 
 ```bash
 openssl rand -hex 32

@@ -289,6 +289,7 @@ describe('processCharge', () => {
       charge_date: charge.chargeDate,
       due_date: charge.dueDate,
       renew_count: charge.renewCnt,
+      is_renewable: 1,
       is_read: 0,
     });
 
@@ -336,6 +337,38 @@ describe('processCharge', () => {
     expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
 
+  it.each([
+    [1, false, 0],
+    [0, true, 1],
+    [null, false, 0],
+    [0, undefined, null],
+  ])(
+    'updates stored renewal eligibility from %s when the library reports %s',
+    async (storedEligibility, isRenewable, expectedEligibility) => {
+      const charge = { ...createMockCharge(), isRenewable } as Charge;
+      const existing = {
+        charge_id: String(charge.id),
+        cover_url: 'https://existing-cover.jpg',
+        due_date: charge.dueDate,
+        renew_count: charge.renewCnt,
+        is_renewable: storedEligibility,
+      };
+      const mockBookRepository = createMockBookRepository(existing);
+
+      const status = await processCharge(
+        charge,
+        mockBookRepository,
+        createMockAladinClient(null),
+      );
+
+      expect(status).toBe('updated');
+      expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+        expect.objectContaining({ is_renewable: expectedEligibility }),
+        existing,
+      );
+    },
+  );
+
   it('does not delete planned loans within processCharge (handled in batch cleanup)', async () => {
     const charge = createMockCharge({ id: 777 });
 
@@ -362,6 +395,7 @@ describe('processCharge', () => {
       charge_date: charge.chargeDate,
       due_date: charge.dueDate,
       renew_count: charge.renewCnt,
+      is_renewable: 1,
       is_read: 0,
     });
 
@@ -400,6 +434,7 @@ describe('processCharge', () => {
       charge_date: charge.chargeDate,
       due_date: charge.dueDate,
       renew_count: charge.renewCnt,
+      is_renewable: 1,
       is_read: 0,
     });
 

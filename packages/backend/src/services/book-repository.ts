@@ -47,6 +47,7 @@ export class BookRepository {
             due_date = ?,
             discharge_date = COALESCE(?, discharge_date),
             renew_count = ?,
+            is_renewable = ?,
             is_read = COALESCE(?, is_read),
             cover_url = COALESCE(?, cover_url),
             description = COALESCE(?, description),
@@ -57,6 +58,7 @@ export class BookRepository {
           record.due_date,
           record.discharge_date ?? null,
           record.renew_count,
+          record.is_renewable ?? null,
           record.is_read ?? null,
           record.cover_url ?? null,
           record.description ?? null,
@@ -73,8 +75,8 @@ export class BookRepository {
           `INSERT INTO books (
             charge_id, isbn, isbn13, title, author, publisher,
             cover_url, description, pub_date, charge_date, due_date,
-            discharge_date, renew_count, is_read, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            discharge_date, renew_count, is_renewable, is_read, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           record.charge_id,
@@ -90,6 +92,7 @@ export class BookRepository {
           record.due_date,
           record.discharge_date ?? null,
           record.renew_count,
+          record.is_renewable ?? null,
           record.is_read ?? 0,
           now,
           now,
@@ -188,14 +191,25 @@ export class BookRepository {
     return result.results;
   }
 
-  async findActiveLoanDueDates(): Promise<string[]> {
+  async findLoansDueForReturn(
+    renewalLimit: number,
+  ): Promise<{ dueDate: string; title: string }[]> {
     const result = await this.db
       .prepare(
-        "SELECT due_date FROM books WHERE discharge_date IS NULL AND typeof(due_date) = 'text'",
+        `SELECT due_date, title
+         FROM books
+         WHERE discharge_date IS NULL
+           AND typeof(due_date) = 'text'
+           AND (is_renewable = 0 OR renew_count >= ?)
+         ORDER BY title`,
       )
-      .all<{ due_date: string }>();
+      .bind(renewalLimit)
+      .all<{ due_date: string; title: string }>();
 
-    return result.results.map((row) => row.due_date);
+    return result.results.map(({ due_date, title }) => ({
+      dueDate: due_date,
+      title,
+    }));
   }
 
   /**
@@ -270,6 +284,7 @@ export function createBookRecord(
 ): BookRecord {
   const normalizedChargeDate = normalizeDateString(charge.chargeDate);
   const normalizedDueDate = normalizeKstDate(charge.dueDate) ?? '';
+  const isRenewable = 'isRenewable' in charge ? charge.isRenewable : undefined;
   return {
     charge_id: String(charge.id),
     isbn: charge.biblio.isbn || bookInfo?.isbn || '',
@@ -285,6 +300,7 @@ export function createBookRecord(
     discharge_date:
       'dischargeDate' in charge ? (charge.dischargeDate ?? null) : null,
     renew_count: charge.renewCnt ?? 0,
+    is_renewable: isRenewable === true ? 1 : isRenewable === false ? 0 : null,
   };
 }
 

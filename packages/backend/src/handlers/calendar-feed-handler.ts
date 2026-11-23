@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createBookRepository } from '../services/book-repository';
 import { createDueDateCalendar } from '../services/due-date-calendar';
 import type { Env } from '../types';
+import { MAX_RENEWALS_PER_LOAN } from '../utils/constants';
 import { jsonResponse } from '../utils/response';
 
 const tokenParams = z.tuple([z.string().min(1)]);
@@ -32,11 +33,11 @@ export async function handleGetCalendarFeed(
   }
 
   try {
-    const dueDates = await createBookRepository(
-      env.DB,
-    ).findActiveLoanDueDates();
+    const loans = await createBookRepository(env.DB).findLoansDueForReturn(
+      MAX_RENEWALS_PER_LOAN,
+    );
     return new Response(
-      method === 'HEAD' ? null : createDueDateCalendar(dueDates),
+      method === 'HEAD' ? null : createDueDateCalendar(loans),
       {
         headers: {
           ...cacheHeaders,
