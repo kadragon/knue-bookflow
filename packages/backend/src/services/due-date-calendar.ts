@@ -22,11 +22,25 @@ export function foldContentLine(line: string): string {
   return result;
 }
 
-export function createDueDateCalendar(dueDates: string[]): string {
-  const counts = new Map<string, number>();
-  for (const value of dueDates) {
-    const date = normalizeKstDate(value);
-    if (date) counts.set(date, (counts.get(date) ?? 0) + 1);
+function escapeCalendarText(value: string): string {
+  return value
+    .replaceAll('\\', '\\\\')
+    .replaceAll(',', '\\,')
+    .replaceAll(';', '\\;')
+    .replace(/\r\n|\r|\n/g, '\\n');
+}
+
+export function createDueDateCalendar(
+  loans: { dueDate: string; title: string }[],
+): string {
+  const titlesByDate = new Map<string, string[]>();
+  for (const { dueDate, title } of loans) {
+    const date = normalizeKstDate(dueDate);
+    if (!date) continue;
+
+    const titles = titlesByDate.get(date) ?? [];
+    titles.push(title);
+    titlesByDate.set(date, titles);
   }
 
   const lines = [
@@ -51,7 +65,8 @@ export function createDueDateCalendar(dueDates: string[]): string {
   ];
   const stamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, '');
 
-  for (const date of Array.from(counts.keys()).sort()) {
+  const dates = Array.from(titlesByDate).sort(([a], [b]) => a.localeCompare(b));
+  for (const [date, titles] of dates) {
     const next = nextCivilDate(date);
     if (next.length !== date.length) continue;
 
@@ -63,7 +78,8 @@ export function createDueDateCalendar(dueDates: string[]): string {
       `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${start}`,
       `DTEND;VALUE=DATE:${end}`,
-      `SUMMARY:${counts.get(date)}권 반납`,
+      `SUMMARY:${titles.length}권 반납`,
+      `DESCRIPTION:${escapeCalendarText(titles.join('\n'))}`,
       'END:VEVENT',
     );
   }

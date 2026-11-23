@@ -188,14 +188,25 @@ export class BookRepository {
     return result.results;
   }
 
-  async findActiveLoanDueDates(): Promise<string[]> {
+  async findLoansDueForReturn(
+    renewalLimit: number,
+  ): Promise<{ dueDate: string; title: string }[]> {
     const result = await this.db
       .prepare(
-        "SELECT due_date FROM books WHERE discharge_date IS NULL AND typeof(due_date) = 'text'",
+        `SELECT due_date, title
+         FROM books
+         WHERE discharge_date IS NULL
+           AND typeof(due_date) = 'text'
+           AND renew_count >= ?
+         ORDER BY title`,
       )
-      .all<{ due_date: string }>();
+      .bind(renewalLimit)
+      .all<{ due_date: string; title: string }>();
 
-    return result.results.map((row) => row.due_date);
+    return result.results.map(({ due_date, title }) => ({
+      dueDate: due_date,
+      title,
+    }));
   }
 
   /**
