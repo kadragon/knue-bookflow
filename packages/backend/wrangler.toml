@@ -37,6 +37,7 @@ migrations_dir = "migrations"
 ENVIRONMENT = "production"
 
 [observability]
+redact_query_string = true
 logs = { enabled = true, head_sampling_rate = 1.0 }
 traces = { enabled = true, head_sampling_rate = 0.1 }
 # Trace: SPEC-observability-001 / TASK-018
@@ -47,3 +48,4 @@ traces = { enabled = true, head_sampling_rate = 0.1 }
 # - ALADIN_API_KEY
 # - TELEGRAM_BOT_TOKEN
 # - TELEGRAM_CHAT_ID
+# - CALENDAR_FEED_TOKEN

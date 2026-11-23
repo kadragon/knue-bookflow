@@ -188,6 +188,16 @@ export class BookRepository {
     return result.results;
   }
 
+  async findActiveLoanDueDates(): Promise<string[]> {
+    const result = await this.db
+      .prepare(
+        "SELECT due_date FROM books WHERE discharge_date IS NULL AND typeof(due_date) = 'text'",
+      )
+      .all<{ due_date: string }>();
+
+    return result.results.map((row) => row.due_date);
+  }
+
   /**
    * Get all book records
    */

@@ -130,11 +130,6 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
     );
   }
 
-  if (charges.length === 0) {
-    console.log('[SyncHandler] No borrowed books found');
-    return summary;
-  }
-
   // Step 3: Compare with DB and sync each charge in parallel
   console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
 

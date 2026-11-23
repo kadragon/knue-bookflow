@@ -1,0 +1,157 @@
+/// <reference types="node" />
+
+import { timingSafeEqual } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import worker from '../index';
+import { foldContentLine } from '../services/due-date-calendar';
+import type { Env } from '../types';
+
+const token = 'test-calendar-token';
+const url = 'https://bookflow.test/api/calendar.ics';
+const ctx = {} as ExecutionContext;
+
+describe('loan due date calendar feed', () => {
+  let db: DatabaseSync;
+  let env: Env;
+  let prepare: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    db = new DatabaseSync(':memory:');
+    db.exec(
+      'CREATE TABLE books (title TEXT, due_date DATE, discharge_date DATE)',
+    );
+    prepare = vi.fn((sql: string) => ({
+      all: async () => ({ results: db.prepare(sql).all() }),
+    }));
+    env = { DB: { prepare }, CALENDAR_FEED_TOKEN: token } as unknown as Env;
+
+    // Vitest runs in Node, where timingSafeEqual lives on node:crypto.
+    vi.stubGlobal('crypto', {
+      subtle: {
+        digest: crypto.subtle.digest.bind(crypto.subtle),
+        timingSafeEqual: (a: ArrayBuffer, b: ArrayBuffer) =>
+          timingSafeEqual(new Uint8Array(a), new Uint8Array(b)),
+      },
+    });
+  });
+
+  afterEach(() => {
+    db.close();
+    vi.unstubAllGlobals();
+  });
+
+  function addLoan(
+    title: string,
+    due: string | null,
+    returned: string | null = null,
+  ) {
+    db.prepare('INSERT INTO books VALUES (?, ?, ?)').run(title, due, returned);
+  }
+
+  function fetchFeed(query = `?token=${token}`) {
+    return worker.fetch(new Request(url + query), env, ctx);
+  }
+
+  it('groups active loans by KST date and emits only all-day counts', async () => {
+    addLoan('First private title', '2026-11-30');
+    addLoan('Second private title', '2026-11-30 00:00:00');
+    addLoan('Third private title', '2026-11-29T15:00:00Z');
+    addLoan('Fourth private title', '2026-12-01');
+    addLoan('Returned private title', '2026-11-30', '2026-11-23');
+    addLoan('Invalid date', '2026-02-30');
+    addLoan('Numeric date', '20261130');
+    addLoan('Invalid suffix', '2026-11-30garbage');
+    addLoan('Invalid time', '2026-11-30 25:00:00');
+    addLoan('Missing date', null);
+    addLoan('Empty date', '');
+
+    const response = await fetchFeed();
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe(
+      'text/calendar; charset=utf-8',
+    );
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+
+    const ics = await response.text();
+    expect(ics).toMatch(/^BEGIN:VCALENDAR\r\n/);
+    expect(ics).toMatch(/END:VCALENDAR\r\n$/);
+    expect(ics.replaceAll('\r\n', '')).not.toMatch(/[\r\n]/);
+    expect(ics).toContain('X-WR-CALNAME:');
+    expect(ics).toContain('X-WR-TIMEZONE:Asia/Seoul\r\n');
+    expect(ics).toContain('REFRESH-INTERVAL;VALUE=DURATION:PT1H\r\n');
+    expect(ics).toContain('X-PUBLISHED-TTL:PT1H\r\n');
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(ics).toMatch(
+      /UID:due-20261130@knue-bookflow\r\nDTSTAMP:\d{8}T\d{6}Z\r\nDTSTART;VALUE=DATE:20261130\r\nDTEND;VALUE=DATE:20261201\r\nSUMMARY:3권 반납\r\n/,
+    );
+    expect(ics).toContain('SUMMARY:1권 반납\r\n');
+    expect(ics).not.toMatch(/private title|DESCRIPTION:|ATTENDEE:|ORGANIZER:/);
+    expect(
+      ics.split('\r\n').every((line) => Buffer.byteLength(line) <= 75),
+    ).toBe(true);
+  });
+
+  it('keeps each date UID stable as a renewal changes the groups', async () => {
+    addLoan('Renewed', '2026-11-30');
+    addLoan('Already due later', '2026-12-07');
+    const before = await (await fetchFeed()).text();
+    expect(before).toContain('UID:due-20261130@knue-bookflow');
+    expect(before).toContain('UID:due-20261207@knue-bookflow');
+
+    db.exec("UPDATE books SET due_date = '2026-12-07' WHERE title = 'Renewed'");
+    const after = await (await fetchFeed()).text();
+    expect(after.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    expect(after).toContain('UID:due-20261207@knue-bookflow');
+    expect(after).toContain('SUMMARY:2권 반납');
+    expect(after).not.toContain('UID:due-20261130@knue-bookflow');
+  });
+
+  it('serves an empty calendar when no active loans have valid due dates', async () => {
+    addLoan('Returned', '2026-11-30', '2026-11-23');
+    const response = await fetchFeed();
+    expect(response.status).toBe(200);
+    const ics = await response.text();
+    expect(ics).toContain('BEGIN:VTIMEZONE\r\nTZID:Asia/Seoul\r\n');
+    expect(ics).not.toContain('BEGIN:VEVENT');
+  });
+
+  it('folds long lines on UTF-8 character boundaries', () => {
+    const content = `SUMMARY:${'반'.repeat(46)}📚`;
+    const folded = foldContentLine(content);
+    const lines = folded.split('\r\n ');
+    expect(lines).toHaveLength(3);
+    expect(lines.join('')).toBe(content);
+    expect(lines.slice(1).every((line) => Buffer.byteLength(line) <= 74)).toBe(
+      true,
+    );
+    expect(Buffer.byteLength(lines[0])).toBe(74);
+  });
+
+  it('returns calendar headers without a body on an authenticated HEAD', async () => {
+    const response = await worker.fetch(
+      new Request(`${url}?token=${token}`, { method: 'HEAD' }),
+      env,
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe(
+      'text/calendar; charset=utf-8',
+    );
+    expect(await response.text()).toBe('');
+  });
+
+  it.each(['?token=wrong', '?token=', '', `?token=${token}&token=wrong`])(
+    'returns 404 before reading D1 for invalid credentials (%s)',
+    async (query) => {
+      expect((await fetchFeed(query)).status).toBe(404);
+      expect(prepare).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns 404 before reading D1 if the secret is unset', async () => {
+    delete env.CALENDAR_FEED_TOKEN;
+    expect((await fetchFeed()).status).toBe(404);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+});
