@@ -1,24 +1,10 @@
-import { z } from 'zod';
-import { DAY_MS, KST_OFFSET_MINUTES } from '../utils/constants';
-import { formatDate } from '../utils/date';
+import { DAY_MS } from '../utils/constants';
+import { formatDate, normalizeKstDate } from '../utils/date';
 
-const isoDate = z.iso.date();
-const isoDateTime = z.iso.datetime({ local: true, offset: true });
 const encoder = new TextEncoder();
 
-function kstDueDate(value: string): string | undefined {
-  const date = value.trim();
-  if (isoDate.safeParse(date).success) return date;
-
-  // Older loan rows can contain timestamps. A local timestamp is already KST.
-  const timestamp = date.replace(' ', 'T');
-  if (!isoDateTime.safeParse(timestamp).success) return undefined;
-  if (!/(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp)) return timestamp.slice(0, 10);
-
-  const time = Date.parse(timestamp);
-  if (!Number.isFinite(time)) return undefined;
-  const kstDate = formatDate(new Date(time + KST_OFFSET_MINUTES * 60_000));
-  if (isoDate.safeParse(kstDate).success) return kstDate;
+function nextCivilDate(date: string): string {
+  return formatDate(new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS));
 }
 
 export function foldContentLine(line: string): string {
@@ -39,7 +25,7 @@ export function foldContentLine(line: string): string {
 export function createDueDateCalendar(dueDates: string[]): string {
   const counts = new Map<string, number>();
   for (const value of dueDates) {
-    const date = kstDueDate(value);
+    const date = normalizeKstDate(value);
     if (date) counts.set(date, (counts.get(date) ?? 0) + 1);
   }
 
@@ -66,9 +52,8 @@ export function createDueDateCalendar(dueDates: string[]): string {
   const stamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, '');
 
   for (const date of Array.from(counts.keys()).sort()) {
-    // UTC here is only a way to advance the KST civil date by one calendar day.
-    const next = formatDate(new Date(Date.parse(`${date}T00:00:00Z`) + DAY_MS));
-    if (!isoDate.safeParse(next).success) continue;
+    const next = nextCivilDate(date);
+    if (next.length !== date.length) continue;
 
     const start = date.replaceAll('-', '');
     const end = next.replaceAll('-', '');

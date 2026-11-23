@@ -132,6 +132,8 @@ For local development, place values in `.dev.vars` (gitignored).
 
 Keep the full URL private because it grants access to the feed. The Worker redacts query strings from request URLs in Workers logs and traces. If the URL is exposed, set a new token with the same Wrangler command and subscribe again with the new URL.
 
+The feed reads the D1 loan snapshot. Sync checks the 20 most recent return records, so a return older than that window can remain in the snapshot if it was missed during sync.
+
 ## Common Failures
 
 ### "Module not found: @knue-bookflow/shared"

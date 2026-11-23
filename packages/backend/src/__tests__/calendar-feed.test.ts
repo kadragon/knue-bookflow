@@ -4,8 +4,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from '../index';
+import { createBookRecord } from '../services/book-repository';
 import { foldContentLine } from '../services/due-date-calendar';
-import type { Env } from '../types';
+import type { Charge, Env } from '../types';
 
 const token = 'test-calendar-token';
 const url = 'https://bookflow.test/api/calendar.ics';
@@ -56,7 +57,15 @@ describe('loan due date calendar feed', () => {
   it('groups active loans by KST date and emits only all-day counts', async () => {
     addLoan('First private title', '2026-11-30');
     addLoan('Second private title', '2026-11-30 00:00:00');
-    addLoan('Third private title', '2026-11-29T15:00:00Z');
+    const synced = createBookRecord({
+      id: 3,
+      biblio: { titleStatement: 'Third private title', isbn: '' },
+      chargeDate: '2026-11-16',
+      dueDate: '2026-11-29T15:00:00Z',
+      renewCnt: 0,
+    } as Charge);
+    addLoan(synced.title, synced.due_date);
+    addLoan('Legacy private title', '2026-11-29T15:00:00Z');
     addLoan('Fourth private title', '2026-12-01');
     addLoan('Returned private title', '2026-11-30', '2026-11-23');
     addLoan('Invalid date', '2026-02-30');
@@ -83,7 +92,7 @@ describe('loan due date calendar feed', () => {
     expect(ics).toContain('X-PUBLISHED-TTL:PT1H\r\n');
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
     expect(ics).toMatch(
-      /UID:due-20261130@knue-bookflow\r\nDTSTAMP:\d{8}T\d{6}Z\r\nDTSTART;VALUE=DATE:20261130\r\nDTEND;VALUE=DATE:20261201\r\nSUMMARY:3권 반납\r\n/,
+      /UID:due-20261130@knue-bookflow\r\nDTSTAMP:\d{8}T\d{6}Z\r\nDTSTART;VALUE=DATE:20261130\r\nDTEND;VALUE=DATE:20261201\r\nSUMMARY:4권 반납\r\n/,
     );
     expect(ics).toContain('SUMMARY:1권 반납\r\n');
     expect(ics).not.toMatch(/private title|DESCRIPTION:|ATTENDEE:|ORGANIZER:/);

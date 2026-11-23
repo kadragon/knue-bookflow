@@ -13,7 +13,7 @@ import type {
   ReadStatus,
   RenewalLog,
 } from '../types';
-import { normalizeDateString } from '../utils/date';
+import { normalizeDateString, normalizeKstDate } from '../utils/date';
 import { fromReadStatus } from '../utils/read-status';
 
 export class BookRepository {
@@ -269,7 +269,7 @@ export function createBookRecord(
   bookInfo?: BookInfo | null,
 ): BookRecord {
   const normalizedChargeDate = normalizeDateString(charge.chargeDate);
-  const normalizedDueDate = normalizeDateString(charge.dueDate);
+  const normalizedDueDate = normalizeKstDate(charge.dueDate) ?? '';
   return {
     charge_id: String(charge.id),
     isbn: charge.biblio.isbn || bookInfo?.isbn || '',

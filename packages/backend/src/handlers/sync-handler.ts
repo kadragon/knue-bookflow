@@ -335,17 +335,16 @@ export async function processCharge(
   }
 
   const metadataRecovered = needsMetadataRecovery && !!bookInfo?.coverUrl;
+  const record = createBookRecord(charge, bookInfo);
 
   // Book exists - check if update needed
   const needsUpdate =
     metadataRecovered ||
-    existing.due_date !== charge.dueDate ||
+    existing.due_date !== record.due_date ||
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
-
-    const record = createBookRecord(charge, bookInfo || undefined);
 
     // Preserve existing metadata when Aladin lookup was not attempted or failed
     if (!bookInfo) {

@@ -3,7 +3,11 @@
  * Trace: spec_id: SPEC-renewal-001, SPEC-backend-refactor-001, task_id: TASK-004, TASK-015, TASK-079, TASK-082, TASK-083
  */
 
+import { z } from 'zod';
 import { DAY_MS, KST_OFFSET_MINUTES } from './constants';
+
+const isoDate = z.iso.date();
+const isoDateTime = z.iso.datetime({ local: true, offset: true });
 
 function zoneDayNumber(ms: number, offsetMinutes: number): number {
   return Math.floor((ms + offsetMinutes * 60 * 1000) / DAY_MS);
@@ -20,6 +24,27 @@ export function normalizeDateString(value: string | null | undefined): string {
   const trimmed = value.trim();
   const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : trimmed;
+}
+
+/**
+ * Interpret date-only and local library values as KST, converting timestamps
+ * that carry an explicit timezone before extracting the calendar date.
+ */
+export function normalizeKstDate(
+  value: string | null | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  const date = value.trim();
+  if (isoDate.safeParse(date).success) return date;
+
+  const timestamp = date.replace(' ', 'T');
+  if (!isoDateTime.safeParse(timestamp).success) return undefined;
+  if (!/(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp)) return timestamp.slice(0, 10);
+
+  const time = Date.parse(timestamp);
+  if (!Number.isFinite(time)) return undefined;
+  const kstDate = formatDate(new Date(time + KST_OFFSET_MINUTES * 60_000));
+  if (isoDate.safeParse(kstDate).success) return kstDate;
 }
 
 /**
