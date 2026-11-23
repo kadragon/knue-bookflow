@@ -23,11 +23,13 @@ export function foldContentLine(line: string): string {
 }
 
 function escapeCalendarText(value: string): string {
+  // After escaping newlines, retain only tabs, printable ASCII, and non-ASCII text.
   return value
     .replaceAll('\\', '\\\\')
     .replaceAll(',', '\\,')
     .replaceAll(';', '\\;')
-    .replace(/\r\n|\r|\n/g, '\\n');
+    .replace(/\r\n|\r|\n/g, '\\n')
+    .replace(/[^\t\x20-\x7E\u0080-\u{10FFFF}]/gu, '');
 }
 
 export function createDueDateCalendar(

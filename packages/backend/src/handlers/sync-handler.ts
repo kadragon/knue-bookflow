@@ -341,7 +341,8 @@ export async function processCharge(
   const needsUpdate =
     metadataRecovered ||
     existing.due_date !== record.due_date ||
-    existing.renew_count !== charge.renewCnt;
+    existing.renew_count !== charge.renewCnt ||
+    (existing.is_renewable ?? null) !== record.is_renewable;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);

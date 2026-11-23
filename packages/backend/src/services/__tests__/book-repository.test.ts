@@ -108,6 +108,7 @@ function createMockBookRecord(overrides: Partial<BookRecord> = {}): BookRecord {
     due_date: overrides.due_date ?? '2025-01-15',
     discharge_date: overrides.discharge_date ?? null,
     renew_count: overrides.renew_count ?? 0,
+    is_renewable: overrides.is_renewable ?? null,
     is_read: overrides.is_read ?? 0,
     created_at: overrides.created_at ?? '2025-01-01T00:00:00Z',
     updated_at: overrides.updated_at ?? '2025-01-01T00:00:00Z',
@@ -210,6 +211,7 @@ describe('BookRepository', () => {
         updatedRecord.due_date,
         updatedRecord.discharge_date ?? null,
         updatedRecord.renew_count,
+        updatedRecord.is_renewable,
         updatedRecord.is_read ?? null,
         updatedRecord.cover_url ?? null,
         updatedRecord.description ?? null,
@@ -246,6 +248,7 @@ describe('BookRepository', () => {
         returnedRecord.due_date,
         returnedRecord.discharge_date,
         returnedRecord.renew_count,
+        returnedRecord.is_renewable,
         returnedRecord.is_read ?? null,
         returnedRecord.cover_url ?? null,
         returnedRecord.description ?? null,
@@ -259,6 +262,7 @@ describe('BookRepository', () => {
       const updatedRecord = createMockBookRecord({
         charge_id: '123',
         due_date: '2025-01-22',
+        is_renewable: 0,
       });
 
       const mockRun = vi.fn().mockResolvedValue({ success: true });
@@ -277,6 +281,7 @@ describe('BookRepository', () => {
         updatedRecord.due_date,
         updatedRecord.discharge_date ?? null,
         updatedRecord.renew_count,
+        updatedRecord.is_renewable,
         updatedRecord.is_read ?? null,
         updatedRecord.cover_url ?? null,
         updatedRecord.description ?? null,
@@ -286,7 +291,10 @@ describe('BookRepository', () => {
     });
 
     it('should skip lookup and insert when existing record is explicitly null', async () => {
-      const record = createMockBookRecord({ charge_id: '123' });
+      const record = createMockBookRecord({
+        charge_id: '123',
+        is_renewable: 0,
+      });
       const mockRun = vi.fn().mockResolvedValue({ success: true });
       const mockBindInsert = vi.fn().mockReturnValue({ run: mockRun });
       (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -298,6 +306,25 @@ describe('BookRepository', () => {
       expect(mockDb.prepare).toHaveBeenCalledTimes(1);
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO books'),
+      );
+      expect(mockBindInsert).toHaveBeenCalledWith(
+        record.charge_id,
+        record.isbn,
+        record.isbn13,
+        record.title,
+        record.author,
+        record.publisher,
+        record.cover_url,
+        record.description,
+        record.pub_date,
+        record.charge_date,
+        record.due_date,
+        record.discharge_date,
+        record.renew_count,
+        record.is_renewable,
+        record.is_read,
+        expect.any(String),
+        expect.any(String),
       );
     });
   });
@@ -585,6 +612,7 @@ describe('createBookRecord', () => {
       due_date: '2025-01-15',
       discharge_date: null,
       renew_count: 0,
+      is_renewable: 1,
     });
   });
 
