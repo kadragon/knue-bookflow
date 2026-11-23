@@ -23,7 +23,6 @@ export function foldContentLine(line: string): string {
 }
 
 function escapeCalendarText(value: string): string {
-  // After escaping newlines, retain only tabs, printable ASCII, and non-ASCII text.
   return value
     .replaceAll('\\', '\\\\')
     .replaceAll(',', '\\,')
