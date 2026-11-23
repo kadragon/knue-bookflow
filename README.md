@@ -14,10 +14,23 @@ Cloudflare Workers-based automatic book renewal system for Korea National Univer
 
 - Wrangler config: `packages/backend/wrangler.toml` (compatibility_date `2024-11-01`)
 - D1 binding: `DB`
-- Secrets: `LIBRARY_USER_ID`, `LIBRARY_PASSWORD`, `ALADIN_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+- Secrets: `LIBRARY_USER_ID`, `LIBRARY_PASSWORD`, `ALADIN_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `CALENDAR_FEED_TOKEN` (optional)
 - Cron: `0 3 * * *` (note broadcast, 12:00 KST)
 - Route: `book.kadragon.work/*`
 - Observability: logs on; traces enabled with 0.1 sampling
+
+## Loan due date calendar
+
+The feed shows one all-day `N권 반납` event per due date in Korea Standard Time, based on the latest library sync.
+
+```bash
+openssl rand -hex 32
+bun run --cwd packages/backend wrangler secret put CALENDAR_FEED_TOKEN
+```
+
+Paste the generated token at the Wrangler prompt. In Google Calendar on the web, choose **Other calendars → + → From URL** and enter `https://book.kadragon.work/api/calendar.ics?token=<CALENDAR_FEED_TOKEN>`. Keep the full subscription URL private.
+
+Production Cloudflare Access needs an exception for the feed path so Google can fetch it. See the [runbook](docs/runbook.md#loan-due-date-calendar). Google refreshes subscriptions on its own schedule, so changes can take hours to appear.
 
 ## Patterns
 

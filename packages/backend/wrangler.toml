@@ -37,6 +37,7 @@ migrations_dir = "migrations"
 ENVIRONMENT = "production"
 
 [observability]
+redact_query_string = true
 logs = { enabled = true, head_sampling_rate = 1.0 }
 traces = { enabled = true, head_sampling_rate = 0.1 }
 # Trace: SPEC-observability-001 / TASK-018

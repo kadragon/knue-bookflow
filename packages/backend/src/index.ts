@@ -16,6 +16,7 @@ import {
   handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
+import { handleGetCalendarFeed } from './handlers/calendar-feed-handler';
 import {
   handleGetCronRuns,
   handleGetLatestCronRuns,
@@ -127,6 +128,10 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
+
+    if (url.pathname === '/api/calendar.ics') {
+      return handleGetCalendarFeed(request.method, url.searchParams, env);
+    }
 
     // Health check endpoint
     if (url.pathname === '/health') {

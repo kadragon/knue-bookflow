@@ -16,6 +16,7 @@ export interface Env {
   ALADIN_API_KEY: string;
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_CHAT_ID: string;
+  CALENDAR_FEED_TOKEN?: string;
 
   // Non-secret environment variables
   ENVIRONMENT: string;

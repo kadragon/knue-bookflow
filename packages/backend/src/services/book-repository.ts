@@ -13,7 +13,7 @@ import type {
   ReadStatus,
   RenewalLog,
 } from '../types';
-import { normalizeDateString } from '../utils/date';
+import { normalizeDateString, normalizeKstDate } from '../utils/date';
 import { fromReadStatus } from '../utils/read-status';
 
 export class BookRepository {
@@ -188,6 +188,16 @@ export class BookRepository {
     return result.results;
   }
 
+  async findActiveLoanDueDates(): Promise<string[]> {
+    const result = await this.db
+      .prepare(
+        "SELECT due_date FROM books WHERE discharge_date IS NULL AND typeof(due_date) = 'text'",
+      )
+      .all<{ due_date: string }>();
+
+    return result.results.map((row) => row.due_date);
+  }
+
   /**
    * Get all book records
    */
@@ -259,7 +269,7 @@ export function createBookRecord(
   bookInfo?: BookInfo | null,
 ): BookRecord {
   const normalizedChargeDate = normalizeDateString(charge.chargeDate);
-  const normalizedDueDate = normalizeDateString(charge.dueDate);
+  const normalizedDueDate = normalizeKstDate(charge.dueDate) ?? '';
   return {
     charge_id: String(charge.id),
     isbn: charge.biblio.isbn || bookInfo?.isbn || '',

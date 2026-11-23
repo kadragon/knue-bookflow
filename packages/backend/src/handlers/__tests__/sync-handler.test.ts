@@ -70,6 +70,8 @@ const baseEnv: Env = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLibraryClient.getChargeHistories.mockResolvedValue([]);
+  mockBookRepository.findByChargeId.mockResolvedValue(null);
   mockPlannedLoanRepository.findAllLibraryBiblioIds.mockResolvedValue([]);
   mockPlannedLoanRepository.create.mockResolvedValue({});
   mockPlannedLoanDismissalRepository.findAllLibraryBiblioIds.mockResolvedValue(
@@ -797,6 +799,29 @@ describe('processChargesWithPlanningCleanup', () => {
 });
 
 describe('syncBooksCore request book sync behavior', () => {
+  it('records the last return when there are no current charges', async () => {
+    const history = createMockChargeHistory({
+      id: 999,
+      dischargeDate: '2026-11-23 00:00:00',
+    });
+    mockLibraryClient.login.mockResolvedValue(undefined);
+    mockLibraryClient.getCharges.mockResolvedValue([]);
+    mockLibraryClient.getChargeHistories.mockResolvedValue([history]);
+    mockBookRepository.findByChargeId.mockResolvedValue({
+      charge_id: String(history.id),
+      discharge_date: null,
+    });
+
+    const summary = await syncBooksCore(baseEnv);
+
+    expect(summary.total_charges).toBe(0);
+    expect(summary.returned).toBe(1);
+    expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      expect.objectContaining({ discharge_date: history.dischargeDate }),
+      expect.objectContaining({ charge_id: String(history.id) }),
+    );
+  });
+
   it('runs request-book sync even when there are no charges', async () => {
     mockLibraryClient.login.mockResolvedValue(undefined);
     mockLibraryClient.getCharges.mockResolvedValue([]);

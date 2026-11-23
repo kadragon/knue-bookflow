@@ -130,11 +130,6 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
     );
   }
 
-  if (charges.length === 0) {
-    console.log('[SyncHandler] No borrowed books found');
-    return summary;
-  }
-
   // Step 3: Compare with DB and sync each charge in parallel
   console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
 
@@ -340,17 +335,16 @@ export async function processCharge(
   }
 
   const metadataRecovered = needsMetadataRecovery && !!bookInfo?.coverUrl;
+  const record = createBookRecord(charge, bookInfo);
 
   // Book exists - check if update needed
   const needsUpdate =
     metadataRecovered ||
-    existing.due_date !== charge.dueDate ||
+    existing.due_date !== record.due_date ||
     existing.renew_count !== charge.renewCnt;
 
   if (needsUpdate) {
     console.log(`[SyncHandler] Updating book: ${charge.biblio.titleStatement}`);
-
-    const record = createBookRecord(charge, bookInfo || undefined);
 
     // Preserve existing metadata when Aladin lookup was not attempted or failed
     if (!bookInfo) {

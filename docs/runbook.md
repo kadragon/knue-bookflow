@@ -102,19 +102,37 @@ Manual fallback (only if the auto-deploy is unavailable): `git pull && bun insta
 
 Set via Wrangler. Never commit values.
 
-| Secret               | Used by                     |
-| -------------------- | --------------------------- |
-| `LIBRARY_USER_ID`    | KNUE Pyxis login            |
-| `LIBRARY_PASSWORD`   | KNUE Pyxis login            |
-| `ALADIN_API_KEY`     | Aladin metadata lookup      |
-| `TELEGRAM_BOT_TOKEN` | Telegram due-soon broadcast |
-| `TELEGRAM_CHAT_ID`   | Default broadcast target    |
+| Secret                | Used by                      |
+| --------------------- | ---------------------------- |
+| `LIBRARY_USER_ID`     | KNUE Pyxis login             |
+| `LIBRARY_PASSWORD`    | KNUE Pyxis login             |
+| `ALADIN_API_KEY`      | Aladin metadata lookup       |
+| `TELEGRAM_BOT_TOKEN`  | Telegram due-soon broadcast  |
+| `TELEGRAM_CHAT_ID`    | Default broadcast target     |
+| `CALENDAR_FEED_TOKEN` | Loan calendar URL (optional) |
 
 ```bash
 bun run --cwd packages/backend wrangler secret put TELEGRAM_BOT_TOKEN
 ```
 
 For local development, place values in `.dev.vars` (gitignored).
+
+## Loan Due Date Calendar
+
+1. Generate a random URL-safe token and paste it at the Wrangler prompt.
+
+   ```bash
+   openssl rand -hex 32
+   bun run --cwd packages/backend wrangler secret put CALENDAR_FEED_TOKEN
+   ```
+
+2. Cloudflare Access protects `book.kadragon.work` and redirects unauthenticated requests for the feed to sign-in. In Zero Trust, create a more specific self-hosted Access application for `book.kadragon.work/api/calendar.ics` with a **Bypass → Include → Everyone** policy and no wildcard. Keep the existing application and policies for the rest of the host. The Worker validates the query token for the feed itself. See [Cloudflare's endpoint bypass instructions](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/common-policies/#bypass-a-public-endpoint).
+3. Confirm from an unauthenticated session that `https://book.kadragon.work/api/calendar.ics` returns HTTP 404 without a token and the full subscription URL returns HTTP 200 with `Content-Type: text/calendar; charset=utf-8`.
+4. In Google Calendar on the web, choose **Other calendars → + → From URL** and add `https://book.kadragon.work/api/calendar.ics?token=<CALENDAR_FEED_TOKEN>`. Google refreshes the feed on its own schedule, and renewals or returns can take hours to appear. See [Google Calendar's subscription instructions](https://support.google.com/calendar/answer/37100?hl=en#zippy=%2Cuse-a-link-to-add-a-public-calendar).
+
+Keep the full URL private because it grants access to the feed. The Worker redacts query strings from request URLs in Workers logs and traces. If the URL is exposed, set a new token with the same Wrangler command and subscribe again with the new URL.
+
+The feed reads the D1 loan snapshot. Sync checks the 20 most recent return records, so a return older than that window can remain in the snapshot if it was missed during sync.
 
 ## Common Failures
 

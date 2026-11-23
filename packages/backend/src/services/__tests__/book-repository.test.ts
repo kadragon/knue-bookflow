@@ -653,6 +653,15 @@ describe('createBookRecord', () => {
     expect(record.charge_date).toBe('2025-12-01');
     expect(record.due_date).toBe('2025-12-31');
   });
+
+  it.each([
+    ['2026-11-29T15:00:00Z', '2026-11-30'],
+    ['2026-11-30T00:00:00+09:00', '2026-11-30'],
+    ['2026-11-30garbage', ''],
+  ])('stores the valid KST due date for %s', (dueDate, expected) => {
+    const record = createBookRecord(createMockCharge({ dueDate }));
+    expect(record.due_date).toBe(expected);
+  });
 });
 
 describe('createBookRepository', () => {
