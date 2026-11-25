@@ -329,6 +329,7 @@ describe('BookRepository', () => {
         record.renew_count,
         record.is_renewable,
         record.is_read,
+        'library',
         expect.any(String),
         expect.any(String),
       );
@@ -429,7 +430,7 @@ describe('BookRepository', () => {
 
       expect(result).toEqual(mockRecord);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE user_id = ? AND isbn = ? AND charge_date = ? LIMIT 1',
+        "SELECT * FROM books WHERE user_id = ? AND source = 'library' AND isbn = ? AND charge_date = ? LIMIT 1",
       );
       expect(mockBind).toHaveBeenCalledWith(
         USER_ID,

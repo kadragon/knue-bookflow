@@ -1,9 +1,14 @@
 /**
- * Book request payload builder.
- * Converts an Aladin external-search result into a create-request payload.
+ * Aladin payload builders.
+ * Convert an Aladin external-search result into a book-request or a manual
+ * book registration payload.
  */
 
-import type { CreateBookRequestPayload, ExternalSearchResultItem } from './api';
+import type {
+  CreateBookRequestPayload,
+  CreateManualBookPayload,
+  ExternalSearchResultItem,
+} from './api';
 
 export function buildFromAladinItem(
   item: ExternalSearchResultItem,
@@ -17,5 +22,20 @@ export function buildFromAladinItem(
     pubDate: item.pubDate ?? undefined,
     coverUrl: item.coverUrl ?? undefined,
     aladinLink: item.aladinLink ?? undefined,
+  };
+}
+
+export function buildManualBookFromAladinItem(
+  item: ExternalSearchResultItem,
+): CreateManualBookPayload {
+  return {
+    isbn13: item.isbn13 || null,
+    isbn: item.isbn,
+    title: item.title,
+    author: item.author,
+    publisher: item.publisher,
+    pubDate: item.pubDate,
+    coverUrl: item.coverUrl,
+    description: item.description,
   };
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ExternalSearchResultItem } from './api';
-import { buildFromAladinItem } from './bookRequestPayload';
+import {
+  buildFromAladinItem,
+  buildManualBookFromAladinItem,
+} from './bookRequestPayload';
 
 const item: ExternalSearchResultItem = {
   isbn13: '9788966262472',
@@ -49,5 +52,20 @@ describe('buildFromAladinItem', () => {
     expect(payload.pubDate).toBeUndefined();
     expect(payload.coverUrl).toBeUndefined();
     expect(payload.aladinLink).toBeUndefined();
+  });
+});
+
+describe('buildManualBookFromAladinItem', () => {
+  it('maps an Aladin result to a manual registration payload', () => {
+    expect(buildManualBookFromAladinItem(item)).toEqual({
+      isbn13: '9788966262472',
+      isbn: '8966262473',
+      title: '클린 코드',
+      author: '로버트 마틴',
+      publisher: '인사이트',
+      pubDate: '2013-12-24',
+      coverUrl: 'https://image.aladin.co.kr/1.jpg',
+      description: 'desc',
+    });
   });
 });

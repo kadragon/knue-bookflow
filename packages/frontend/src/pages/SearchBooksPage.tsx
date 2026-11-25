@@ -26,6 +26,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { ExternalSearchResultItem, SearchBookItem } from '../api';
 import { searchBooks, searchExternalBooks } from '../api';
 import { buildFromAladinItem } from '../bookRequestPayload';
+import { AladinBookCard } from '../components/AladinBookCard';
 import { BookDetailModal } from '../components/BookDetailModal';
 import { FeedbackSnackbar } from '../components/FeedbackSnackbar';
 import { Header } from '../components/Header';
@@ -220,97 +221,6 @@ function SearchBookCard({
           sx={{ alignSelf: 'flex-start', mt: 1 }}
         >
           대출 예정
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AladinBookCard({
-  item,
-  onRequest,
-  isSaving,
-}: {
-  item: ExternalSearchResultItem;
-  onRequest: (item: ExternalSearchResultItem) => void;
-  isSaving: boolean;
-}) {
-  return (
-    <Card variant="outlined" sx={{ display: 'flex', minHeight: 160 }}>
-      <Box
-        sx={{
-          width: 120,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'background.paper',
-          p: 2,
-        }}
-      >
-        {item.coverUrl ? (
-          <CardMedia
-            component="img"
-            image={item.coverUrl}
-            alt={item.title}
-            sx={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              borderRadius: 1,
-            }}
-          />
-        ) : (
-          <Box
-            sx={{
-              width: '100%',
-              height: '100%',
-              borderRadius: 1,
-              bgcolor: 'action.hover',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Typography variant="caption" color="text.secondary" align="center">
-              No Cover
-            </Typography>
-          </Box>
-        )}
-      </Box>
-      <CardContent
-        sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}
-      >
-        <Typography
-          variant="h6"
-          component="h3"
-          sx={{ fontSize: '1rem', fontWeight: 600 }}
-        >
-          {item.title}
-        </Typography>
-        {item.author && (
-          <Typography variant="body2" color="text.secondary">
-            {item.author}
-          </Typography>
-        )}
-        {item.publisher && (
-          <Typography variant="caption" color="text.secondary">
-            {item.publisher}
-            {item.pubDate && ` · ${item.pubDate}`}
-          </Typography>
-        )}
-        <Typography variant="caption" color="text.secondary">
-          ISBN: {item.isbn13}
-        </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<LibraryAddIcon />}
-          onClick={() => onRequest(item)}
-          disabled={isSaving}
-          sx={{ alignSelf: 'flex-start', mt: 1 }}
-        >
-          신청
         </Button>
       </CardContent>
     </Card>
@@ -534,7 +444,9 @@ export default function SearchBooksPage() {
                         <AladinBookCard
                           key={item.isbn13}
                           item={item}
-                          onRequest={handleRequest}
+                          actionLabel="신청"
+                          actionIcon={<LibraryAddIcon />}
+                          onAction={handleRequest}
                           isSaving={
                             isRequestPending &&
                             pendingRequestIsbn === item.isbn13

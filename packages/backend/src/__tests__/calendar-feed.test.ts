@@ -12,13 +12,12 @@ import type { Charge, Env } from '../types';
 const token = 'test-calendar-token';
 const url = 'https://bookflow.test/api/calendar.ics';
 const ctx = {} as ExecutionContext;
-const renewalEligibilityMigration = readFileSync(
-  new URL(
-    '../../migrations/0015_add_loan_renewal_eligibility.sql',
-    import.meta.url,
-  ),
-  'utf8',
+const readMigration = (name: string) =>
+  readFileSync(new URL(`../../migrations/${name}`, import.meta.url), 'utf8');
+const renewalEligibilityMigration = readMigration(
+  '0015_add_loan_renewal_eligibility.sql',
 );
+const bookSourceMigration = readMigration('0021_add_books_source.sql');
 
 describe('loan due date calendar feed', () => {
   let db: DatabaseSync;
@@ -31,6 +30,7 @@ describe('loan due date calendar feed', () => {
       'CREATE TABLE books (user_id INTEGER NOT NULL DEFAULT 1, title TEXT NOT NULL, due_date DATE, discharge_date DATE, renew_count INTEGER DEFAULT 0)',
     );
     db.exec(renewalEligibilityMigration);
+    db.exec(bookSourceMigration);
     prepare = vi.fn((sql: string) => ({
       all: async () => ({ results: db.prepare(sql).all() }),
       bind: (...values: number[]) => ({
@@ -61,10 +61,11 @@ describe('loan due date calendar feed', () => {
     returned: string | null = null,
     isRenewable: 0 | 1 | null = null,
     userId = 1,
+    source: 'library' | 'manual' = 'library',
   ) {
     db.prepare(
-      'INSERT INTO books (user_id, title, due_date, discharge_date, renew_count, is_renewable) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(userId, title, due, returned, renewCount, isRenewable);
+      'INSERT INTO books (user_id, title, due_date, discharge_date, renew_count, is_renewable, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(userId, title, due, returned, renewCount, isRenewable, source);
   }
 
   function fetchFeed(query = `?token=${token}`) {
@@ -88,6 +89,7 @@ describe('loan due date calendar feed', () => {
     addLoan('Renewable title', '2026-11-30', 0, null, 1);
     addLoan('Unknown count', '2026-11-30', null);
     addLoan('Returned title', '2026-11-30', 0, '2026-11-23', 0);
+    addLoan('Manual title', '2026-11-30', 1, null, 0, 1, 'manual');
     addLoan('Invalid date', '2026-02-30');
     addLoan('Numeric date', '20261130');
     addLoan('Invalid suffix', '2026-11-30garbage');
@@ -119,7 +121,7 @@ describe('loan due date calendar feed', () => {
     );
     expect(ics).toContain('SUMMARY:1권 반납\r\nDESCRIPTION:Later title\r\n');
     expect(ics).not.toMatch(
-      /Renewable title|Unknown count|Returned title|ATTENDEE:|ORGANIZER:/,
+      /Renewable title|Unknown count|Returned title|Manual title|ATTENDEE:|ORGANIZER:/,
     );
     expect(
       ics.split('\r\n').every((line) => Buffer.byteLength(line) <= 75),
