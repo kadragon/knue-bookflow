@@ -3,6 +3,7 @@
  * Trace: task_id: TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-023
  */
 
+export * from './access-auth';
 export {
   AladinClient,
   type AladinKeywordSearchResult,
@@ -21,3 +22,4 @@ export * from './note-selection';
 export * from './planned-loan-dismissal-repository';
 export * from './planned-loan-repository';
 export * from './renewal-service';
+export * from './user-repository';

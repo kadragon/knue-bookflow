@@ -8,6 +8,8 @@ import {
   createBookRequestRepository,
 } from '../book-request-repository';
 
+const USER_ID = 7;
+
 function createMockD1(): D1Database {
   const mockPrepare = vi.fn();
   mockPrepare.mockReturnValue({
@@ -48,16 +50,20 @@ describe('BookRequestRepository', () => {
 
   describe('findAll', () => {
     it('returns all rows ordered by created_at DESC', async () => {
-      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      const mockBind = vi.fn().mockReturnValue({
         all: vi.fn().mockResolvedValue({ results: [{ id: 2 }, { id: 1 }] }),
-      } as unknown as D1PreparedStatement);
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
 
-      const result = await repository.findAll();
+      const result = await repository.findAll(USER_ID);
 
       expect(result).toEqual([{ id: 2 }, { id: 1 }]);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM book_requests ORDER BY created_at DESC, id DESC',
+        'SELECT * FROM book_requests WHERE user_id = ? ORDER BY created_at DESC, id DESC',
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID);
     });
   });
 
@@ -70,13 +76,13 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByIsbn13(newRequest.isbn13);
+      const result = await repository.findByIsbn13(USER_ID, newRequest.isbn13);
 
       expect(result).toEqual({ id: 1, isbn13: newRequest.isbn13 });
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM book_requests WHERE isbn13 = ?',
+        'SELECT * FROM book_requests WHERE user_id = ? AND isbn13 = ?',
       );
-      expect(mockBind).toHaveBeenCalledWith(newRequest.isbn13);
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, newRequest.isbn13);
     });
 
     it('returns null when not found', async () => {
@@ -87,7 +93,7 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByIsbn13('nope');
+      const result = await repository.findByIsbn13(USER_ID, 'nope');
       expect(result).toBeNull();
     });
   });
@@ -101,13 +107,14 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.create(newRequest);
+      const result = await repository.create(USER_ID, newRequest);
 
       expect(result.id).toBe(7);
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO book_requests'),
       );
       expect(mockBind).toHaveBeenCalledWith(
+        USER_ID,
         newRequest.isbn13,
         newRequest.isbn,
         newRequest.title,
@@ -129,7 +136,7 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      await expect(repository.create(newRequest)).rejects.toThrow(
+      await expect(repository.create(USER_ID, newRequest)).rejects.toThrow(
         'Failed to create book request',
       );
     });
@@ -144,13 +151,13 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.deleteById(7);
+      const result = await repository.deleteById(USER_ID, 7);
 
       expect(result).toBe(true);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'DELETE FROM book_requests WHERE id = ?',
+        'DELETE FROM book_requests WHERE id = ? AND user_id = ?',
       );
-      expect(mockBind).toHaveBeenCalledWith(7);
+      expect(mockBind).toHaveBeenCalledWith(7, USER_ID);
     });
 
     it('returns false when no row is deleted', async () => {
@@ -161,7 +168,7 @@ describe('BookRequestRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.deleteById(999);
+      const result = await repository.deleteById(USER_ID, 999);
       expect(result).toBe(false);
     });
   });

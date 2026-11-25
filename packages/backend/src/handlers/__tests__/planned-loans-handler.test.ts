@@ -16,27 +16,39 @@ import {
   summarizeAvailability,
 } from '../planned-loans-handler';
 
+const USER_ID = 7;
+const OTHER_USER_ID = 8;
+
+// Scopes rows by user_id like the D1 repository does.
 class FakePlannedRepo {
   items: PlannedLoanRecord[] = [];
 
-  async findAll(): Promise<PlannedLoanRecord[]> {
-    return this.items;
+  async findAll(userId: number): Promise<PlannedLoanRecord[]> {
+    return this.items.filter((i) => i.user_id === userId);
   }
 
   async findByLibraryBiblioId(
+    userId: number,
     libraryBiblioId: number,
   ): Promise<PlannedLoanRecord | null> {
     return (
-      this.items.find((i) => i.library_biblio_id === libraryBiblioId) || null
+      this.items.find(
+        (i) => i.user_id === userId && i.library_biblio_id === libraryBiblioId,
+      ) || null
     );
   }
 
   async create(
-    record: Omit<PlannedLoanRecord, 'id' | 'created_at' | 'updated_at'>,
+    userId: number,
+    record: Omit<
+      PlannedLoanRecord,
+      'id' | 'user_id' | 'created_at' | 'updated_at'
+    >,
   ): Promise<PlannedLoanRecord> {
     const now = new Date().toISOString();
     const created: PlannedLoanRecord = {
       ...record,
+      user_id: userId,
       id: this.items.length + 1,
       created_at: now,
       updated_at: now,
@@ -45,13 +57,18 @@ class FakePlannedRepo {
     return created;
   }
 
-  async findById(id: number): Promise<PlannedLoanRecord | null> {
-    return this.items.find((i) => i.id === id) || null;
+  async findById(
+    userId: number,
+    id: number,
+  ): Promise<PlannedLoanRecord | null> {
+    return this.items.find((i) => i.id === id && i.user_id === userId) || null;
   }
 
-  async deleteById(id: number): Promise<boolean> {
+  async deleteById(userId: number, id: number): Promise<boolean> {
     const before = this.items.length;
-    this.items = this.items.filter((i) => i.id !== id);
+    this.items = this.items.filter(
+      (i) => !(i.id === id && i.user_id === userId),
+    );
     return this.items.length !== before;
   }
 }
@@ -100,7 +117,12 @@ describe('handleCreatePlannedLoan', () => {
       body: JSON.stringify(payload),
     });
 
-    const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
+    const response = await handleCreatePlannedLoan(
+      makeEnv(),
+      USER_ID,
+      request,
+      repo,
+    );
 
     expect(response.status).toBe(201);
     const body = (await response.json()) as { item: Record<string, unknown> };
@@ -117,7 +139,7 @@ describe('handleCreatePlannedLoan', () => {
 
   it('rejects duplicate libraryId with 409 (TEST-loan-plan-001)', async () => {
     const repo = new FakePlannedRepo();
-    await repo.create({
+    await repo.create(USER_ID, {
       library_biblio_id: 123,
       source: 'new_books',
       title: 'Already',
@@ -141,7 +163,12 @@ describe('handleCreatePlannedLoan', () => {
       }),
     });
 
-    const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
+    const response = await handleCreatePlannedLoan(
+      makeEnv(),
+      USER_ID,
+      request,
+      repo,
+    );
     expect(response.status).toBe(409);
     const body = (await response.json()) as { code: string; message: string };
     expect(body.code).toBe('DUPLICATE_PLANNED_LOAN');
@@ -156,7 +183,12 @@ describe('handleCreatePlannedLoan', () => {
       body: JSON.stringify({ source: 'search' }),
     });
 
-    const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
+    const response = await handleCreatePlannedLoan(
+      makeEnv(),
+      USER_ID,
+      request,
+      repo,
+    );
     expect(response.status).toBe(400);
     const body = (await response.json()) as { code: string; message: string };
     expect(body.code).toBe('INVALID_REQUEST');
@@ -186,7 +218,12 @@ describe('handleCreatePlannedLoan', () => {
       }),
     });
 
-    const response = await handleCreatePlannedLoan(makeEnv(), request, repo);
+    const response = await handleCreatePlannedLoan(
+      makeEnv(),
+      USER_ID,
+      request,
+      repo,
+    );
 
     expect(response.status).toBe(201);
     const body = (await response.json()) as { item: Record<string, unknown> };
@@ -215,6 +252,7 @@ describe('handleGetPlannedLoans', () => {
     repo.items = [
       {
         id: 1,
+        user_id: USER_ID,
         library_biblio_id: 100,
         source: 'search',
         title: 'Old',
@@ -230,6 +268,7 @@ describe('handleGetPlannedLoans', () => {
       },
       {
         id: 2,
+        user_id: USER_ID,
         library_biblio_id: 200,
         source: 'new_books',
         title: 'New',
@@ -246,7 +285,7 @@ describe('handleGetPlannedLoans', () => {
       },
     ];
 
-    const response = await handleGetPlannedLoans(makeEnv(), repo);
+    const response = await handleGetPlannedLoans(makeEnv(), USER_ID, repo);
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     const body = (await response.json()) as {
@@ -265,6 +304,7 @@ describe('handleGetPlannedLoans', () => {
     repo.items = [
       {
         id: 10,
+        user_id: USER_ID,
         library_biblio_id: 200,
         source: 'new_books',
         title: 'Available Book',
@@ -280,6 +320,7 @@ describe('handleGetPlannedLoans', () => {
       },
       {
         id: 11,
+        user_id: USER_ID,
         library_biblio_id: 300,
         source: 'search',
         title: 'Loaned Book',
@@ -310,7 +351,12 @@ describe('handleGetPlannedLoans', () => {
         earliestDueDate: '2025-12-20',
       });
 
-    const response = await handleGetPlannedLoans(makeEnv(), repo, availability);
+    const response = await handleGetPlannedLoans(
+      makeEnv(),
+      USER_ID,
+      repo,
+      availability,
+    );
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       items: {
@@ -341,6 +387,7 @@ describe('handleGetPlannedLoans', () => {
     repo.items = [
       {
         id: 5,
+        user_id: USER_ID,
         library_biblio_id: 999,
         source: 'search',
         title: '불러오기 실패',
@@ -358,7 +405,12 @@ describe('handleGetPlannedLoans', () => {
 
     const availability = vi.fn().mockRejectedValue(new Error('boom'));
 
-    const response = await handleGetPlannedLoans(makeEnv(), repo, availability);
+    const response = await handleGetPlannedLoans(
+      makeEnv(),
+      USER_ID,
+      repo,
+      availability,
+    );
     const body = (await response.json()) as {
       items: { availability: unknown }[];
     };
@@ -469,7 +521,7 @@ describe('handleDeletePlannedLoan', () => {
   it('deletes and returns success flag (TEST-loan-plan-003)', async () => {
     const repo = new FakePlannedRepo();
     const dismissalRepo = { markDismissed: vi.fn() };
-    await repo.create({
+    await repo.create(USER_ID, {
       library_biblio_id: 10,
       source: 'search',
       title: 'Delete me',
@@ -484,6 +536,7 @@ describe('handleDeletePlannedLoan', () => {
 
     const response = await handleDeletePlannedLoan(
       makeEnv(),
+      USER_ID,
       1,
       repo,
       dismissalRepo,
@@ -496,6 +549,7 @@ describe('handleDeletePlannedLoan', () => {
 
     const second = await handleDeletePlannedLoan(
       makeEnv(),
+      USER_ID,
       99,
       repo,
       dismissalRepo,
@@ -509,7 +563,7 @@ describe('handleDeletePlannedLoan', () => {
     const repo = new FakePlannedRepo();
     const dismissalRepo = { markDismissed: vi.fn() };
 
-    await repo.create({
+    await repo.create(USER_ID, {
       library_biblio_id: 55,
       source: 'request_book',
       title: '희망도서',
@@ -524,6 +578,7 @@ describe('handleDeletePlannedLoan', () => {
 
     const response = await handleDeletePlannedLoan(
       makeEnv(),
+      USER_ID,
       1,
       repo,
       dismissalRepo,
@@ -531,6 +586,64 @@ describe('handleDeletePlannedLoan', () => {
     const body = (await response.json()) as { success: boolean };
 
     expect(body.success).toBe(true);
-    expect(dismissalRepo.markDismissed).toHaveBeenCalledWith(55);
+    expect(dismissalRepo.markDismissed).toHaveBeenCalledWith(USER_ID, 55);
+  });
+
+  it('does not delete or dismiss another user planned loan', async () => {
+    const repo = new FakePlannedRepo();
+    const dismissalRepo = { markDismissed: vi.fn() };
+    await repo.create(USER_ID, {
+      library_biblio_id: 55,
+      source: 'request_book',
+      title: '희망도서',
+      author: '저자',
+      publisher: null,
+      year: null,
+      isbn: null,
+      cover_url: null,
+      material_type: null,
+      branch_volumes: '[]',
+    });
+
+    const response = await handleDeletePlannedLoan(
+      makeEnv(),
+      OTHER_USER_ID,
+      1,
+      repo,
+      dismissalRepo,
+    );
+    const body = (await response.json()) as { success: boolean };
+
+    expect(body.success).toBe(false);
+    expect(repo.items).toHaveLength(1);
+    expect(dismissalRepo.markDismissed).not.toHaveBeenCalled();
+  });
+});
+
+describe('planned loans are scoped per user', () => {
+  it('lists only the caller own planned loans', async () => {
+    const repo = new FakePlannedRepo();
+    await repo.create(USER_ID, {
+      library_biblio_id: 10,
+      source: 'search',
+      title: 'Mine',
+      author: 'A',
+      publisher: null,
+      year: null,
+      isbn: null,
+      cover_url: null,
+      material_type: null,
+      branch_volumes: '[]',
+    });
+
+    const response = await handleGetPlannedLoans(
+      makeEnv(),
+      OTHER_USER_ID,
+      repo,
+      async () => null,
+    );
+    const body = (await response.json()) as { items: unknown[] };
+
+    expect(body.items).toHaveLength(0);
   });
 });

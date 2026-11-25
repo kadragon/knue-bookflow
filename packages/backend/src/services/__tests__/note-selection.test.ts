@@ -12,6 +12,8 @@ import {
   selectNoteCandidate,
 } from '../note-selection';
 
+const USER_ID = 7;
+
 // KST = UTC+9
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -185,7 +187,7 @@ describe('drawPracticeNote', () => {
   it('returns null when no candidates exist', async () => {
     const repo = makeFakeRepo([]);
     const deps: NoteSelectionDeps = { repository: repo, now: KST_TODAY_UTC };
-    const result = await drawPracticeNote(baseEnv as never, deps);
+    const result = await drawPracticeNote(baseEnv as never, USER_ID, deps);
     expect(result).toBeNull();
   });
 
@@ -204,11 +206,13 @@ describe('drawPracticeNote', () => {
       now: KST_TODAY_UTC,
     };
 
-    const result = await drawPracticeNote(baseEnv as never, deps);
+    const result = await drawPracticeNote(baseEnv as never, USER_ID, deps);
 
     expect(result).not.toBeNull();
     expect(repo.incrementSendCount).toHaveBeenCalledTimes(1);
+    expect(repo.getNoteCandidates).toHaveBeenCalledWith(USER_ID);
     expect(repo.incrementSendCount).toHaveBeenCalledWith(
+      USER_ID,
       result!.note.id,
       KST_TODAY_UTC,
     );
@@ -238,7 +242,7 @@ describe('drawPracticeNote', () => {
       now: KST_TODAY_UTC,
     };
 
-    const result = await drawPracticeNote(baseEnv as never, deps);
+    const result = await drawPracticeNote(baseEnv as never, USER_ID, deps);
 
     expect(result?.note.id).toBe(5);
     expect(repo.incrementSendCount).not.toHaveBeenCalled();
@@ -264,7 +268,7 @@ describe('drawPracticeNote', () => {
       force: true,
     };
 
-    const result = await drawPracticeNote(baseEnv as never, deps);
+    const result = await drawPracticeNote(baseEnv as never, USER_ID, deps);
 
     expect(result).not.toBeNull();
     expect(repo.incrementSendCount).toHaveBeenCalledTimes(1);
@@ -285,7 +289,7 @@ describe('drawPracticeNote', () => {
       now: KST_TODAY_UTC,
     };
 
-    await drawPracticeNote(baseEnv as never, deps);
+    await drawPracticeNote(baseEnv as never, USER_ID, deps);
 
     // Must record because yesterday ≠ today
     expect(repo.incrementSendCount).toHaveBeenCalledTimes(1);

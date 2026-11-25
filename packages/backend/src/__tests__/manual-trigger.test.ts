@@ -13,6 +13,7 @@ const mockLibraryClient = {
 const mockCheckAndRenewBooks = vi.fn();
 const mockLogRenewalResults = vi.fn();
 const mockSyncBooksCore = vi.fn();
+const mockAuthenticateRequest = vi.fn();
 const mockCronRunRepo = {
   record: vi.fn().mockResolvedValue(undefined),
   findRecent: vi.fn().mockResolvedValue([]),
@@ -26,6 +27,7 @@ vi.mock('../services', async (importOriginal) => {
     createLibraryClient: () => mockLibraryClient,
     createBookRepository: () => ({}),
     createCronRunRepository: () => mockCronRunRepo,
+    authenticateRequest: mockAuthenticateRequest,
     checkAndRenewBooks: mockCheckAndRenewBooks,
     logRenewalResults: mockLogRenewalResults,
   };
@@ -53,6 +55,10 @@ const baseEnv: Env = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAuthenticateRequest.mockResolvedValue({
+    ok: true,
+    user: { id: 1, email: 'admin@example.com', isAdmin: true },
+  });
 });
 
 describe('POST /trigger', () => {
@@ -123,5 +129,28 @@ describe('POST /trigger', () => {
       (c) => c[0].phase === 'sync',
     );
     expect(syncCall?.[0].status).toBe('failure');
+  });
+
+  it('rejects non-admin users with 403 without starting the pipeline', async () => {
+    mockAuthenticateRequest.mockResolvedValue({
+      ok: true,
+      user: { id: 2, email: 'member@example.com', isAdmin: false },
+    });
+
+    const worker = (await import('../index')).default;
+    const ctx = {
+      waitUntil: vi.fn(),
+      passThroughOnException: vi.fn(),
+    } as unknown as ExecutionContext;
+
+    const response = await worker.fetch(
+      new Request('https://example.com/trigger', { method: 'POST' }),
+      baseEnv,
+      ctx,
+    );
+
+    expect(response.status).toBe(403);
+    expect(ctx.waitUntil).not.toHaveBeenCalled();
+    expect(mockCronRunRepo.record).not.toHaveBeenCalled();
   });
 });

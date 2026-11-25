@@ -3,8 +3,17 @@
  * Trace: spec_id: SPEC-storage-001, task_id: TASK-008
  */
 
+export interface UserRecord {
+  id: number;
+  email: string | null;
+  access_sub: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface BookRecord {
   id?: number;
+  user_id?: number;
   charge_id: string;
   isbn: string;
   isbn13: string | null;
@@ -66,6 +75,7 @@ export interface NoteSendStat {
  */
 export interface PlannedLoanRecord {
   id?: number;
+  user_id?: number;
   library_biblio_id: number;
   source: 'new_books' | 'search' | 'request_book';
   title: string;
@@ -86,6 +96,7 @@ export interface PlannedLoanRecord {
  */
 export interface BookRequestRecord {
   id?: number;
+  user_id?: number;
   isbn13: string;
   isbn: string | null;
   title: string;

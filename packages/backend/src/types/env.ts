@@ -18,6 +18,16 @@ export interface Env {
   TELEGRAM_CHAT_ID: string;
   CALENDAR_FEED_TOKEN?: string;
 
+  // Cloudflare Access (per-user separation). Required outside local dev.
+  // ACCESS_TEAM_DOMAIN: e.g. "myteam.cloudflareaccess.com"
+  // ACCESS_AUD: the Access application's Application Audience (AUD) tag
+  // ADMIN_EMAIL: the Access identity that owns the library account data
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
+  ADMIN_EMAIL?: string;
+
+  DEV_AUTH_EMAIL?: string;
+
   // Non-secret environment variables
   ENVIRONMENT: string;
   DEBUG?: string;

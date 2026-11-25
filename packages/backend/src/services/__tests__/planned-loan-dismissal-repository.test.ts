@@ -4,6 +4,8 @@ import {
   PlannedLoanDismissalRepository,
 } from '../planned-loan-dismissal-repository';
 
+const USER_ID = 7;
+
 function createMockD1(): D1Database {
   const mockPrepare = vi.fn();
   const mockBind = vi.fn();
@@ -44,27 +46,31 @@ describe('PlannedLoanDismissalRepository', () => {
       bind: mockBind,
     });
 
-    await repository.markDismissed(123);
+    await repository.markDismissed(USER_ID, 123);
 
     expect(mockDb.prepare).toHaveBeenCalledWith(
       expect.stringContaining('INSERT OR IGNORE INTO planned_loan_dismissals'),
     );
-    expect(mockBind).toHaveBeenCalledWith(123);
+    expect(mockBind).toHaveBeenCalledWith(USER_ID, 123);
   });
 
   it('returns all dismissed library biblio ids', async () => {
-    (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+    const mockBind = vi.fn().mockReturnValue({
       all: vi.fn().mockResolvedValue({
         results: [{ library_biblio_id: 123 }, { library_biblio_id: 456 }],
       }),
-    } as unknown as D1PreparedStatement);
+    });
+    (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: mockBind,
+    });
 
-    const ids = await repository.findAllLibraryBiblioIds();
+    const ids = await repository.findAllLibraryBiblioIds(USER_ID);
 
     expect(ids).toEqual([123, 456]);
     expect(mockDb.prepare).toHaveBeenCalledWith(
-      'SELECT library_biblio_id FROM planned_loan_dismissals',
+      'SELECT library_biblio_id FROM planned_loan_dismissals WHERE user_id = ?',
     );
+    expect(mockBind).toHaveBeenCalledWith(USER_ID);
   });
 });
 

@@ -12,6 +12,8 @@ vi.mock('../../services/note-selection', () => ({
   drawPracticeNote: (...args: unknown[]) => mockDrawPracticeNote(...args),
 }));
 
+const USER_ID = 7;
+
 const baseEnv = {
   DB: {},
   ASSETS: {},
@@ -53,7 +55,7 @@ describe('handlePracticeDraw', () => {
     };
     mockDrawPracticeNote.mockResolvedValue(candidate);
 
-    const response = await handlePracticeDraw(baseEnv, makeRequest());
+    const response = await handlePracticeDraw(baseEnv, USER_ID, makeRequest());
 
     expect(response.status).toBe(200);
     const body = await response.json<{ note: unknown; book: unknown }>();
@@ -72,7 +74,7 @@ describe('handlePracticeDraw', () => {
   it('returns 404 when no notes available', async () => {
     mockDrawPracticeNote.mockResolvedValue(null);
 
-    const response = await handlePracticeDraw(baseEnv, makeRequest());
+    const response = await handlePracticeDraw(baseEnv, USER_ID, makeRequest());
 
     expect(response.status).toBe(404);
     const body = await response.json<{ error: string }>();
@@ -84,25 +86,34 @@ describe('handlePracticeDraw', () => {
 
     await handlePracticeDraw(
       baseEnv,
+      USER_ID,
       makeRequest('/api/practice/today?force=1'),
     );
 
-    const [, deps] = mockDrawPracticeNote.mock.calls[0] as [
+    const [, userId, deps] = mockDrawPracticeNote.mock.calls[0] as [
       unknown,
+      number,
       { force?: boolean },
     ];
+    expect(userId).toBe(USER_ID);
     expect(deps?.force).toBe(true);
   });
 
   it('passes force=false when query param absent', async () => {
     mockDrawPracticeNote.mockResolvedValue(null);
 
-    await handlePracticeDraw(baseEnv, makeRequest('/api/practice/today'));
+    await handlePracticeDraw(
+      baseEnv,
+      USER_ID,
+      makeRequest('/api/practice/today'),
+    );
 
-    const [, deps] = mockDrawPracticeNote.mock.calls[0] as [
+    const [, userId, deps] = mockDrawPracticeNote.mock.calls[0] as [
       unknown,
+      number,
       { force?: boolean },
     ];
+    expect(userId).toBe(USER_ID);
     expect(deps?.force).toBe(false);
   });
 });

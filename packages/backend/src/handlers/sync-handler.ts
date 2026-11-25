@@ -29,7 +29,11 @@ import type {
   SyncResponse,
   SyncSummary,
 } from '../types';
-import { ALADIN_LOOKUP_CONCURRENCY, parsePublication } from '../utils';
+import {
+  ALADIN_LOOKUP_CONCURRENCY,
+  OWNER_USER_ID,
+  parsePublication,
+} from '../utils';
 
 type SyncStatus = 'added' | 'updated' | 'unchanged' | 'returned';
 type SyncErrorCode =
@@ -80,9 +84,11 @@ function classifySyncError(error: unknown): {
 }
 
 /**
- * Core sync logic - can be called from HTTP handler or cron
+ * Core sync logic - can be called from HTTP handler or cron.
+ * The library credentials are the owner's, so every write lands on the owner.
  */
 export async function syncBooksCore(env: Env): Promise<SyncSummary> {
+  const userId = OWNER_USER_ID;
   const libraryClient = createLibraryClient();
   const aladinClient = createAladinClient(env.ALADIN_API_KEY);
   const bookRepository = createBookRepository(env.DB);
@@ -113,6 +119,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
 
   try {
     const added = await syncRequestBooksToPlannedLoans(
+      userId,
       libraryClient,
       plannedLoanRepository,
       plannedLoanDismissalRepository,
@@ -134,6 +141,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   console.log(`[SyncHandler] Syncing ${charges.length} charges with DB...`);
 
   const results = await processChargesWithPlanningCleanup(
+    userId,
     charges,
     bookRepository,
     aladinClient,
@@ -148,6 +156,7 @@ export async function syncBooksCore(env: Env): Promise<SyncSummary> {
   // Step 4: Fetch charge histories to mark returned books
   console.log('[SyncHandler] Fetching charge histories...');
   summary.returned = await fetchAndProcessReturns(
+    userId,
     libraryClient,
     bookRepository,
   );
@@ -176,6 +185,7 @@ function toBranchVolumes(acqRequest: AcqRequest): BranchAvailability[] {
 }
 
 export async function syncRequestBooksToPlannedLoans(
+  userId: number,
   libraryClient: Pick<LibraryClient, 'getAllAcqRequests'>,
   plannedLoanRepository: PlannedLoanCreateRepo,
   dismissalRepository: PlannedLoanDismissalReadRepo,
@@ -191,8 +201,8 @@ export async function syncRequestBooksToPlannedLoans(
   }
 
   const [existingPlannedBiblioIds, dismissedBiblioIds] = await Promise.all([
-    plannedLoanRepository.findAllLibraryBiblioIds(),
-    dismissalRepository.findAllLibraryBiblioIds(),
+    plannedLoanRepository.findAllLibraryBiblioIds(userId),
+    dismissalRepository.findAllLibraryBiblioIds(userId),
   ]);
   const existingBiblioIds = new Set(existingPlannedBiblioIds);
   const dismissedSet = new Set(dismissedBiblioIds);
@@ -224,7 +234,7 @@ export async function syncRequestBooksToPlannedLoans(
     const request = requestsToAdd[i];
     const bookInfo = bookInfos[i];
     const { publisher, year } = parsePublication(request.biblio.publication);
-    await plannedLoanRepository.create({
+    await plannedLoanRepository.create(userId, {
       library_biblio_id: request.biblio.id,
       source: 'request_book',
       title: request.biblio.titleStatement,
@@ -302,12 +312,13 @@ async function fetchBookInfo(
  * Process a single charge and return sync status
  */
 export async function processCharge(
+  userId: number,
   charge: Charge,
   bookRepository: BookRepository,
   aladinClient: AladinClient,
 ): Promise<SyncStatus> {
   const chargeId = String(charge.id);
-  const existing = await bookRepository.findByChargeId(chargeId);
+  const existing = await bookRepository.findByChargeId(userId, chargeId);
   const isbn = charge.biblio.isbn;
 
   if (!existing) {
@@ -318,7 +329,7 @@ export async function processCharge(
 
     const bookInfo = await fetchBookInfo(isbn, aladinClient, 'new book');
     const record = createBookRecord(charge, bookInfo);
-    await bookRepository.saveBook(record, null);
+    await bookRepository.saveBook(userId, record, null);
 
     return 'added';
   }
@@ -356,7 +367,7 @@ export async function processCharge(
       record.pub_date = existing.pub_date;
     }
 
-    await bookRepository.saveBook(record, existing);
+    await bookRepository.saveBook(userId, record, existing);
 
     return 'updated';
   }
@@ -368,6 +379,7 @@ export async function processCharge(
  * Process charges and deduplicate planned loan deletions per biblio id
  */
 export async function processChargesWithPlanningCleanup(
+  userId: number,
   charges: Charge[],
   bookRepository: BookRepository,
   aladinClient: AladinClient,
@@ -384,7 +396,7 @@ export async function processChargesWithPlanningCleanup(
     const batch = charges.slice(i, i + batchSize);
     const batchResults = await Promise.all(
       batch.map((charge) =>
-        processCharge(charge, bookRepository, aladinClient),
+        processCharge(userId, charge, bookRepository, aladinClient),
       ),
     );
     results.push(...batchResults);
@@ -395,7 +407,10 @@ export async function processChargesWithPlanningCleanup(
     for (const charge of charges) {
       biblioIds.add(charge.biblio.id);
     }
-    await plannedLoanRepository.deleteByLibraryBiblioIds(Array.from(biblioIds));
+    await plannedLoanRepository.deleteByLibraryBiblioIds(
+      userId,
+      Array.from(biblioIds),
+    );
   }
 
   return results;
@@ -405,11 +420,13 @@ export async function processChargesWithPlanningCleanup(
  * Fetches charge histories and processes returns
  * Consolidates the return processing logic used in both scheduled tasks and manual sync
  *
+ * @param userId - Owner of the library account
  * @param libraryClient - Authenticated library client
  * @param bookRepository - Database repository for books
  * @returns Number of books marked as returned
  */
 export async function fetchAndProcessReturns(
+  userId: number,
   libraryClient: LibraryClient,
   bookRepository: BookRepository,
 ): Promise<number> {
@@ -420,13 +437,16 @@ export async function fetchAndProcessReturns(
   }
 
   const results = await Promise.all(
-    histories.map((history) => processChargeHistory(history, bookRepository)),
+    histories.map((history) =>
+      processChargeHistory(userId, history, bookRepository),
+    ),
   );
 
   return results.filter((status) => status === 'returned').length;
 }
 
 export async function processChargeHistory(
+  userId: number,
   history: ChargeHistory,
   bookRepository: BookRepository,
 ): Promise<SyncStatus> {
@@ -437,12 +457,13 @@ export async function processChargeHistory(
     return 'unchanged';
   }
 
-  let existing = await bookRepository.findByChargeId(chargeId);
+  let existing = await bookRepository.findByChargeId(userId, chargeId);
 
   // ISBN fallback with chargeDate comparison for data consistency
   if (!existing && history.biblio.isbn) {
     // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
     existing = await bookRepository.findByIsbnAndChargeDate(
+      userId,
       history.biblio.isbn,
       history.chargeDate,
     );
@@ -472,7 +493,7 @@ export async function processChargeHistory(
   };
 
   try {
-    await bookRepository.saveBook(recordToUpdate, existing);
+    await bookRepository.saveBook(userId, recordToUpdate, existing);
     return 'returned';
   } catch (error) {
     console.error(

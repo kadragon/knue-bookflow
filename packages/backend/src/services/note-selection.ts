@@ -16,8 +16,8 @@ export interface NoteCandidate {
 }
 
 export interface NoteSelectionRepository {
-  getNoteCandidates(): Promise<NoteCandidate[]>;
-  incrementSendCount(noteId: number, now?: Date): Promise<void>;
+  getNoteCandidates(userId: number): Promise<NoteCandidate[]>;
+  incrementSendCount(userId: number, noteId: number, now?: Date): Promise<void>;
 }
 
 export interface NoteSelectionDeps {
@@ -59,7 +59,7 @@ interface NoteCandidateRow {
 export class D1NoteSelectionRepository implements NoteSelectionRepository {
   constructor(private readonly db: D1Database) {}
 
-  async getNoteCandidates(): Promise<NoteCandidate[]> {
+  async getNoteCandidates(userId: number): Promise<NoteCandidate[]> {
     const result = await this.db
       .prepare(`
         SELECT
@@ -89,7 +89,9 @@ export class D1NoteSelectionRepository implements NoteSelectionRepository {
         FROM notes n
         JOIN books b ON b.id = n.book_id
         LEFT JOIN note_send_stats s ON s.note_id = n.id
+        WHERE b.user_id = ?
       `)
+      .bind(userId)
       .all<NoteCandidateRow>();
 
     return result.results.map((row) => ({
@@ -124,18 +126,27 @@ export class D1NoteSelectionRepository implements NoteSelectionRepository {
     }));
   }
 
-  async incrementSendCount(noteId: number, now?: Date): Promise<void> {
+  async incrementSendCount(
+    userId: number,
+    noteId: number,
+    now?: Date,
+  ): Promise<void> {
     const nowIso = (now ?? new Date()).toISOString();
     await this.db
       .prepare(`
         INSERT INTO note_send_stats (note_id, send_count, last_sent_at)
-        VALUES (?, 1, ?)
+        SELECT ?, 1, ?
+        WHERE EXISTS (
+          SELECT 1 FROM notes n
+          JOIN books b ON b.id = n.book_id
+          WHERE n.id = ? AND b.user_id = ?
+        )
         ON CONFLICT(note_id)
         DO UPDATE SET
           send_count = send_count + 1,
           last_sent_at = excluded.last_sent_at
       `)
-      .bind(noteId, nowIso)
+      .bind(noteId, nowIso, noteId, userId)
       .run();
   }
 }
@@ -199,7 +210,7 @@ function kstDayNumber(date: Date): number {
 }
 
 /**
- * Draw today's practice note (idempotent per KST day).
+ * Draw today's practice note for a user (idempotent per KST day).
  *
  * - If a candidate was already recorded today (KST), return it without re-recording.
  * - Otherwise, pick via selectNoteCandidate and call incrementSendCount.
@@ -207,6 +218,7 @@ function kstDayNumber(date: Date): number {
  */
 export async function drawPracticeNote(
   env: Env,
+  userId: number,
   deps: NoteSelectionDeps = {},
 ): Promise<NoteCandidate | null> {
   const repository =
@@ -215,7 +227,7 @@ export async function drawPracticeNote(
   const now = deps.now ?? new Date();
   const force = deps.force ?? false;
 
-  const candidates = await repository.getNoteCandidates();
+  const candidates = await repository.getNoteCandidates(userId);
 
   if (candidates.length === 0) {
     return null;
@@ -257,7 +269,7 @@ export async function drawPracticeNote(
   }
 
   if (selected.note.id) {
-    await repository.incrementSendCount(selected.note.id, now);
+    await repository.incrementSendCount(userId, selected.note.id, now);
   }
 
   return selected;

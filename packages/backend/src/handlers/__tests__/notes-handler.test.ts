@@ -24,6 +24,8 @@ vi.mock('../../services', () => ({
   createNoteRepository: () => mockNoteRepo,
 }));
 
+const USER_ID = 7;
+
 describe('Notes Handler', () => {
   const env = {
     DB: {},
@@ -47,7 +49,7 @@ describe('Notes Handler', () => {
         },
       ]);
 
-      const response = await handleGetNotes(env, 1);
+      const response = await handleGetNotes(env, USER_ID, 1);
       expect(response.status).toBe(200);
       expect(response.headers.get('Cache-Control')).toBe('private, max-age=15');
 
@@ -59,12 +61,14 @@ describe('Notes Handler', () => {
       };
       expect(body.notes).toHaveLength(1);
       expect(body.notes[0].content).toBe('Note 1');
+      expect(mockBookRepo.findById).toHaveBeenCalledWith(USER_ID, 1);
+      expect(mockNoteRepo.findByBookId).toHaveBeenCalledWith(USER_ID, 1);
     });
 
     it('should return 404 if book not found', async () => {
       mockBookRepo.findById.mockResolvedValue(null);
 
-      const response = await handleGetNotes(env, 999);
+      const response = await handleGetNotes(env, USER_ID, 999);
       expect(response.status).toBe(404);
     });
   });
@@ -82,7 +86,7 @@ describe('Notes Handler', () => {
         updated_at: '2023-01-01',
       });
 
-      const response = await handleCreateNote(env, 1, validBody);
+      const response = await handleCreateNote(env, USER_ID, 1, validBody);
       expect(response.status).toBe(201);
 
       const body = (await response.json()) as {
@@ -93,17 +97,31 @@ describe('Notes Handler', () => {
       };
       expect(body.note?.id).toBe(100);
       expect(body.note?.content).toBe('Test Note');
+      expect(mockBookRepo.findById).toHaveBeenCalledWith(USER_ID, 1);
+      expect(mockNoteRepo.create).toHaveBeenCalledWith(USER_ID, {
+        book_id: 1,
+        page_number: 10,
+        content: 'Test Note',
+      });
+    });
+
+    it('should return 404 when the scoped insert finds no owned book', async () => {
+      mockBookRepo.findById.mockResolvedValue({ id: 1 });
+      mockNoteRepo.create.mockResolvedValue(null);
+
+      const response = await handleCreateNote(env, USER_ID, 1, validBody);
+      expect(response.status).toBe(404);
     });
 
     it('should return 404 if book not found', async () => {
       mockBookRepo.findById.mockResolvedValue(null);
 
-      const response = await handleCreateNote(env, 999, validBody);
+      const response = await handleCreateNote(env, USER_ID, 999, validBody);
       expect(response.status).toBe(404);
     });
 
     it('should validate page_number', async () => {
-      const response = await handleCreateNote(env, 1, {
+      const response = await handleCreateNote(env, USER_ID, 1, {
         ...validBody,
         page_number: -1,
       });
@@ -118,7 +136,7 @@ describe('Notes Handler', () => {
     });
 
     it('should validate content', async () => {
-      const response = await handleCreateNote(env, 1, {
+      const response = await handleCreateNote(env, USER_ID, 1, {
         ...validBody,
         content: '',
       });
@@ -144,7 +162,7 @@ describe('Notes Handler', () => {
         updated_at: '2023-01-02',
       });
 
-      const response = await handleUpdateNote(env, 100, {
+      const response = await handleUpdateNote(env, USER_ID, 100, {
         page_number: 20,
         content: 'Updated',
       });
@@ -158,22 +176,31 @@ describe('Notes Handler', () => {
       };
       expect(body.note?.pageNumber).toBe(20);
       expect(body.note?.content).toBe('Updated');
+      expect(mockNoteRepo.findById).toHaveBeenCalledWith(USER_ID, 100);
+      expect(mockNoteRepo.update).toHaveBeenCalledWith(USER_ID, 100, {
+        page_number: 20,
+        content: 'Updated',
+      });
     });
 
     it('should return 404 if note not found', async () => {
       mockNoteRepo.findById.mockResolvedValue(null);
 
-      const response = await handleUpdateNote(env, 999, { content: 'Update' });
+      const response = await handleUpdateNote(env, USER_ID, 999, {
+        content: 'Update',
+      });
       expect(response.status).toBe(404);
     });
 
     it('should validate partial updates', async () => {
-      const response = await handleUpdateNote(env, 100, { page_number: -5 });
+      const response = await handleUpdateNote(env, USER_ID, 100, {
+        page_number: -5,
+      });
       expect(response.status).toBe(400);
     });
 
     it('should require at least one field', async () => {
-      const response = await handleUpdateNote(env, 100, {});
+      const response = await handleUpdateNote(env, USER_ID, 100, {});
       expect(response.status).toBe(400);
     });
   });
@@ -183,7 +210,7 @@ describe('Notes Handler', () => {
       mockNoteRepo.findById.mockResolvedValue({ id: 100 });
       mockNoteRepo.delete.mockResolvedValue(true);
 
-      const response = await handleDeleteNote(env, 100);
+      const response = await handleDeleteNote(env, USER_ID, 100);
       expect(response.status).toBe(200);
       const body = (await response.json()) as {
         notes: NoteViewModel[];
@@ -192,12 +219,14 @@ describe('Notes Handler', () => {
         success?: boolean;
       };
       expect(body.success).toBe(true);
+      expect(mockNoteRepo.findById).toHaveBeenCalledWith(USER_ID, 100);
+      expect(mockNoteRepo.delete).toHaveBeenCalledWith(USER_ID, 100);
     });
 
     it('should return 404 if note not found', async () => {
       mockNoteRepo.findById.mockResolvedValue(null);
 
-      const response = await handleDeleteNote(env, 999);
+      const response = await handleDeleteNote(env, USER_ID, 999);
       expect(response.status).toBe(404);
     });
   });

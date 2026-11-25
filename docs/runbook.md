@@ -27,7 +27,7 @@ The Worker is at `http://localhost:8787` by default; the Vite dev server runs on
 
 ### Verify
 
-- `curl http://localhost:8787/api/books` returns JSON.
+- `curl http://localhost:8787/api/books` returns JSON once `.dev.vars` sets the local identity (see [Local development identity](#local-development-identity)); without it the API answers 500 or 401.
 - `bun run typecheck && bun run lint && bun run test` all pass.
 
 ## Build
@@ -102,20 +102,74 @@ Manual fallback (only if the auto-deploy is unavailable): `git pull && bun insta
 
 Set via Wrangler. Never commit values.
 
-| Secret                | Used by                      |
-| --------------------- | ---------------------------- |
-| `LIBRARY_USER_ID`     | KNUE Pyxis login             |
-| `LIBRARY_PASSWORD`    | KNUE Pyxis login             |
-| `ALADIN_API_KEY`      | Aladin metadata lookup       |
-| `TELEGRAM_BOT_TOKEN`  | Telegram due-soon broadcast  |
-| `TELEGRAM_CHAT_ID`    | Default broadcast target     |
-| `CALENDAR_FEED_TOKEN` | Loan calendar URL (optional) |
+| Secret                | Used by                        |
+| --------------------- | ------------------------------ |
+| `LIBRARY_USER_ID`     | KNUE Pyxis login               |
+| `LIBRARY_PASSWORD`    | KNUE Pyxis login               |
+| `ALADIN_API_KEY`      | Aladin metadata lookup         |
+| `TELEGRAM_BOT_TOKEN`  | Telegram due-soon broadcast    |
+| `TELEGRAM_CHAT_ID`    | Default broadcast target       |
+| `CALENDAR_FEED_TOKEN` | Loan calendar URL (optional)   |
+| `ACCESS_TEAM_DOMAIN`  | Cloudflare Access JWT issuer   |
+| `ACCESS_AUD`          | Cloudflare Access JWT audience |
+| `ADMIN_EMAIL`         | Owner (admin) identity         |
 
 ```bash
 bun run --cwd packages/backend wrangler secret put TELEGRAM_BOT_TOKEN
 ```
 
 For local development, place values in `.dev.vars` (gitignored).
+
+## Access and Per-User Data
+
+Cloudflare Access signs users in at the edge. The Worker then verifies the `Cf-Access-Jwt-Assertion` JWT on every `/api/*` request and on `/trigger`; `/api/calendar.ics` is the only exception and keeps its token check. Verification checks the RS256 signature against `https://<ACCESS_TEAM_DOMAIN>/cdn-cgi/access/certs`, the `aud` claim against `ACCESS_AUD`, the issuer and the expiry. The user is identified by the verified `email` claim. The `Cf-Access-Authenticated-User-Email` header is never trusted.
+
+- `ADMIN_EMAIL` maps to the owner, user id 1. Every row that existed before per-user separation belongs to that user.
+- Any other identity gets its own `users` row on first sign-in. Books, notes, planned loans, dismissals and book requests are scoped to that row. Another user's ids return 404, or `{"success": false}` on delete.
+- Library sync, renewal, the cron pipeline, Telegram alerts and the calendar feed use the single `LIBRARY_USER_ID` account and act on the owner's data only. `/trigger`, `/api/books/sync` and `/api/cron-runs*` return 403 for anyone but the admin. Other users have no library loans, so they have no books and therefore no notes. Their planned loans and book requests are their own.
+- Missing `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` or `ADMIN_EMAIL` makes every `/api/*` request fail with 500. A request that bypasses Access, for example through a `workers.dev` URL, gets 401.
+
+### Zero Trust configuration
+
+1. **Team domain.** Zero Trust settings show the team domain, which looks like `<team>.cloudflareaccess.com`. Store it without the scheme.
+2. **AUD tag.** Go to **Access → Applications** and open the self-hosted application for `book.kadragon.work`. Copy its **Application Audience (AUD) Tag**. Use the AUD of the host-wide application, not the calendar bypass application.
+3. **Who can sign in.** In the same application's Allow policy, include every person who should get an account, by email or email domain. Anyone the policy admits gets an empty account on first visit.
+4. **Secrets.** Set the three values:
+
+   ```bash
+   bun run --cwd packages/backend wrangler secret put ACCESS_TEAM_DOMAIN   # e.g. myteam.cloudflareaccess.com
+   bun run --cwd packages/backend wrangler secret put ACCESS_AUD
+   bun run --cwd packages/backend wrangler secret put ADMIN_EMAIL          # the owner's Access login email
+   ```
+
+   These are secrets, not `[vars]`. This keeps the admin email out of the repository, and Git-integration deploys keep them.
+
+See [Cloudflare's JWT validation guide](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/).
+
+### Local development identity
+
+`wrangler dev` has no Access in front of it. Add a local identity to `packages/backend/.dev.vars`:
+
+```bash
+ENVIRONMENT=development
+DEV_AUTH_EMAIL=you@example.com
+ADMIN_EMAIL=you@example.com   # omit to act as a non-admin user
+```
+
+The fallback works only when `ENVIRONMENT` is `development` **and** the request host is `localhost`, `127.0.0.1` or `[::1]`. Deployed Workers get `ENVIRONMENT = "production"` from `wrangler.toml`, so the fallback cannot turn on there. Apply migrations to the local D1 first with `wrangler d1 migrations apply knue-bookflow-db --local`.
+
+### Rollout of per-user separation (migrations 0016–0020)
+
+Merging to `main` deploys immediately, so finish these steps first:
+
+1. Take a backup: `bun run --cwd packages/backend wrangler d1 export knue-bookflow-db --remote --output backup-before-0016.sql`. Also note the current Time Travel bookmark with `wrangler d1 time-travel info knue-bookflow-db`.
+2. Record the row counts. Run `SELECT (SELECT COUNT(*) FROM books), (SELECT COUNT(*) FROM notes), (SELECT COUNT(*) FROM note_send_stats), (SELECT COUNT(*) FROM planned_loans), (SELECT COUNT(*) FROM planned_loan_dismissals), (SELECT COUNT(*) FROM book_requests)` with `wrangler d1 execute knue-bookflow-db --remote --command "..."`.
+3. Complete the Zero Trust configuration and set the three secrets.
+4. Apply the migrations with `bun run db:migrate`. The new `user_id` columns default to 1, so the Worker that is still deployed keeps working.
+5. Re-run the count query and compare it with step 2. `SELECT COUNT(*) FROM books WHERE user_id <> 1` must return 0.
+6. Merge the PR. Then sign in as the admin and confirm that the shelf, notes and planned loans are unchanged. Sign in as another allowed user and confirm the shelf is empty. Check that the calendar subscription URL still returns 200.
+
+Rollback: `wrangler rollback` restores the previous Worker without touching the schema. The old code ignores `user_id` and shows every user's rows to everyone signed in. Restore the D1 backup only if the migrations themselves are the problem.
 
 ## Loan Due Date Calendar
 
@@ -171,9 +225,9 @@ bash tools/sweep.sh --quick # lint scan only
 
 ## Environment Variables (non-secret)
 
-| Variable      | Default      | Notes                                                                   |
-| ------------- | ------------ | ----------------------------------------------------------------------- |
-| `ENVIRONMENT` | `production` | Set in `wrangler.toml [vars]`; used by handlers to gate dev-only paths. |
+| Variable      | Default      | Notes                                                                                                               |
+| ------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT` | `production` | Set in `wrangler.toml [vars]`; `development` (in `.dev.vars`) enables the localhost-only `DEV_AUTH_EMAIL` identity. |
 
 ## Trace IDs
 

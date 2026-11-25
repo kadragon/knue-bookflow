@@ -158,6 +158,7 @@ function validatePayload(body: unknown): {
 
 export async function handleCreatePlannedLoan(
   env: Env,
+  userId: number,
   request: Request,
   repo: PlannedRepo = createPlannedLoanRepository(env.DB),
 ): Promise<Response> {
@@ -175,7 +176,10 @@ export async function handleCreatePlannedLoan(
       );
     }
 
-    const existing = await repo.findByLibraryBiblioId(payload.libraryId);
+    const existing = await repo.findByLibraryBiblioId(
+      userId,
+      payload.libraryId,
+    );
     if (existing) {
       return new Response(
         JSON.stringify({
@@ -189,7 +193,7 @@ export async function handleCreatePlannedLoan(
       );
     }
 
-    const created = await repo.create({
+    const created = await repo.create(userId, {
       library_biblio_id: payload.libraryId,
       source: payload.source,
       title: payload.title,
@@ -217,11 +221,12 @@ export async function handleCreatePlannedLoan(
 
 export async function handleGetPlannedLoans(
   env: Env,
+  userId: number,
   repo: PlannedRepo = createPlannedLoanRepository(env.DB),
   fetchAvailability: AvailabilityFetcher = createAvailabilityFetcher(),
 ): Promise<Response> {
   try {
-    const items = await repo.findAll();
+    const items = await repo.findAll(userId);
     const view = items
       .map(toViewModel)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -255,6 +260,7 @@ export async function handleGetPlannedLoans(
 
 export async function handleDeletePlannedLoan(
   env: Env,
+  userId: number,
   id: number,
   repo: PlannedRepo = createPlannedLoanRepository(env.DB),
   dismissalRepo: PlannedDismissalRepo = createPlannedLoanDismissalRepository(
@@ -262,11 +268,11 @@ export async function handleDeletePlannedLoan(
   ),
 ): Promise<Response> {
   try {
-    const existing = await repo.findById(id);
-    const deleted = await repo.deleteById(id);
+    const existing = await repo.findById(userId, id);
+    const deleted = await repo.deleteById(userId, id);
 
     if (deleted && existing?.source === 'request_book') {
-      await dismissalRepo.markDismissed(existing.library_biblio_id);
+      await dismissalRepo.markDismissed(userId, existing.library_biblio_id);
     }
 
     return new Response(JSON.stringify({ success: deleted }), {

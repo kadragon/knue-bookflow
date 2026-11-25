@@ -1,78 +1,96 @@
 /**
  * Note Repository
- * Data access layer for note CRUD operations
+ * Data access layer for note CRUD operations. Notes carry no user_id; every
+ * query is scoped through the owning book's user_id.
  *
  * Trace: spec_id: SPEC-notes-002, task_id: TASK-023
  */
 
 import type { NoteRecord } from '../types';
 
+const OWNED_BY_USER = 'book_id IN (SELECT id FROM books WHERE user_id = ?)';
+
 export class NoteRepository {
   constructor(private db: D1Database) {}
 
   /**
-   * Find all notes for a book, sorted by page number
+   * Find all notes for one of the user's books, sorted by page number
+   * @param userId - Owner of the book
    * @param bookId - Book ID to get notes for
    */
-  async findByBookId(bookId: number): Promise<NoteRecord[]> {
+  async findByBookId(userId: number, bookId: number): Promise<NoteRecord[]> {
     const result = await this.db
-      .prepare('SELECT * FROM notes WHERE book_id = ? ORDER BY page_number ASC')
-      .bind(bookId)
+      .prepare(
+        `SELECT * FROM notes WHERE book_id = ? AND ${OWNED_BY_USER} ORDER BY page_number ASC`,
+      )
+      .bind(bookId, userId)
       .all<NoteRecord>();
 
     return result.results;
   }
 
   /**
-   * Find a note by ID
+   * Find one of the user's notes by ID
+   * @param userId - Owner of the note's book
    * @param id - Note ID
    */
-  async findById(id: number): Promise<NoteRecord | null> {
+  async findById(userId: number, id: number): Promise<NoteRecord | null> {
     const result = await this.db
-      .prepare('SELECT * FROM notes WHERE id = ?')
-      .bind(id)
+      .prepare(`SELECT * FROM notes WHERE id = ? AND ${OWNED_BY_USER}`)
+      .bind(id, userId)
       .first<NoteRecord>();
 
     return result || null;
   }
 
   /**
-   * Create a new note
+   * Create a new note on one of the user's books
+   * @param userId - Owner of the book
    * @param note - Note data (without id)
-   * @returns Created note with id
+   * @returns Created note with id, or null when the user does not own the book
    */
   async create(
+    userId: number,
     note: Omit<NoteRecord, 'id' | 'created_at' | 'updated_at'>,
-  ): Promise<NoteRecord> {
+  ): Promise<NoteRecord | null> {
     const now = new Date().toISOString();
 
     const result = await this.db
       .prepare(
         `INSERT INTO notes (book_id, page_number, content, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?)
+         SELECT ?, ?, ?, ?, ?
+         WHERE EXISTS (SELECT 1 FROM books WHERE id = ? AND user_id = ?)
          RETURNING *`,
       )
-      .bind(note.book_id, note.page_number, note.content, now, now)
+      .bind(
+        note.book_id,
+        note.page_number,
+        note.content,
+        now,
+        now,
+        note.book_id,
+        userId,
+      )
       .first<NoteRecord>();
 
-    if (!result) {
-      throw new Error('Failed to create note');
+    if (result) {
+      console.log(
+        `[NoteRepository] Created note for book ${note.book_id}, page ${note.page_number}`,
+      );
     }
 
-    console.log(
-      `[NoteRepository] Created note for book ${note.book_id}, page ${note.page_number}`,
-    );
-
-    return result;
+    return result || null;
   }
 
   /**
-   * Update an existing note
+   * Update one of the user's notes
+   * @param userId - Owner of the note's book
    * @param id - Note ID
    * @param updates - Fields to update
-   * @returns Updated note
+   * @returns Updated note, or null when the user has no such note
    */
   async update(
+    userId: number,
     id: number,
     updates: Partial<Pick<NoteRecord, 'page_number' | 'content'>>,
   ): Promise<NoteRecord | null> {
@@ -92,10 +110,12 @@ export class NoteRepository {
       values.push(updates.content);
     }
 
-    values.push(id);
+    values.push(id, userId);
 
     const result = await this.db
-      .prepare(`UPDATE notes SET ${fields.join(', ')} WHERE id = ? RETURNING *`)
+      .prepare(
+        `UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND ${OWNED_BY_USER} RETURNING *`,
+      )
       .bind(...values)
       .first<NoteRecord>();
 
@@ -107,14 +127,15 @@ export class NoteRepository {
   }
 
   /**
-   * Delete a note
+   * Delete one of the user's notes
+   * @param userId - Owner of the note's book
    * @param id - Note ID
-   * @returns true if deleted, false if not found
+   * @returns true if deleted, false if the user has no such note
    */
-  async delete(id: number): Promise<boolean> {
+  async delete(userId: number, id: number): Promise<boolean> {
     const result = await this.db
-      .prepare('DELETE FROM notes WHERE id = ?')
-      .bind(id)
+      .prepare(`DELETE FROM notes WHERE id = ? AND ${OWNED_BY_USER}`)
+      .bind(id, userId)
       .run();
 
     const deleted = result.meta.changes > 0;
@@ -127,46 +148,54 @@ export class NoteRepository {
   }
 
   /**
-   * Count notes for a book
+   * Count notes for one of the user's books
+   * @param userId - Owner of the book
    * @param bookId - Book ID
    */
-  async countByBookId(bookId: number): Promise<number> {
+  async countByBookId(userId: number, bookId: number): Promise<number> {
     const result = await this.db
-      .prepare('SELECT COUNT(*) as count FROM notes WHERE book_id = ?')
-      .bind(bookId)
+      .prepare(
+        `SELECT COUNT(*) as count FROM notes WHERE book_id = ? AND ${OWNED_BY_USER}`,
+      )
+      .bind(bookId, userId)
       .first<{ count: number }>();
 
     return result?.count || 0;
   }
 
   /**
-   * Count notes for multiple books in a single query
+   * Count notes for several of the user's books in a single query
+   * @param userId - Owner of the books
    * @param bookIds - Array of book IDs
    * @returns Map of book ID to note count
    */
-  async countNotesForBookIds(bookIds: number[]): Promise<Map<number, number>> {
+  async countNotesForBookIds(
+    userId: number,
+    bookIds: number[],
+  ): Promise<Map<number, number>> {
     const counts = new Map<number, number>();
 
     if (bookIds.length === 0) {
       return counts;
     }
 
-    // Build placeholders for IN clause
-    const placeholders = bookIds.map(() => '?').join(', ');
-    const query = `
-      SELECT book_id, COUNT(*) as count
-      FROM notes
-      WHERE book_id IN (${placeholders})
-      GROUP BY book_id
-    `;
-
+    // Count across all of the user's books with one bound parameter (D1
+    // limits bound parameters per query), then keep the requested ids.
     const result = await this.db
-      .prepare(query)
-      .bind(...bookIds)
+      .prepare(
+        `SELECT book_id, COUNT(*) as count
+         FROM notes
+         WHERE ${OWNED_BY_USER}
+         GROUP BY book_id`,
+      )
+      .bind(userId)
       .all<{ book_id: number; count: number }>();
 
+    const requested = new Set(bookIds);
     for (const row of result.results) {
-      counts.set(row.book_id, row.count);
+      if (requested.has(row.book_id)) {
+        counts.set(row.book_id, row.count);
+      }
     }
 
     return counts;

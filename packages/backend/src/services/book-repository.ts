@@ -1,6 +1,7 @@
 /**
  * Book Repository
- * Data access layer for D1 database operations
+ * Data access layer for D1 database operations. Every books query is scoped
+ * by user_id; renewal_logs rows are read through the user's books.
  *
  * Trace: spec_id: SPEC-storage-001, SPEC-return-001, task_id: TASK-006, TASK-034, TASK-082
  */
@@ -28,6 +29,7 @@ export class BookRepository {
    *   - `BookRecord`: caller supplies the existing row → UPDATE path
    */
   async saveBook(
+    userId: number,
     record: BookRecord,
     existingRecord?: BookRecord | null,
   ): Promise<void> {
@@ -36,7 +38,7 @@ export class BookRepository {
     // Reuse pre-fetched record when available to avoid duplicate read.
     const existing =
       existingRecord === undefined
-        ? await this.findByChargeId(record.charge_id)
+        ? await this.findByChargeId(userId, record.charge_id)
         : existingRecord;
 
     if (existing) {
@@ -52,7 +54,7 @@ export class BookRepository {
             cover_url = COALESCE(?, cover_url),
             description = COALESCE(?, description),
             updated_at = ?
-          WHERE charge_id = ?`,
+          WHERE user_id = ? AND charge_id = ?`,
         )
         .bind(
           record.due_date,
@@ -63,6 +65,7 @@ export class BookRepository {
           record.cover_url ?? null,
           record.description ?? null,
           now,
+          userId,
           record.charge_id,
         )
         .run();
@@ -73,12 +76,13 @@ export class BookRepository {
       await this.db
         .prepare(
           `INSERT INTO books (
-            charge_id, isbn, isbn13, title, author, publisher,
+            user_id, charge_id, isbn, isbn13, title, author, publisher,
             cover_url, description, pub_date, charge_date, due_date,
             discharge_date, renew_count, is_renewable, is_read, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
+          userId,
           record.charge_id,
           record.isbn,
           record.isbn13,
@@ -105,35 +109,48 @@ export class BookRepository {
 
   /**
    * Update the read status of a book
+   * @param userId - Owner of the book
    * @param id - Database ID of the book
    * @param readStatus - New read status
+   * @returns false when the user has no book with this id
    */
-  async updateReadStatus(id: number, readStatus: ReadStatus): Promise<void> {
+  async updateReadStatus(
+    userId: number,
+    id: number,
+    readStatus: ReadStatus,
+  ): Promise<boolean> {
     const now = new Date().toISOString();
     const value = fromReadStatus(readStatus);
-    await this.db
+    const result = await this.db
       .prepare(
         `UPDATE books SET
           is_read = ?,
           updated_at = ?
-        WHERE id = ?`,
+        WHERE id = ? AND user_id = ?`,
       )
-      .bind(value, now, id)
+      .bind(value, now, id, userId)
       .run();
 
-    console.log(
-      `[BookRepository] Updated read status for book ${id}: ${readStatus}`,
-    );
+    const updated = result.meta.changes > 0;
+    if (updated) {
+      console.log(
+        `[BookRepository] Updated read status for book ${id}: ${readStatus}`,
+      );
+    }
+    return updated;
   }
 
   /**
    * Find a book record by charge ID
    * @param chargeId - Charge ID to search for
    */
-  async findByChargeId(chargeId: string): Promise<BookRecord | null> {
+  async findByChargeId(
+    userId: number,
+    chargeId: string,
+  ): Promise<BookRecord | null> {
     const result = await this.db
-      .prepare('SELECT * FROM books WHERE charge_id = ?')
-      .bind(chargeId)
+      .prepare('SELECT * FROM books WHERE user_id = ? AND charge_id = ?')
+      .bind(userId, chargeId)
       .first<BookRecord>();
 
     return result ?? null;
@@ -143,13 +160,17 @@ export class BookRepository {
    * Find a book record by ISBN
    * @param isbn - ISBN to search for
    */
-  async findByIsbn(isbn: string, limit = 10): Promise<BookRecord[]> {
+  async findByIsbn(
+    userId: number,
+    isbn: string,
+    limit = 10,
+  ): Promise<BookRecord[]> {
     // Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-076
     const result = await this.db
       .prepare(
-        'SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC LIMIT ?',
+        'SELECT * FROM books WHERE user_id = ? AND isbn = ? ORDER BY charge_date DESC LIMIT ?',
       )
-      .bind(isbn, limit)
+      .bind(userId, isbn, limit)
       .all<BookRecord>();
 
     return result.results;
@@ -161,12 +182,15 @@ export class BookRepository {
    * @param chargeDate - Charge date to match
    */
   async findByIsbnAndChargeDate(
+    userId: number,
     isbn: string,
     chargeDate: string,
   ): Promise<BookRecord | null> {
     const result = await this.db
-      .prepare('SELECT * FROM books WHERE isbn = ? AND charge_date = ? LIMIT 1')
-      .bind(isbn, chargeDate)
+      .prepare(
+        'SELECT * FROM books WHERE user_id = ? AND isbn = ? AND charge_date = ? LIMIT 1',
+      )
+      .bind(userId, isbn, chargeDate)
       .first<BookRecord>();
 
     return result ?? null;
@@ -178,32 +202,35 @@ export class BookRepository {
    * @param toDate - End date in YYYY-MM-DD format
    */
   async findDueSoonBooks(
+    userId: number,
     fromDate: string,
     toDate: string,
   ): Promise<BookRecord[]> {
     const result = await this.db
       .prepare(
-        'SELECT * FROM books WHERE discharge_date IS NULL AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC',
+        'SELECT * FROM books WHERE user_id = ? AND discharge_date IS NULL AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC',
       )
-      .bind(fromDate, toDate)
+      .bind(userId, fromDate, toDate)
       .all<BookRecord>();
 
     return result.results;
   }
 
   async findLoansDueForReturn(
+    userId: number,
     renewalLimit: number,
   ): Promise<{ dueDate: string; title: string }[]> {
     const result = await this.db
       .prepare(
         `SELECT due_date, title
          FROM books
-         WHERE discharge_date IS NULL
+         WHERE user_id = ?
+           AND discharge_date IS NULL
            AND typeof(due_date) = 'text'
            AND (is_renewable = 0 OR renew_count >= ?)
          ORDER BY title`,
       )
-      .bind(renewalLimit)
+      .bind(userId, renewalLimit)
       .all<{ due_date: string; title: string }>();
 
     return result.results.map(({ due_date, title }) => ({
@@ -215,9 +242,12 @@ export class BookRepository {
   /**
    * Get all book records
    */
-  async findAll(): Promise<BookRecord[]> {
+  async findAll(userId: number): Promise<BookRecord[]> {
     const result = await this.db
-      .prepare('SELECT * FROM books ORDER BY charge_date DESC')
+      .prepare(
+        'SELECT * FROM books WHERE user_id = ? ORDER BY charge_date DESC',
+      )
+      .bind(userId)
       .all<BookRecord>();
 
     return result.results;
@@ -227,17 +257,18 @@ export class BookRepository {
    * Find a book record by database ID
    * @param id - Database ID to search for
    */
-  async findById(id: number): Promise<BookRecord | null> {
+  async findById(userId: number, id: number): Promise<BookRecord | null> {
     const result = await this.db
-      .prepare('SELECT * FROM books WHERE id = ?')
-      .bind(id)
+      .prepare('SELECT * FROM books WHERE id = ? AND user_id = ?')
+      .bind(id, userId)
       .first<BookRecord>();
 
     return result ?? null;
   }
 
   /**
-   * Log a renewal action
+   * Log a renewal action. renewal_logs carries no user_id: its rows come from
+   * the owner's library account only and are read through books.
    * @param log - Renewal log entry
    */
   async logRenewal(log: RenewalLog): Promise<void> {
@@ -261,12 +292,20 @@ export class BookRepository {
    * Get renewal logs for a charge
    * @param chargeId - Charge ID to get logs for
    */
-  async getRenewalLogs(chargeId: string): Promise<RenewalLog[]> {
+  async getRenewalLogs(
+    userId: number,
+    chargeId: string,
+  ): Promise<RenewalLog[]> {
     const result = await this.db
       .prepare(
-        'SELECT * FROM renewal_logs WHERE charge_id = ? ORDER BY created_at DESC',
+        `SELECT r.* FROM renewal_logs r
+         WHERE r.charge_id = ?
+           AND EXISTS (
+             SELECT 1 FROM books b WHERE b.user_id = ? AND b.charge_id = r.charge_id
+           )
+         ORDER BY r.created_at DESC`,
       )
-      .bind(chargeId)
+      .bind(chargeId, userId)
       .all<RenewalLog>();
 
     return result.results;

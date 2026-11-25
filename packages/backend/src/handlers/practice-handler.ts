@@ -28,6 +28,7 @@ function toNoteViewModel(record: NoteRecord): NoteViewModel {
 
 export async function handlePracticeDraw(
   env: Env,
+  userId: number,
   request: Request,
 ): Promise<Response> {
   try {
@@ -37,7 +38,7 @@ export async function handlePracticeDraw(
     });
     const force = parsed.success ? parsed.data.force : false;
 
-    const candidate = await drawPracticeNote(env, { force });
+    const candidate = await drawPracticeNote(env, userId, { force });
 
     if (!candidate) {
       return new Response(JSON.stringify({ error: 'No notes available' }), {

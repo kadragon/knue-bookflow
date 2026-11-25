@@ -4,6 +4,8 @@ import {
   PlannedLoanRepository,
 } from '../planned-loan-repository';
 
+const USER_ID = 7;
+
 // Mock D1 database
 function createMockD1(): D1Database {
   const mockPrepare = vi.fn();
@@ -48,17 +50,12 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      // findAll calls .all() directly without .bind() because no params
-      // but mocks might be set up differently. In repo: .prepare(...).all()
-      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
-        all: vi.fn().mockResolvedValue({ results: [{ id: 1 }, { id: 2 }] }),
-      } as unknown as D1PreparedStatement);
-
-      const result = await repository.findAll();
+      const result = await repository.findAll(USER_ID);
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM planned_loans ORDER BY created_at DESC, id DESC',
+        'SELECT * FROM planned_loans WHERE user_id = ? ORDER BY created_at DESC, id DESC',
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID);
     });
   });
 
@@ -71,12 +68,12 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByLibraryBiblioId(123);
+      const result = await repository.findByLibraryBiblioId(USER_ID, 123);
       expect(result).toEqual({ id: 1, library_biblio_id: 123 });
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM planned_loans WHERE library_biblio_id = ?',
+        'SELECT * FROM planned_loans WHERE user_id = ? AND library_biblio_id = ?',
       );
-      expect(mockBind).toHaveBeenCalledWith(123);
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, 123);
     });
 
     it('should return null when not found', async () => {
@@ -87,7 +84,7 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByLibraryBiblioId(999);
+      const result = await repository.findByLibraryBiblioId(USER_ID, 999);
       expect(result).toBeNull();
     });
   });
@@ -101,12 +98,12 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findById(1);
+      const result = await repository.findById(USER_ID, 1);
       expect(result).toEqual({ id: 1, library_biblio_id: 123 });
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM planned_loans WHERE id = ?',
+        'SELECT * FROM planned_loans WHERE id = ? AND user_id = ?',
       );
-      expect(mockBind).toHaveBeenCalledWith(1);
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
 
     it('should return null when not found', async () => {
@@ -117,25 +114,29 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findById(999);
+      const result = await repository.findById(USER_ID, 999);
       expect(result).toBeNull();
     });
   });
 
   describe('findAllLibraryBiblioIds', () => {
     it('should return only library biblio ids', async () => {
-      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      const mockBind = vi.fn().mockReturnValue({
         all: vi.fn().mockResolvedValue({
           results: [{ library_biblio_id: 123 }, { library_biblio_id: 456 }],
         }),
-      } as unknown as D1PreparedStatement);
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
 
-      const result = await repository.findAllLibraryBiblioIds();
+      const result = await repository.findAllLibraryBiblioIds(USER_ID);
 
       expect(result).toEqual([123, 456]);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT library_biblio_id FROM planned_loans',
+        'SELECT library_biblio_id FROM planned_loans WHERE user_id = ?',
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID);
     });
   });
 
@@ -161,10 +162,25 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.create(newLoan);
+      const result = await repository.create(USER_ID, newLoan);
       expect(result.id).toBe(1);
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO planned_loans'),
+      );
+      expect(mockBind).toHaveBeenCalledWith(
+        USER_ID,
+        newLoan.library_biblio_id,
+        newLoan.source,
+        newLoan.title,
+        newLoan.author,
+        newLoan.publisher,
+        newLoan.year,
+        newLoan.isbn,
+        newLoan.cover_url,
+        newLoan.material_type,
+        newLoan.branch_volumes,
+        expect.any(String),
+        expect.any(String),
       );
     });
 
@@ -176,7 +192,7 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      await expect(repository.create(newLoan)).rejects.toThrow(
+      await expect(repository.create(USER_ID, newLoan)).rejects.toThrow(
         'Failed to create planned loan',
       );
     });
@@ -191,11 +207,12 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.deleteById(1);
+      const result = await repository.deleteById(USER_ID, 1);
       expect(result).toBe(true);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'DELETE FROM planned_loans WHERE id = ?',
+        'DELETE FROM planned_loans WHERE id = ? AND user_id = ?',
       );
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
   });
 
@@ -208,17 +225,18 @@ describe('PlannedLoanRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.deleteByLibraryBiblioId(123);
+      const result = await repository.deleteByLibraryBiblioId(USER_ID, 123);
       expect(result).toBe(true);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'DELETE FROM planned_loans WHERE library_biblio_id = ?',
+        'DELETE FROM planned_loans WHERE user_id = ? AND library_biblio_id = ?',
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, 123);
     });
   });
 
   describe('deleteByLibraryBiblioIds', () => {
     it('should return 0 and skip query when ids are empty', async () => {
-      const result = await repository.deleteByLibraryBiblioIds([]);
+      const result = await repository.deleteByLibraryBiblioIds(USER_ID, []);
       expect(result).toBe(0);
       expect(mockDb.prepare).not.toHaveBeenCalled();
       expect(mockDb.batch).not.toHaveBeenCalled();
@@ -234,32 +252,40 @@ describe('PlannedLoanRepository', () => {
         { meta: { changes: 2 } },
       ]);
 
-      const result = await repository.deleteByLibraryBiblioIds([123, 456]);
+      const result = await repository.deleteByLibraryBiblioIds(
+        USER_ID,
+        [123, 456],
+      );
 
       expect(result).toBe(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'DELETE FROM planned_loans WHERE library_biblio_id IN (?, ?)',
+        'DELETE FROM planned_loans WHERE user_id = ? AND library_biblio_id IN (?, ?)',
       );
-      expect(mockBind).toHaveBeenCalledWith(123, 456);
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, 123, 456);
       expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement]);
     });
 
-    it('should chunk ids into batches of 999 when exceeding D1 parameter limit', async () => {
-      const ids = Array.from({ length: 1500 }, (_, i) => i + 1);
+    it('should chunk ids into batches of 99 (plus user_id) under the D1 parameter limit', async () => {
+      const ids = Array.from({ length: 150 }, (_, i) => i + 1);
       const fakeStatement = {} as D1PreparedStatement;
       const mockBind = vi.fn().mockReturnValue(fakeStatement);
       (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
         bind: mockBind,
       });
       (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { meta: { changes: 999 } },
-        { meta: { changes: 501 } },
+        { meta: { changes: 99 } },
+        { meta: { changes: 51 } },
       ]);
 
-      const result = await repository.deleteByLibraryBiblioIds(ids);
+      const result = await repository.deleteByLibraryBiblioIds(USER_ID, ids);
 
-      expect(result).toBe(1500);
+      expect(result).toBe(150);
       expect(mockDb.prepare).toHaveBeenCalledTimes(2);
+      expect(mockBind).toHaveBeenNthCalledWith(1, USER_ID, ...ids.slice(0, 99));
+      expect(mockBind).toHaveBeenNthCalledWith(2, USER_ID, ...ids.slice(99));
+      expect(mockBind.mock.calls.every((args) => args.length <= 100)).toBe(
+        true,
+      );
       expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement, fakeStatement]);
     });
   });

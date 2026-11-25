@@ -34,13 +34,13 @@ function toNoteViewModel(record: NoteRecord): NoteViewModel {
  */
 export async function handleGetNotes(
   env: Env,
+  userId: number,
   bookId: number,
 ): Promise<Response> {
   const noteRepository = createNoteRepository(env.DB);
   const bookRepository = createBookRepository(env.DB);
 
-  // Check if book exists by looking up via database id
-  const book = await bookRepository.findById(bookId);
+  const book = await bookRepository.findById(userId, bookId);
 
   if (!book) {
     return new Response(JSON.stringify({ error: 'Book not found' }), {
@@ -49,7 +49,7 @@ export async function handleGetNotes(
     });
   }
 
-  const notes = await noteRepository.findByBookId(bookId);
+  const notes = await noteRepository.findByBookId(userId, bookId);
   const viewModels = notes.map(toNoteViewModel);
 
   return new Response(JSON.stringify({ notes: viewModels }), {
@@ -66,6 +66,7 @@ export async function handleGetNotes(
  */
 export async function handleCreateNote(
   env: Env,
+  userId: number,
   bookId: number,
   body: CreateNoteRequest,
 ): Promise<Response> {
@@ -103,8 +104,7 @@ export async function handleCreateNote(
   const noteRepository = createNoteRepository(env.DB);
   const bookRepository = createBookRepository(env.DB);
 
-  // Check if book exists
-  const book = await bookRepository.findById(bookId);
+  const book = await bookRepository.findById(userId, bookId);
 
   if (!book) {
     return new Response(JSON.stringify({ error: 'Book not found' }), {
@@ -113,11 +113,18 @@ export async function handleCreateNote(
     });
   }
 
-  const note = await noteRepository.create({
+  const note = await noteRepository.create(userId, {
     book_id: bookId,
     page_number: body.page_number,
     content: body.content.trim(),
   });
+
+  if (!note) {
+    return new Response(JSON.stringify({ error: 'Book not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
   return new Response(JSON.stringify({ note: toNoteViewModel(note) }), {
     status: 201,
@@ -131,6 +138,7 @@ export async function handleCreateNote(
  */
 export async function handleUpdateNote(
   env: Env,
+  userId: number,
   noteId: number,
   body: UpdateNoteRequest,
 ): Promise<Response> {
@@ -171,8 +179,7 @@ export async function handleUpdateNote(
 
   const noteRepository = createNoteRepository(env.DB);
 
-  // Check if note exists
-  const existing = await noteRepository.findById(noteId);
+  const existing = await noteRepository.findById(userId, noteId);
   if (!existing) {
     return new Response(JSON.stringify({ error: 'Note not found' }), {
       status: 404,
@@ -188,7 +195,7 @@ export async function handleUpdateNote(
     updates.content = body.content.trim();
   }
 
-  const updated = await noteRepository.update(noteId, updates);
+  const updated = await noteRepository.update(userId, noteId, updates);
 
   if (!updated) {
     return new Response(JSON.stringify({ error: 'Failed to update note' }), {
@@ -208,12 +215,12 @@ export async function handleUpdateNote(
  */
 export async function handleDeleteNote(
   env: Env,
+  userId: number,
   noteId: number,
 ): Promise<Response> {
   const noteRepository = createNoteRepository(env.DB);
 
-  // Check if note exists
-  const existing = await noteRepository.findById(noteId);
+  const existing = await noteRepository.findById(userId, noteId);
   if (!existing) {
     return new Response(JSON.stringify({ error: 'Note not found' }), {
       status: 404,
@@ -221,7 +228,7 @@ export async function handleDeleteNote(
     });
   }
 
-  const deleted = await noteRepository.delete(noteId);
+  const deleted = await noteRepository.delete(userId, noteId);
 
   return new Response(JSON.stringify({ success: deleted }), {
     headers: { 'Content-Type': 'application/json' },
