@@ -138,6 +138,7 @@ export function deriveBookViewModel(
 }
 
 export async function buildBookShelfView(
+  userId: number,
   records: BookRecord[],
   noteRepo: NoteRepo,
   now = new Date(),
@@ -152,7 +153,7 @@ export async function buildBookShelfView(
   const bookIds = sorted
     .map((r) => r.id)
     .filter((id): id is number => id !== undefined);
-  const noteCounts = await noteRepo.countNotesForBookIds(bookIds);
+  const noteCounts = await noteRepo.countNotesForBookIds(userId, bookIds);
 
   return sorted.map((record) => {
     const noteCount = record.id ? noteCounts.get(record.id) || 0 : 0;

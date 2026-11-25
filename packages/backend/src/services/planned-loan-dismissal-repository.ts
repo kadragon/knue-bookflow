@@ -1,25 +1,28 @@
 /**
  * Planned Loan Dismissal Repository
- * Stores request_book planned loans explicitly removed by user
+ * Stores request_book planned loans explicitly removed by a user
  */
 
 export class PlannedLoanDismissalRepository {
   constructor(private db: D1Database) {}
 
-  async markDismissed(libraryBiblioId: number): Promise<void> {
+  async markDismissed(userId: number, libraryBiblioId: number): Promise<void> {
     await this.db
       .prepare(
         `INSERT OR IGNORE INTO planned_loan_dismissals (
-          library_biblio_id
-        ) VALUES (?)`,
+          user_id, library_biblio_id
+        ) VALUES (?, ?)`,
       )
-      .bind(libraryBiblioId)
+      .bind(userId, libraryBiblioId)
       .run();
   }
 
-  async findAllLibraryBiblioIds(): Promise<number[]> {
+  async findAllLibraryBiblioIds(userId: number): Promise<number[]> {
     const result = await this.db
-      .prepare('SELECT library_biblio_id FROM planned_loan_dismissals')
+      .prepare(
+        'SELECT library_biblio_id FROM planned_loan_dismissals WHERE user_id = ?',
+      )
+      .bind(userId)
       .all<{ library_biblio_id: number }>();
 
     return result.results.map((row) => row.library_biblio_id);

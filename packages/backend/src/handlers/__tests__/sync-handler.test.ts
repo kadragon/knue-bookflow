@@ -9,7 +9,7 @@ import type { BookRepository } from '../../services/book-repository';
 import { LibraryApiError } from '../../services/library-client';
 import type { PlannedLoanRepository } from '../../services/planned-loan-repository';
 import type { Charge, ChargeHistory, Env } from '../../types';
-import { parsePublication } from '../../utils';
+import { OWNER_USER_ID, parsePublication } from '../../utils';
 import {
   handleSyncBooks,
   processCharge,
@@ -257,6 +257,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -267,6 +268,7 @@ describe('processCharge', () => {
       charge.biblio.isbn,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         cover_url: 'https://covers.aladin.co.kr/Big/9781234567890.jpg',
       }),
@@ -296,6 +298,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -327,6 +330,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -356,6 +360,7 @@ describe('processCharge', () => {
       const mockBookRepository = createMockBookRepository(existing);
 
       const status = await processCharge(
+        OWNER_USER_ID,
         charge,
         mockBookRepository,
         createMockAladinClient(null),
@@ -363,6 +368,7 @@ describe('processCharge', () => {
 
       expect(status).toBe('updated');
       expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+        OWNER_USER_ID,
         expect.objectContaining({ is_renewable: expectedEligibility }),
         existing,
       );
@@ -375,7 +381,12 @@ describe('processCharge', () => {
     const mockBookRepository = createMockBookRepository(null);
     const mockAladinClient = createMockAladinClient(null);
 
-    await processCharge(charge, mockBookRepository, mockAladinClient);
+    await processCharge(
+      OWNER_USER_ID,
+      charge,
+      mockBookRepository,
+      mockAladinClient,
+    );
 
     expect(mockBookRepository.saveBook).toHaveBeenCalled();
   });
@@ -402,6 +413,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(null);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -441,6 +453,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -456,6 +469,7 @@ describe('processCharge', () => {
     const mockAladinClient = createMockAladinClient(mockAladinResponse);
 
     const status = await processCharge(
+      OWNER_USER_ID,
       charge,
       mockBookRepository,
       mockAladinClient,
@@ -466,6 +480,7 @@ describe('processCharge', () => {
       charge.biblio.isbn,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         cover_url: mockAladinResponse.coverUrl,
         description: mockAladinResponse.description,
@@ -583,6 +598,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     };
 
     const added = await syncRequestBooksToPlannedLoans(
+      OWNER_USER_ID,
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
@@ -592,6 +608,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     expect(added).toBe(1);
     expect(plannedRepo.create).toHaveBeenCalledTimes(1);
     expect(plannedRepo.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         author: '저자',
         library_biblio_id: 100,
@@ -629,6 +646,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     };
 
     await syncRequestBooksToPlannedLoans(
+      OWNER_USER_ID,
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
@@ -636,6 +654,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     );
 
     expect(plannedRepo.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         author: '저자 공백',
         library_biblio_id: 500,
@@ -675,6 +694,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     });
 
     await syncRequestBooksToPlannedLoans(
+      OWNER_USER_ID,
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
@@ -683,6 +703,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
 
     expect(aladinMock.lookupByIsbn).toHaveBeenCalledWith('9781234567890');
     expect(plannedRepo.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         cover_url: 'https://covers.aladin.co.kr/test.jpg',
       }),
@@ -719,6 +740,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     const aladinMock = createMockAladinClient(null);
 
     await syncRequestBooksToPlannedLoans(
+      OWNER_USER_ID,
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
@@ -727,6 +749,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
 
     expect(aladinMock.lookupByIsbn).not.toHaveBeenCalled();
     expect(plannedRepo.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         cover_url: null,
       }),
@@ -765,6 +788,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     } as unknown as AladinClient;
 
     const added = await syncRequestBooksToPlannedLoans(
+      OWNER_USER_ID,
       client as never,
       plannedRepo as never,
       dismissalRepo as never,
@@ -774,6 +798,7 @@ describe('syncRequestBooksToPlannedLoans', () => {
     expect(added).toBe(1);
     expect(aladinMock.lookupByIsbn).toHaveBeenCalledWith('9781234567890');
     expect(plannedRepo.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         cover_url: null,
       }),
@@ -820,6 +845,7 @@ describe('processChargesWithPlanningCleanup', () => {
     } as unknown as PlannedLoanRepository;
 
     await processChargesWithPlanningCleanup(
+      OWNER_USER_ID,
       charges,
       mockBookRepository,
       mockAladinClient,
@@ -827,9 +853,10 @@ describe('processChargesWithPlanningCleanup', () => {
     );
 
     expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledTimes(1);
-    expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledWith([
-      99, 100,
-    ]);
+    expect(plannedRepo.deleteByLibraryBiblioIds).toHaveBeenCalledWith(
+      OWNER_USER_ID,
+      [99, 100],
+    );
   });
 });
 
@@ -852,6 +879,7 @@ describe('syncBooksCore request book sync behavior', () => {
     expect(summary.total_charges).toBe(0);
     expect(summary.returned).toBe(1);
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({ discharge_date: history.dischargeDate }),
       expect.objectContaining({ charge_id: String(history.id) }),
     );
@@ -882,6 +910,7 @@ describe('syncBooksCore request book sync behavior', () => {
 
     expect(summary.total_charges).toBe(0);
     expect(mockPlannedLoanRepository.create).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         library_biblio_id: 700,
         source: 'request_book',
@@ -942,10 +971,15 @@ describe('processChargeHistory', () => {
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
-    const status = await processChargeHistory(history, mockBookRepository);
+    const status = await processChargeHistory(
+      OWNER_USER_ID,
+      history,
+      mockBookRepository,
+    );
 
     expect(status).toBe('returned');
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         charge_id: String(history.id),
         discharge_date: '2025-09-16 00:00:00',
@@ -992,14 +1026,20 @@ describe('processChargeHistory', () => {
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
-    const status = await processChargeHistory(history, mockBookRepository);
+    const status = await processChargeHistory(
+      OWNER_USER_ID,
+      history,
+      mockBookRepository,
+    );
 
     expect(status).toBe('returned');
     expect(mockBookRepository.findByIsbnAndChargeDate).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       history.biblio.isbn,
       history.chargeDate,
     );
     expect(mockBookRepository.saveBook).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       expect.objectContaining({
         discharge_date: '2025-09-17 00:00:00',
       }),
@@ -1027,7 +1067,11 @@ describe('processChargeHistory', () => {
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
-    const status = await processChargeHistory(history, mockBookRepository);
+    const status = await processChargeHistory(
+      OWNER_USER_ID,
+      history,
+      mockBookRepository,
+    );
 
     expect(status).toBe('unchanged');
     expect(mockBookRepository.saveBook).not.toHaveBeenCalled();
@@ -1063,7 +1107,11 @@ describe('processChargeHistory', () => {
       saveBook: vi.fn(),
     } as unknown as BookRepository;
 
-    const status = await processChargeHistory(history, mockBookRepository);
+    const status = await processChargeHistory(
+      OWNER_USER_ID,
+      history,
+      mockBookRepository,
+    );
 
     expect(status).toBe('unchanged');
     expect(mockBookRepository.saveBook).not.toHaveBeenCalled();

@@ -6,7 +6,7 @@
 
 ## Next
 
-(none)
+- [ ] [ux] Hide the manual trigger and sync actions from non-admin users, who now get 403 from `/trigger` and `/api/books/sync`; expose the caller's admin flag to the frontend (for example `GET /api/me`) (source: per-user separation phase 1) — `packages/frontend/src/App.tsx`
 
 ## Someday
 

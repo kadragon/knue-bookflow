@@ -12,6 +12,7 @@ import {
   getTodayString,
   KST_OFFSET_MINUTES,
   MAX_RENEWALS_PER_LOAN,
+  OWNER_USER_ID,
 } from '../utils';
 import { createBookRepository } from './book-repository';
 
@@ -82,7 +83,11 @@ async function sendTelegramMessage(
 export interface DueSoonBroadcastDeps {
   fetchFn?: typeof fetch;
   bookRepository?: {
-    findDueSoonBooks(fromDate: string, toDate: string): Promise<BookRecord[]>;
+    findDueSoonBooks(
+      userId: number,
+      fromDate: string,
+      toDate: string,
+    ): Promise<BookRecord[]>;
   };
 }
 
@@ -107,7 +112,9 @@ export async function broadcastDueSoonBooks(
     const futureDate = formatDate(
       new Date(Date.now() + kstOffsetMs + DUE_SOON_BROADCAST_DAYS * DAY_MS),
     );
+    // Telegram alerts cover the owner's library loans only.
     const dueSoonBooks = await bookRepository.findDueSoonBooks(
+      OWNER_USER_ID,
       today,
       futureDate,
     );

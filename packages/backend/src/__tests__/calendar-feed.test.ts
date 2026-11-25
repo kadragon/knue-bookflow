@@ -28,7 +28,7 @@ describe('loan due date calendar feed', () => {
   beforeEach(() => {
     db = new DatabaseSync(':memory:');
     db.exec(
-      'CREATE TABLE books (title TEXT NOT NULL, due_date DATE, discharge_date DATE, renew_count INTEGER DEFAULT 0)',
+      'CREATE TABLE books (user_id INTEGER NOT NULL DEFAULT 1, title TEXT NOT NULL, due_date DATE, discharge_date DATE, renew_count INTEGER DEFAULT 0)',
     );
     db.exec(renewalEligibilityMigration);
     prepare = vi.fn((sql: string) => ({
@@ -60,14 +60,11 @@ describe('loan due date calendar feed', () => {
     renewCount: number | null = 1,
     returned: string | null = null,
     isRenewable: 0 | 1 | null = null,
+    userId = 1,
   ) {
-    db.prepare('INSERT INTO books VALUES (?, ?, ?, ?, ?)').run(
-      title,
-      due,
-      returned,
-      renewCount,
-      isRenewable,
-    );
+    db.prepare(
+      'INSERT INTO books (user_id, title, due_date, discharge_date, renew_count, is_renewable) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(userId, title, due, returned, renewCount, isRenewable);
   }
 
   function fetchFeed(query = `?token=${token}`) {
@@ -186,6 +183,15 @@ describe('loan due date calendar feed', () => {
       true,
     );
     expect(Buffer.byteLength(lines[0])).toBe(74);
+  });
+
+  it("serves only the owner's loans", async () => {
+    addLoan('Owner title', '2026-11-30');
+    addLoan('Member title', '2026-11-30', 1, null, null, 2);
+
+    const ics = await (await fetchFeed()).text();
+    expect(ics).toContain('DESCRIPTION:Owner title\r\n');
+    expect(ics).not.toContain('Member title');
   });
 
   it('returns calendar headers without a body on an authenticated HEAD', async () => {

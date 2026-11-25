@@ -38,6 +38,8 @@ import { handlePracticeDraw } from './handlers/practice-handler';
 import { handleSearchBooksApi } from './handlers/search-handler';
 import { handleSyncBooks, syncBooksCore } from './handlers/sync-handler';
 import {
+  type AuthenticatedUser,
+  authenticateRequest,
   broadcastDueSoonBooks,
   checkAndRenewBooks,
   createAladinClient,
@@ -58,7 +60,20 @@ import type {
 import {
   DEFAULT_RENEWAL_DAYS_BEFORE_DUE,
   DEFAULT_RENEWAL_MAX_COUNT,
+  jsonResponse,
 } from './utils';
+
+// Routes reachable only by the admin, who owns the library account.
+const ADMIN_ONLY_PATHS = new Set([
+  '/trigger',
+  '/api/books/sync',
+  '/api/cron-runs',
+  '/api/cron-runs/latest',
+]);
+
+function requiresAccessAuth(pathname: string): boolean {
+  return pathname === '/trigger' || pathname.startsWith('/api/');
+}
 
 type PhaseResult = {
   status: 'success' | 'failure' | 'skipped';
@@ -120,7 +135,9 @@ export default {
   },
 
   /**
-   * HTTP Request Handler - For manual triggers and health checks
+   * HTTP Request Handler
+   * /api/* (except the token-authenticated calendar feed) and /trigger require
+   * a verified Cloudflare Access identity; data is scoped to that user.
    */
   async fetch(
     request: Request,
@@ -129,6 +146,7 @@ export default {
   ): Promise<Response> {
     const url = new URL(request.url);
 
+    // Access-bypassed; the handler checks the feed token itself
     if (url.pathname === '/api/calendar.ics') {
       return handleGetCalendarFeed(request.method, url.searchParams, env);
     }
@@ -143,153 +161,31 @@ export default {
       );
     }
 
-    if (url.pathname === '/api/books' && request.method === 'GET') {
-      return handleBooksApi(env);
-    }
-
-    if (url.pathname === '/api/cron-runs/latest' && request.method === 'GET') {
-      return handleGetLatestCronRuns(env);
-    }
-
-    if (url.pathname === '/api/cron-runs' && request.method === 'GET') {
-      return handleGetCronRuns(env, request);
-    }
-
-    // New books API endpoint (신착 도서)
-    if (url.pathname === '/api/new-books' && request.method === 'GET') {
-      return handleNewBooksApi(request);
-    }
-
-    // Library search API endpoint
-    if (url.pathname === '/api/search' && request.method === 'GET') {
-      return handleSearchBooksApi(request);
-    }
-
-    // External (Aladin) keyword search — books the library does not hold
-    if (url.pathname === '/api/external-search' && request.method === 'GET') {
-      return handleExternalSearch(env, request);
-    }
-
-    // Aladin book lookup by ISBN
-    const aladinIsbnMatch = url.pathname.match(/^\/api\/aladin\/isbn\/(.+)$/);
-    if (aladinIsbnMatch && request.method === 'GET') {
-      const isbn = decodeURIComponent(aladinIsbnMatch[1]);
-      return handleGetBookByIsbn(env, isbn);
-    }
-
-    // Planned loans API endpoints
-    if (url.pathname === '/api/planned-loans') {
-      if (request.method === 'GET') {
-        return handleGetPlannedLoans(env);
+    if (requiresAccessAuth(url.pathname)) {
+      const auth = await authenticateRequest(request, env);
+      if (!auth.ok) {
+        return jsonResponse(
+          { error: auth.error },
+          { status: auth.status, headers: { 'Cache-Control': 'no-store' } },
+        );
       }
-      if (request.method === 'POST') {
-        return handleCreatePlannedLoan(env, request);
-      }
-    }
-
-    const plannedLoanMatch = url.pathname.match(
-      /^\/api\/planned-loans\/(\d+)$/,
-    );
-    if (plannedLoanMatch && request.method === 'DELETE') {
-      const plannedId = parseInt(plannedLoanMatch[1], 10);
-      return handleDeletePlannedLoan(env, plannedId);
-    }
-
-    // Book requests API endpoints (희망도서 신청 목록)
-    if (url.pathname === '/api/book-requests') {
-      if (request.method === 'GET') {
-        return handleGetBookRequests(env);
-      }
-      if (request.method === 'POST') {
-        return handleCreateBookRequest(env, request);
-      }
-    }
-
-    const bookRequestMatch = url.pathname.match(
-      /^\/api\/book-requests\/(\d+)$/,
-    );
-    if (bookRequestMatch && request.method === 'DELETE') {
-      const requestId = parseInt(bookRequestMatch[1], 10);
-      return handleDeleteBookRequest(env, requestId);
-    }
-
-    // Library-DB sync endpoint
-    if (url.pathname === '/api/books/sync' && request.method === 'POST') {
-      return handleSyncBooks(env);
-    }
-
-    // Get single book endpoint
-    // Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
-    const singleBookMatch = url.pathname.match(/^\/api\/books\/(\d+)$/);
-    if (singleBookMatch && request.method === 'GET') {
-      const bookId = parseInt(singleBookMatch[1], 10);
-      return handleGetBook(env, bookId);
-    }
-
-    // Update read status endpoint
-    const readStatusMatch = url.pathname.match(
-      /^\/api\/books\/(\d+)\/read-status$/,
-    );
-    if (readStatusMatch && request.method === 'PATCH') {
-      const bookId = parseInt(readStatusMatch[1], 10);
-      return handleUpdateReadStatus(env, bookId, request);
-    }
-
-    // Notes API endpoints
-    // GET /api/books/:id/notes - Get notes for a book
-    // POST /api/books/:id/notes - Create a note
-    const bookNotesMatch = url.pathname.match(/^\/api\/books\/(\d+)\/notes$/);
-    if (bookNotesMatch) {
-      const bookId = parseInt(bookNotesMatch[1], 10);
-
-      if (request.method === 'GET') {
-        return handleGetNotes(env, bookId);
+      if (ADMIN_ONLY_PATHS.has(url.pathname) && !auth.user.isAdmin) {
+        return jsonResponse(
+          { error: 'Forbidden' },
+          { status: 403, headers: { 'Cache-Control': 'no-store' } },
+        );
       }
 
-      if (request.method === 'POST') {
-        const body = (await request.json()) as CreateNoteRequest;
-        return handleCreateNote(env, bookId, body);
-      }
-    }
-
-    // PUT /api/notes/:id - Update a note
-    // DELETE /api/notes/:id - Delete a note
-    const noteMatch = url.pathname.match(/^\/api\/notes\/(\d+)$/);
-    if (noteMatch) {
-      const noteId = parseInt(noteMatch[1], 10);
-
-      if (request.method === 'PUT') {
-        const body = (await request.json()) as UpdateNoteRequest;
-        return handleUpdateNote(env, noteId, body);
-      }
-
-      if (request.method === 'DELETE') {
-        return handleDeleteNote(env, noteId);
-      }
-    }
-
-    // Practice sheet endpoint
-    if (url.pathname === '/api/practice/today' && request.method === 'GET') {
-      return handlePracticeDraw(env, request);
-    }
-
-    // Manual trigger endpoint (access controlled via Zero Trust)
-    // POST only - triggering task has side effects, violates REST if GET allowed
-    if (url.pathname === '/trigger' && request.method === 'POST') {
-      const repo = createCronRunRepository(env.DB as D1Database);
-      ctx.waitUntil(
-        (async () => {
-          await runPhase(repo, 'renewal', 'manual', () =>
-            handleScheduledRenewal(env),
-          );
-          await runPhase(repo, 'sync', 'manual', () =>
-            handleScheduledSync(env),
-          );
-        })(),
+      const response = await routeAuthenticatedRequest(
+        request,
+        env,
+        ctx,
+        url,
+        auth.user,
       );
-      return new Response(JSON.stringify({ message: 'Task triggered' }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      if (response) {
+        return response;
+      }
     }
 
     // Serve static assets (SPA) via Cloudflare Assets binding
@@ -316,6 +212,165 @@ export default {
     return new Response('Not Found', { status: 404 });
   },
 };
+
+/**
+ * Routes for a request whose Access identity has been verified.
+ * Returns null when no API route matches, so the caller falls back to assets.
+ */
+async function routeAuthenticatedRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+  user: AuthenticatedUser,
+): Promise<Response | null> {
+  const userId = user.id;
+
+  if (url.pathname === '/api/books' && request.method === 'GET') {
+    return handleBooksApi(env, userId);
+  }
+
+  if (url.pathname === '/api/cron-runs/latest' && request.method === 'GET') {
+    return handleGetLatestCronRuns(env);
+  }
+
+  if (url.pathname === '/api/cron-runs' && request.method === 'GET') {
+    return handleGetCronRuns(env, request);
+  }
+
+  // New books API endpoint (신착 도서)
+  if (url.pathname === '/api/new-books' && request.method === 'GET') {
+    return handleNewBooksApi(request);
+  }
+
+  // Library search API endpoint
+  if (url.pathname === '/api/search' && request.method === 'GET') {
+    return handleSearchBooksApi(request);
+  }
+
+  // External (Aladin) keyword search — books the library does not hold
+  if (url.pathname === '/api/external-search' && request.method === 'GET') {
+    return handleExternalSearch(env, request);
+  }
+
+  // Aladin book lookup by ISBN
+  const aladinIsbnMatch = url.pathname.match(/^\/api\/aladin\/isbn\/(.+)$/);
+  if (aladinIsbnMatch && request.method === 'GET') {
+    const isbn = decodeURIComponent(aladinIsbnMatch[1]);
+    return handleGetBookByIsbn(env, isbn);
+  }
+
+  // Planned loans API endpoints
+  if (url.pathname === '/api/planned-loans') {
+    if (request.method === 'GET') {
+      return handleGetPlannedLoans(env, userId);
+    }
+    if (request.method === 'POST') {
+      return handleCreatePlannedLoan(env, userId, request);
+    }
+  }
+
+  const plannedLoanMatch = url.pathname.match(/^\/api\/planned-loans\/(\d+)$/);
+  if (plannedLoanMatch && request.method === 'DELETE') {
+    const plannedId = parseInt(plannedLoanMatch[1], 10);
+    return handleDeletePlannedLoan(env, userId, plannedId);
+  }
+
+  // Book requests API endpoints (희망도서 신청 목록)
+  if (url.pathname === '/api/book-requests') {
+    if (request.method === 'GET') {
+      return handleGetBookRequests(env, userId);
+    }
+    if (request.method === 'POST') {
+      return handleCreateBookRequest(env, userId, request);
+    }
+  }
+
+  const bookRequestMatch = url.pathname.match(/^\/api\/book-requests\/(\d+)$/);
+  if (bookRequestMatch && request.method === 'DELETE') {
+    const requestId = parseInt(bookRequestMatch[1], 10);
+    return handleDeleteBookRequest(env, userId, requestId);
+  }
+
+  // Library-DB sync endpoint (admin only, enforced before routing)
+  if (url.pathname === '/api/books/sync' && request.method === 'POST') {
+    return handleSyncBooks(env);
+  }
+
+  // Get single book endpoint
+  // Trace: spec_id: SPEC-book-detail-001, task_id: TASK-030
+  const singleBookMatch = url.pathname.match(/^\/api\/books\/(\d+)$/);
+  if (singleBookMatch && request.method === 'GET') {
+    const bookId = parseInt(singleBookMatch[1], 10);
+    return handleGetBook(env, userId, bookId);
+  }
+
+  // Update read status endpoint
+  const readStatusMatch = url.pathname.match(
+    /^\/api\/books\/(\d+)\/read-status$/,
+  );
+  if (readStatusMatch && request.method === 'PATCH') {
+    const bookId = parseInt(readStatusMatch[1], 10);
+    return handleUpdateReadStatus(env, userId, bookId, request);
+  }
+
+  // Notes API endpoints
+  // GET /api/books/:id/notes - Get notes for a book
+  // POST /api/books/:id/notes - Create a note
+  const bookNotesMatch = url.pathname.match(/^\/api\/books\/(\d+)\/notes$/);
+  if (bookNotesMatch) {
+    const bookId = parseInt(bookNotesMatch[1], 10);
+
+    if (request.method === 'GET') {
+      return handleGetNotes(env, userId, bookId);
+    }
+
+    if (request.method === 'POST') {
+      const body = (await request.json()) as CreateNoteRequest;
+      return handleCreateNote(env, userId, bookId, body);
+    }
+  }
+
+  // PUT /api/notes/:id - Update a note
+  // DELETE /api/notes/:id - Delete a note
+  const noteMatch = url.pathname.match(/^\/api\/notes\/(\d+)$/);
+  if (noteMatch) {
+    const noteId = parseInt(noteMatch[1], 10);
+
+    if (request.method === 'PUT') {
+      const body = (await request.json()) as UpdateNoteRequest;
+      return handleUpdateNote(env, userId, noteId, body);
+    }
+
+    if (request.method === 'DELETE') {
+      return handleDeleteNote(env, userId, noteId);
+    }
+  }
+
+  // Practice sheet endpoint
+  if (url.pathname === '/api/practice/today' && request.method === 'GET') {
+    return handlePracticeDraw(env, userId, request);
+  }
+
+  // Manual trigger endpoint (admin only, enforced before routing)
+  // POST only - triggering task has side effects, violates REST if GET allowed
+  if (url.pathname === '/trigger' && request.method === 'POST') {
+    const repo = createCronRunRepository(env.DB as D1Database);
+    ctx.waitUntil(
+      (async () => {
+        await runPhase(repo, 'renewal', 'manual', () =>
+          handleScheduledRenewal(env),
+        );
+        await runPhase(repo, 'sync', 'manual', () => handleScheduledSync(env));
+      })(),
+    );
+    return new Response(JSON.stringify({ message: 'Task triggered' }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  return null;
+}
 
 /**
  * Sequential handler: renewal → sync → due-soon notification

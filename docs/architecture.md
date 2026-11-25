@@ -51,6 +51,7 @@ utils/ and types/ are leaf — they import nothing from handlers/services.
 - Handlers orchestrate request → validation (Zod) → service call → response shaping.
 - Services own the business rules (renewal eligibility, broadcast composition).
 - Repositories are the **only** modules that may touch `env.DB`.
+- User-owned data is scoped by `user_id`: every repository method on books, notes (through books), note send stats, planned loans, dismissals and book requests takes `userId`. Handlers get it from the verified Cloudflare Access identity (`services/access-auth.ts`); library sync, renewal, alerts and the calendar feed use `OWNER_USER_ID`.
 - External clients (`library-client`, `aladin-client`) wrap `fetch` and never touch D1.
 
 ### Cross-package boundaries
@@ -69,6 +70,8 @@ services/note-repository.ts                  # notes + send stats
 services/planned-loan-repository.ts          # planned_loans + dismissals
 services/telegram-message-repository.ts      # broadcast audit
 services/planned-loan-dismissal-repository.ts
+services/book-request-repository.ts          # book_requests
+services/user-repository.ts                  # users (Cloudflare Access identities)
 ```
 
 Each file exports a `create*Repository(db: D1Database)` factory. Handlers receive `env.DB`, build the repo, then call typed methods. **No raw `env.DB.prepare(...)` outside this layer.**
@@ -81,7 +84,7 @@ Migrations live in `packages/backend/migrations/NNNN_description.sql`. Applied l
 | ---------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------- |
 | Cron `0 3 * * *` UTC (12:00 KST)                                                         | `scheduled()` in `index.ts` | Runs due-soon broadcast + renewal pipeline in `ctx.waitUntil` |
 | `GET /api/books`, `/api/notes`, `/api/planned-loans`, `/api/search`, `/api/aladin/:isbn` | `fetch()` in `index.ts`     | All JSON; pagination via `utils/pagination.ts`                |
-| `POST /trigger`                                                                          | sync-handler                | Manual sync entrypoint                                        |
+| `POST /trigger`                                                                          | sync-handler                | Manual sync entrypoint (admin only)                           |
 | Static assets                                                                            | `[assets] ASSETS`           | Frontend dist served from Worker                              |
 
 ## Key Abstractions

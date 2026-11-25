@@ -28,11 +28,12 @@ type NoteRepo = Pick<
 
 export async function handleBooksApi(
   env: Env,
+  userId: number,
   bookRepo: BookRepo = createBookRepository(env.DB),
   noteRepo: NoteRepo = createNoteRepository(env.DB),
 ): Promise<Response> {
-  const records = await bookRepo.findAll();
-  const view = await buildBookShelfView(records, noteRepo);
+  const records = await bookRepo.findAll(userId);
+  const view = await buildBookShelfView(userId, records, noteRepo);
   return new Response(JSON.stringify({ items: view }), {
     headers: {
       'Content-Type': 'application/json',
@@ -43,6 +44,7 @@ export async function handleBooksApi(
 
 export async function handleUpdateReadStatus(
   env: Env,
+  userId: number,
   bookId: number,
   request: Request,
   bookRepo: BookRepo = createBookRepository(env.DB),
@@ -54,7 +56,17 @@ export async function handleUpdateReadStatus(
       return new Response('Invalid request body', { status: 400 });
     }
 
-    await bookRepo.updateReadStatus(bookId, body.readStatus);
+    const updated = await bookRepo.updateReadStatus(
+      userId,
+      bookId,
+      body.readStatus,
+    );
+    if (!updated) {
+      return new Response(JSON.stringify({ error: 'Book not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { 'Content-Type': 'application/json' },
@@ -80,12 +92,13 @@ type FullNoteRepo = Pick<
 
 export async function handleGetBook(
   env: Env,
+  userId: number,
   bookId: number,
   bookRepo: FullBookRepo = createBookRepository(env.DB),
   noteRepo: FullNoteRepo = createNoteRepository(env.DB),
 ): Promise<Response> {
   try {
-    const record = await bookRepo.findById(bookId);
+    const record = await bookRepo.findById(userId, bookId);
 
     if (!record) {
       return new Response(JSON.stringify({ error: 'Book not found' }), {
@@ -94,7 +107,7 @@ export async function handleGetBook(
       });
     }
 
-    const notes = await noteRepo.findByBookId(bookId);
+    const notes = await noteRepo.findByBookId(userId, bookId);
     const notesView = notes.map((note) => ({
       id: note.id ?? 0,
       bookId: note.book_id,

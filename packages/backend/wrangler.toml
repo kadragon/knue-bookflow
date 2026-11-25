@@ -48,3 +48,5 @@ traces = { enabled = true, head_sampling_rate = 0.1 }
 # - ALADIN_API_KEY
 # - TELEGRAM_BOT_TOKEN
 # - TELEGRAM_CHAT_ID
+# - CALENDAR_FEED_TOKEN (optional)
+# - ACCESS_TEAM_DOMAIN, ACCESS_AUD, ADMIN_EMAIL (Cloudflare Access; see docs/runbook.md)

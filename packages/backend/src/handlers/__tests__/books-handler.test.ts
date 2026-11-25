@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deriveBookViewModel, sortBooks } from '../../services/book-shelf';
 import type { BookRecord, Env } from '../../types';
-import { handleBooksApi, handleGetBook } from '../books-handler';
+import {
+  handleBooksApi,
+  handleGetBook,
+  handleUpdateReadStatus,
+} from '../books-handler';
 
 // Trace: spec_id: SPEC-frontend-001, task_id: TASK-019
 
@@ -118,6 +122,8 @@ describe('sortBooks', () => {
   });
 });
 
+const USER_ID = 7;
+
 describe('handleBooksApi', () => {
   const createEnv = (): Env => ({
     DB: null as unknown as D1Database,
@@ -173,14 +179,19 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       countNotesForBookIds: async () => new Map<number, number>(),
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
@@ -216,14 +227,19 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       countNotesForBookIds: async () => new Map<number, number>([[1, 3]]),
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
@@ -253,14 +269,20 @@ describe('handleBooksApi', () => {
           renew_count: 0,
           is_read: 0,
         }) satisfies BookRecord,
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       findByBookId: async () => [],
     } as const;
 
-    const response = await handleGetBook(env, 1, fakeBookRepo, fakeNoteRepo);
+    const response = await handleGetBook(
+      env,
+      USER_ID,
+      1,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
   });
@@ -318,7 +340,7 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const countNotesForBookIds = vi.fn(async () => new Map<number, number>());
@@ -326,13 +348,18 @@ describe('handleBooksApi', () => {
       countNotesForBookIds,
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     const body = (await response.json()) as {
       items: Array<{ title: string; dbId: number; loanOrdinal: number }>;
     };
 
     expect(body.items).toHaveLength(2);
-    expect(countNotesForBookIds).toHaveBeenCalledWith([300, 200]);
+    expect(countNotesForBookIds).toHaveBeenCalledWith(USER_ID, [300, 200]);
 
     const cleanCode = body.items.find((item) => item.title === 'Clean Code');
     expect(cleanCode).toEqual(
@@ -380,14 +407,19 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       countNotesForBookIds: async () => new Map<number, number>(),
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     const body = (await response.json()) as {
       items: Array<{ dbId: number; loanOrdinal: number }>;
     };
@@ -438,14 +470,19 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       countNotesForBookIds: async () => new Map<number, number>(),
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     const body = (await response.json()) as {
       items: Array<{ isbn13: string | null; loanOrdinal: number }>;
     };
@@ -491,14 +528,19 @@ describe('handleBooksApi', () => {
             is_read: 0,
           },
         ] satisfies BookRecord[],
-      updateReadStatus: async () => {},
+      updateReadStatus: async () => true,
     } as const;
 
     const fakeNoteRepo = {
       countNotesForBookIds: async () => new Map<number, number>(),
     } as const;
 
-    const response = await handleBooksApi(env, fakeBookRepo, fakeNoteRepo);
+    const response = await handleBooksApi(
+      env,
+      USER_ID,
+      fakeBookRepo,
+      fakeNoteRepo,
+    );
     const body = (await response.json()) as {
       items: Array<{ dbId: number; loanOrdinal: number }>;
     };
@@ -510,5 +552,67 @@ describe('handleBooksApi', () => {
         loanOrdinal: 2,
       }),
     );
+  });
+});
+
+describe('book routes are scoped per user', () => {
+  const env = {
+    DB: null as unknown as D1Database,
+    ASSETS: {} as Fetcher,
+    LIBRARY_USER_ID: '',
+    LIBRARY_PASSWORD: '',
+    ALADIN_API_KEY: '',
+    TELEGRAM_BOT_TOKEN: '',
+    TELEGRAM_CHAT_ID: '',
+    ENVIRONMENT: 'test',
+  } as Env;
+
+  it('lists and counts notes for the caller only', async () => {
+    const findAll = vi.fn(async () => [] as BookRecord[]);
+    const countNotesForBookIds = vi.fn(async () => new Map<number, number>());
+
+    await handleBooksApi(
+      env,
+      USER_ID,
+      { findAll, updateReadStatus: async () => true },
+      { countNotesForBookIds },
+    );
+
+    expect(findAll).toHaveBeenCalledWith(USER_ID);
+    expect(countNotesForBookIds).toHaveBeenCalledWith(USER_ID, []);
+  });
+
+  it('returns 404 for a book the caller does not own', async () => {
+    const findById = vi.fn(async () => null);
+    const findByBookId = vi.fn(async () => []);
+
+    const response = await handleGetBook(
+      env,
+      USER_ID,
+      42,
+      { findById, updateReadStatus: async () => true },
+      { findByBookId },
+    );
+
+    expect(response.status).toBe(404);
+    expect(findById).toHaveBeenCalledWith(USER_ID, 42);
+    expect(findByBookId).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when updating the read status of a book the caller does not own', async () => {
+    const updateReadStatus = vi.fn(async () => false);
+    const request = new Request('http://localhost/api/books/42/read-status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ readStatus: 'finished' }),
+    });
+
+    const response = await handleUpdateReadStatus(env, USER_ID, 42, request, {
+      findAll: async () => [],
+      updateReadStatus,
+    });
+
+    expect(response.status).toBe(404);
+    expect(updateReadStatus).toHaveBeenCalledWith(USER_ID, 42, 'finished');
   });
 });

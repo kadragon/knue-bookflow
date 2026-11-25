@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookRecord, Env } from '../../types';
+import { OWNER_USER_ID } from '../../utils/constants';
 import { broadcastDueSoonBooks, formatDueSoonMessage } from '../note-broadcast';
 
 describe('formatDueSoonMessage', () => {
@@ -267,6 +268,7 @@ describe('broadcastDueSoonBooks', () => {
     });
 
     expect(bookRepository.findDueSoonBooks).toHaveBeenCalledWith(
+      OWNER_USER_ID,
       '2025-01-15',
       '2025-01-20',
     );

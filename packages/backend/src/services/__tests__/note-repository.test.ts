@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NoteRecord } from '../../types';
 import { createNoteRepository, NoteRepository } from '../note-repository';
 
+const USER_ID = 7;
+const OWNED_BY_USER = 'book_id IN (SELECT id FROM books WHERE user_id = ?)';
+
 // Mock D1 database
 function createMockD1(): D1Database {
   const mockPrepare = vi.fn();
@@ -57,13 +60,13 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByBookId(1);
+      const result = await repository.findByBookId(USER_ID, 1);
 
       expect(result).toHaveLength(1);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM notes WHERE book_id = ? ORDER BY page_number ASC',
+        `SELECT * FROM notes WHERE book_id = ? AND ${OWNED_BY_USER} ORDER BY page_number ASC`,
       );
-      expect(mockBind).toHaveBeenCalledWith(1);
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
   });
 
@@ -85,8 +88,12 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findById(1);
+      const result = await repository.findById(USER_ID, 1);
       expect(result).toEqual(mockNote);
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        `SELECT * FROM notes WHERE id = ? AND ${OWNED_BY_USER}`,
+      );
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
 
     it('should return null when not found', async () => {
@@ -97,7 +104,7 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findById(999);
+      const result = await repository.findById(USER_ID, 999);
       expect(result).toBeNull();
     });
   });
@@ -117,11 +124,13 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.create(newNote);
+      const result = await repository.create(USER_ID, newNote);
 
-      expect(result.id).toBe(100);
+      expect(result?.id).toBe(100);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO notes'),
+        expect.stringMatching(
+          /INSERT INTO notes.*WHERE EXISTS \(SELECT 1 FROM books WHERE id = \? AND user_id = \?\)/s,
+        ),
       );
       expect(mockBind).toHaveBeenCalledWith(
         1,
@@ -129,10 +138,12 @@ describe('NoteRepository', () => {
         'New Note',
         expect.any(String), // created_at
         expect.any(String), // updated_at
+        1, // book id ownership check
+        USER_ID,
       );
     });
 
-    it('should throw error if creation fails', async () => {
+    it('should return null when the user does not own the book', async () => {
       const mockBind = vi.fn().mockReturnValue({
         first: vi.fn().mockResolvedValue(null),
       });
@@ -141,8 +152,12 @@ describe('NoteRepository', () => {
       });
 
       await expect(
-        repository.create({ book_id: 1, page_number: 10, content: 'fail' }),
-      ).rejects.toThrow('Failed to create note');
+        repository.create(USER_ID, {
+          book_id: 1,
+          page_number: 10,
+          content: 'fail',
+        }),
+      ).resolves.toBeNull();
     });
   });
 
@@ -155,11 +170,14 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      await repository.update(1, { page_number: 20, content: 'Updated' });
+      await repository.update(USER_ID, 1, {
+        page_number: 20,
+        content: 'Updated',
+      });
 
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining(
-          'UPDATE notes SET updated_at = ?, page_number = ?, content = ? WHERE id = ?',
+          `UPDATE notes SET updated_at = ?, page_number = ?, content = ? WHERE id = ? AND ${OWNED_BY_USER}`,
         ),
       );
       expect(mockBind).toHaveBeenCalledWith(
@@ -167,6 +185,7 @@ describe('NoteRepository', () => {
         20,
         'Updated',
         1, // id
+        USER_ID,
       );
     });
 
@@ -178,11 +197,11 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      await repository.update(1, { content: 'Updated' });
+      await repository.update(USER_ID, 1, { content: 'Updated' });
 
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining(
-          'UPDATE notes SET updated_at = ?, content = ? WHERE id = ?',
+          `UPDATE notes SET updated_at = ?, content = ? WHERE id = ? AND ${OWNED_BY_USER}`,
         ),
       );
     });
@@ -195,7 +214,9 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.update(1, { content: 'Updated' });
+      const result = await repository.update(USER_ID, 1, {
+        content: 'Updated',
+      });
       expect(result).toBeNull();
     });
   });
@@ -209,11 +230,12 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.delete(1);
+      const result = await repository.delete(USER_ID, 1);
       expect(result).toBe(true);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'DELETE FROM notes WHERE id = ?',
+        `DELETE FROM notes WHERE id = ? AND ${OWNED_BY_USER}`,
       );
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
 
     it('should return false when not found', async () => {
@@ -224,7 +246,7 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.delete(999);
+      const result = await repository.delete(USER_ID, 999);
       expect(result).toBe(false);
     });
   });
@@ -238,8 +260,9 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const count = await repository.countByBookId(1);
+      const count = await repository.countByBookId(USER_ID, 1);
       expect(count).toBe(5);
+      expect(mockBind).toHaveBeenCalledWith(1, USER_ID);
     });
 
     it('should return 0 if result is null', async () => {
@@ -250,18 +273,19 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const count = await repository.countByBookId(1);
+      const count = await repository.countByBookId(USER_ID, 1);
       expect(count).toBe(0);
     });
   });
 
   describe('countNotesForBookIds', () => {
-    it('should return map of counts', async () => {
+    it('should return counts for the requested books of the user', async () => {
       const mockBind = vi.fn().mockReturnValue({
         all: vi.fn().mockResolvedValue({
           results: [
             { book_id: 1, count: 2 },
             { book_id: 2, count: 3 },
+            { book_id: 9, count: 4 },
           ],
         }),
       });
@@ -269,17 +293,19 @@ describe('NoteRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.countNotesForBookIds([1, 2]);
+      const result = await repository.countNotesForBookIds(USER_ID, [1, 2]);
 
       expect(result.get(1)).toBe(2);
       expect(result.get(2)).toBe(3);
+      expect(result.has(9)).toBe(false);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('IN (?, ?)'),
+        expect.stringContaining(OWNED_BY_USER),
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID);
     });
 
     it('should return empty map for empty input', async () => {
-      const result = await repository.countNotesForBookIds([]);
+      const result = await repository.countNotesForBookIds(USER_ID, []);
       expect(result.size).toBe(0);
       expect(mockDb.prepare).not.toHaveBeenCalled();
     });

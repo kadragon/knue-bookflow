@@ -63,6 +63,7 @@ function validatePayload(body: unknown): {
 
 export async function handleCreateBookRequest(
   env: Env,
+  userId: number,
   request: Request,
   repo: BookRequestRepo = createBookRequestRepository(env.DB),
 ): Promise<Response> {
@@ -77,7 +78,7 @@ export async function handleCreateBookRequest(
       );
     }
 
-    const existing = await repo.findByIsbn13(payload.isbn13);
+    const existing = await repo.findByIsbn13(userId, payload.isbn13);
     if (existing) {
       return new Response(
         JSON.stringify({
@@ -88,7 +89,7 @@ export async function handleCreateBookRequest(
       );
     }
 
-    const created = await repo.create({
+    const created = await repo.create(userId, {
       isbn13: payload.isbn13,
       isbn: payload.isbn ?? null,
       title: payload.title,
@@ -124,10 +125,11 @@ export async function handleCreateBookRequest(
 
 export async function handleGetBookRequests(
   env: Env,
+  userId: number,
   repo: BookRequestRepo = createBookRequestRepository(env.DB),
 ): Promise<Response> {
   try {
-    const items = await repo.findAll();
+    const items = await repo.findAll(userId);
     return new Response(JSON.stringify({ items: items.map(toViewModel) }), {
       headers: {
         'Content-Type': 'application/json',
@@ -145,11 +147,12 @@ export async function handleGetBookRequests(
 
 export async function handleDeleteBookRequest(
   env: Env,
+  userId: number,
   id: number,
   repo: BookRequestRepo = createBookRequestRepository(env.DB),
 ): Promise<Response> {
   try {
-    const deleted = await repo.deleteById(id);
+    const deleted = await repo.deleteById(userId, id);
     return new Response(JSON.stringify({ success: deleted }), {
       headers: { 'Content-Type': 'application/json' },
     });

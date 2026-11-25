@@ -10,23 +10,38 @@ import {
   handleGetBookRequests,
 } from '../book-request-handler';
 
+const USER_ID = 7;
+const OTHER_USER_ID = 8;
+
+// Scopes rows by user_id like the D1 repository does.
 class FakeBookRequestRepo {
   items: BookRequestRecord[] = [];
 
-  async findAll(): Promise<BookRequestRecord[]> {
-    return this.items;
+  async findAll(userId: number): Promise<BookRequestRecord[]> {
+    return this.items.filter((i) => i.user_id === userId);
   }
 
-  async findByIsbn13(isbn13: string): Promise<BookRequestRecord | null> {
-    return this.items.find((i) => i.isbn13 === isbn13) || null;
+  async findByIsbn13(
+    userId: number,
+    isbn13: string,
+  ): Promise<BookRequestRecord | null> {
+    return (
+      this.items.find((i) => i.user_id === userId && i.isbn13 === isbn13) ||
+      null
+    );
   }
 
   async create(
-    record: Omit<BookRequestRecord, 'id' | 'created_at' | 'updated_at'>,
+    userId: number,
+    record: Omit<
+      BookRequestRecord,
+      'id' | 'user_id' | 'created_at' | 'updated_at'
+    >,
   ): Promise<BookRequestRecord> {
     const now = new Date().toISOString();
     const created: BookRequestRecord = {
       ...record,
+      user_id: userId,
       id: this.items.length + 1,
       created_at: now,
       updated_at: now,
@@ -35,9 +50,11 @@ class FakeBookRequestRepo {
     return created;
   }
 
-  async deleteById(id: number): Promise<boolean> {
+  async deleteById(userId: number, id: number): Promise<boolean> {
     const before = this.items.length;
-    this.items = this.items.filter((i) => i.id !== id);
+    this.items = this.items.filter(
+      (i) => !(i.id === id && i.user_id === userId),
+    );
     return this.items.length !== before;
   }
 }
@@ -79,6 +96,7 @@ describe('handleCreateBookRequest', () => {
     const repo = new FakeBookRequestRepo();
     const res = await handleCreateBookRequest(
       makeEnv(),
+      USER_ID,
       postReq(payload),
       repo,
     );
@@ -99,7 +117,12 @@ describe('handleCreateBookRequest', () => {
   it('returns 400 when isbn13 is missing', async () => {
     const repo = new FakeBookRequestRepo();
     const { isbn13: _omit, ...rest } = payload;
-    const res = await handleCreateBookRequest(makeEnv(), postReq(rest), repo);
+    const res = await handleCreateBookRequest(
+      makeEnv(),
+      USER_ID,
+      postReq(rest),
+      repo,
+    );
 
     expect(res.status).toBe(400);
     const body = (await res.json()) as { code: string };
@@ -109,16 +132,22 @@ describe('handleCreateBookRequest', () => {
   it('returns 400 when title is missing', async () => {
     const repo = new FakeBookRequestRepo();
     const { title: _omit, ...rest } = payload;
-    const res = await handleCreateBookRequest(makeEnv(), postReq(rest), repo);
+    const res = await handleCreateBookRequest(
+      makeEnv(),
+      USER_ID,
+      postReq(rest),
+      repo,
+    );
 
     expect(res.status).toBe(400);
   });
 
   it('returns 409 on duplicate isbn13', async () => {
     const repo = new FakeBookRequestRepo();
-    await handleCreateBookRequest(makeEnv(), postReq(payload), repo);
+    await handleCreateBookRequest(makeEnv(), USER_ID, postReq(payload), repo);
     const res = await handleCreateBookRequest(
       makeEnv(),
+      USER_ID,
       postReq(payload),
       repo,
     );
@@ -141,6 +170,7 @@ describe('handleCreateBookRequest', () => {
 
     const res = await handleCreateBookRequest(
       makeEnv(),
+      USER_ID,
       postReq(payload),
       repo,
     );
@@ -157,7 +187,7 @@ describe('handleCreateBookRequest', () => {
       headers: { 'Content-Type': 'application/json' },
       body: 'not json',
     });
-    const res = await handleCreateBookRequest(makeEnv(), req, repo);
+    const res = await handleCreateBookRequest(makeEnv(), USER_ID, req, repo);
 
     expect(res.status).toBe(400);
   });
@@ -166,9 +196,9 @@ describe('handleCreateBookRequest', () => {
 describe('handleGetBookRequests', () => {
   it('returns the list of requests (200)', async () => {
     const repo = new FakeBookRequestRepo();
-    await handleCreateBookRequest(makeEnv(), postReq(payload), repo);
+    await handleCreateBookRequest(makeEnv(), USER_ID, postReq(payload), repo);
 
-    const res = await handleGetBookRequests(makeEnv(), repo);
+    const res = await handleGetBookRequests(makeEnv(), USER_ID, repo);
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: unknown[] };
@@ -181,12 +211,18 @@ describe('handleDeleteBookRequest', () => {
     const repo = new FakeBookRequestRepo();
     const created = await handleCreateBookRequest(
       makeEnv(),
+      USER_ID,
       postReq(payload),
       repo,
     );
     const { item } = (await created.json()) as { item: { id: number } };
 
-    const res = await handleDeleteBookRequest(makeEnv(), item.id, repo);
+    const res = await handleDeleteBookRequest(
+      makeEnv(),
+      USER_ID,
+      item.id,
+      repo,
+    );
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { success: boolean };
@@ -195,9 +231,57 @@ describe('handleDeleteBookRequest', () => {
 
   it('returns success false when the row is missing', async () => {
     const repo = new FakeBookRequestRepo();
-    const res = await handleDeleteBookRequest(makeEnv(), 999, repo);
+    const res = await handleDeleteBookRequest(makeEnv(), USER_ID, 999, repo);
 
     const body = (await res.json()) as { success: boolean };
     expect(body.success).toBe(false);
+  });
+});
+
+describe('book requests are scoped per user', () => {
+  it('lists only the caller own requests', async () => {
+    const repo = new FakeBookRequestRepo();
+    await handleCreateBookRequest(makeEnv(), USER_ID, postReq(payload), repo);
+
+    const res = await handleGetBookRequests(makeEnv(), OTHER_USER_ID, repo);
+
+    const body = (await res.json()) as { items: unknown[] };
+    expect(body.items).toHaveLength(0);
+  });
+
+  it('lets another user request the same isbn13', async () => {
+    const repo = new FakeBookRequestRepo();
+    await handleCreateBookRequest(makeEnv(), USER_ID, postReq(payload), repo);
+
+    const res = await handleCreateBookRequest(
+      makeEnv(),
+      OTHER_USER_ID,
+      postReq(payload),
+      repo,
+    );
+
+    expect(res.status).toBe(201);
+  });
+
+  it('does not delete another user request by id', async () => {
+    const repo = new FakeBookRequestRepo();
+    const created = await handleCreateBookRequest(
+      makeEnv(),
+      USER_ID,
+      postReq(payload),
+      repo,
+    );
+    const { item } = (await created.json()) as { item: { id: number } };
+
+    const res = await handleDeleteBookRequest(
+      makeEnv(),
+      OTHER_USER_ID,
+      item.id,
+      repo,
+    );
+
+    const body = (await res.json()) as { success: boolean };
+    expect(body.success).toBe(false);
+    expect(await repo.findAll(USER_ID)).toHaveLength(1);
   });
 });

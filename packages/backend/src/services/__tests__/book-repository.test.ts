@@ -11,6 +11,8 @@ import {
   createBookRepository,
 } from '../book-repository';
 
+const USER_ID = 7;
+
 // Mock D1 database
 function createMockD1(): D1Database {
   const mockPrepare = vi.fn();
@@ -137,12 +139,12 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      await repository.saveBook(record);
+      await repository.saveBook(USER_ID, record);
 
       // Should call prepare twice: once for SELECT, once for INSERT
       expect(mockDb.prepare).toHaveBeenCalledTimes(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE charge_id = ?',
+        'SELECT * FROM books WHERE user_id = ? AND charge_id = ?',
       );
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO books'),
@@ -166,7 +168,7 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      await repository.saveBook(updatedRecord);
+      await repository.saveBook(USER_ID, updatedRecord);
 
       // Should call prepare twice: once for SELECT, once for UPDATE
       expect(mockDb.prepare).toHaveBeenCalledTimes(2);
@@ -201,7 +203,7 @@ describe('BookRepository', () => {
         .mockReturnValueOnce({ bind: mockBindSelect })
         .mockReturnValueOnce({ bind: mockBindUpdate });
 
-      await repository.saveBook(updatedRecord);
+      await repository.saveBook(USER_ID, updatedRecord);
 
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE books SET'),
@@ -216,6 +218,7 @@ describe('BookRepository', () => {
         updatedRecord.cover_url ?? null,
         updatedRecord.description ?? null,
         expect.any(String),
+        USER_ID,
         updatedRecord.charge_id,
       );
     });
@@ -242,7 +245,7 @@ describe('BookRepository', () => {
         .mockReturnValueOnce({ bind: mockBindSelect })
         .mockReturnValueOnce({ bind: mockBindUpdate });
 
-      await repository.saveBook(returnedRecord);
+      await repository.saveBook(USER_ID, returnedRecord);
 
       expect(mockBindUpdate).toHaveBeenCalledWith(
         returnedRecord.due_date,
@@ -253,6 +256,7 @@ describe('BookRepository', () => {
         returnedRecord.cover_url ?? null,
         returnedRecord.description ?? null,
         expect.any(String),
+        USER_ID,
         returnedRecord.charge_id,
       );
     });
@@ -271,7 +275,7 @@ describe('BookRepository', () => {
         bind: mockBindUpdate,
       });
 
-      await repository.saveBook(updatedRecord, existingRecord);
+      await repository.saveBook(USER_ID, updatedRecord, existingRecord);
 
       expect(mockDb.prepare).toHaveBeenCalledTimes(1);
       expect(mockDb.prepare).toHaveBeenCalledWith(
@@ -286,6 +290,7 @@ describe('BookRepository', () => {
         updatedRecord.cover_url ?? null,
         updatedRecord.description ?? null,
         expect.any(String),
+        USER_ID,
         updatedRecord.charge_id,
       );
     });
@@ -301,13 +306,14 @@ describe('BookRepository', () => {
         bind: mockBindInsert,
       });
 
-      await repository.saveBook(record, null);
+      await repository.saveBook(USER_ID, record, null);
 
       expect(mockDb.prepare).toHaveBeenCalledTimes(1);
       expect(mockDb.prepare).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO books'),
       );
       expect(mockBindInsert).toHaveBeenCalledWith(
+        USER_ID,
         record.charge_id,
         record.isbn,
         record.isbn13,
@@ -340,13 +346,13 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByChargeId('123');
+      const result = await repository.findByChargeId(USER_ID, '123');
 
       expect(result).toEqual(mockRecord);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE charge_id = ?',
+        'SELECT * FROM books WHERE user_id = ? AND charge_id = ?',
       );
-      expect(mockBind).toHaveBeenCalledWith('123');
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, '123');
     });
 
     it('should return null when not found', async () => {
@@ -357,7 +363,7 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByChargeId('nonexistent');
+      const result = await repository.findByChargeId(USER_ID, 'nonexistent');
 
       expect(result).toBeNull();
     });
@@ -377,13 +383,13 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByIsbn('9781234567890');
+      const result = await repository.findByIsbn(USER_ID, '9781234567890');
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE isbn = ? ORDER BY charge_date DESC LIMIT ?',
+        'SELECT * FROM books WHERE user_id = ? AND isbn = ? ORDER BY charge_date DESC LIMIT ?',
       );
-      expect(mockBind).toHaveBeenCalledWith('9781234567890', 10);
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, '9781234567890', 10);
     });
 
     it('should return empty array when no records found', async () => {
@@ -394,10 +400,10 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.findByIsbn('nonexistent');
+      const result = await repository.findByIsbn(USER_ID, 'nonexistent');
 
       expect(result).toHaveLength(0);
-      expect(mockBind).toHaveBeenCalledWith('nonexistent', 10);
+      expect(mockBind).toHaveBeenCalledWith(USER_ID, 'nonexistent', 10);
     });
   });
 
@@ -416,15 +422,20 @@ describe('BookRepository', () => {
       });
 
       const result = await repository.findByIsbnAndChargeDate(
+        USER_ID,
         '9781234567890',
         '2025-01-01',
       );
 
       expect(result).toEqual(mockRecord);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books WHERE isbn = ? AND charge_date = ? LIMIT 1',
+        'SELECT * FROM books WHERE user_id = ? AND isbn = ? AND charge_date = ? LIMIT 1',
       );
-      expect(mockBind).toHaveBeenCalledWith('9781234567890', '2025-01-01');
+      expect(mockBind).toHaveBeenCalledWith(
+        USER_ID,
+        '9781234567890',
+        '2025-01-01',
+      );
     });
 
     it('should return null when not found', async () => {
@@ -436,6 +447,7 @@ describe('BookRepository', () => {
       });
 
       const result = await repository.findByIsbnAndChargeDate(
+        USER_ID,
         '9781234567890',
         '2025-01-01',
       );
@@ -451,26 +463,30 @@ describe('BookRepository', () => {
         createMockBookRecord({ charge_id: '2', charge_date: '2025-01-01' }),
       ];
 
-      // findAll calls .all() directly without .bind()
-      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      const mockBind = vi.fn().mockReturnValue({
         all: vi.fn().mockResolvedValue({ results: mockRecords }),
       });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind,
+      });
 
-      const result = await repository.findAll();
+      const result = await repository.findAll(USER_ID);
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM books ORDER BY charge_date DESC',
+        'SELECT * FROM books WHERE user_id = ? ORDER BY charge_date DESC',
       );
+      expect(mockBind).toHaveBeenCalledWith(USER_ID);
     });
 
     it('should return empty array when no records', async () => {
-      // findAll calls .all() directly without .bind()
       (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
-        all: vi.fn().mockResolvedValue({ results: [] }),
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({ results: [] }),
+        }),
       });
 
-      const result = await repository.findAll();
+      const result = await repository.findAll(USER_ID);
 
       expect(result).toHaveLength(0);
     });
@@ -561,13 +577,15 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.getRenewalLogs('123');
+      const result = await repository.getRenewalLogs(USER_ID, '123');
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM renewal_logs WHERE charge_id = ? ORDER BY created_at DESC',
+        expect.stringMatching(
+          /FROM renewal_logs r\s+WHERE r\.charge_id = \?.*b\.user_id = \? AND b\.charge_id = r\.charge_id/s,
+        ),
       );
-      expect(mockBind).toHaveBeenCalledWith('123');
+      expect(mockBind).toHaveBeenCalledWith('123', USER_ID);
     });
 
     it('should return empty array when no logs', async () => {
@@ -578,7 +596,7 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.getRenewalLogs('nonexistent');
+      const result = await repository.getRenewalLogs(USER_ID, 'nonexistent');
 
       expect(result).toHaveLength(0);
     });
@@ -722,14 +740,18 @@ describe('findDueSoonBooks', () => {
       bind: mockBind,
     });
 
-    const books = await repository.findDueSoonBooks('2025-01-15', '2025-01-22');
+    const books = await repository.findDueSoonBooks(
+      USER_ID,
+      '2025-01-15',
+      '2025-01-22',
+    );
 
     expect(mockDb.prepare).toHaveBeenCalledWith(
       expect.stringMatching(
-        /discharge_date IS NULL.*due_date >= \?.*due_date <= \?/s,
+        /user_id = \?.*discharge_date IS NULL.*due_date >= \?.*due_date <= \?/s,
       ),
     );
-    expect(mockBind).toHaveBeenCalledWith('2025-01-15', '2025-01-22');
+    expect(mockBind).toHaveBeenCalledWith(USER_ID, '2025-01-15', '2025-01-22');
     expect(books).toEqual(mockResults);
   });
 
@@ -740,7 +762,11 @@ describe('findDueSoonBooks', () => {
       bind: mockBind,
     });
 
-    const books = await repository.findDueSoonBooks('2025-01-15', '2025-01-22');
+    const books = await repository.findDueSoonBooks(
+      USER_ID,
+      '2025-01-15',
+      '2025-01-22',
+    );
 
     expect(books).toEqual([]);
   });

@@ -3,6 +3,13 @@
  * Trace: spec_id: SPEC-backend-refactor-001, task_id: TASK-079
  */
 
+/**
+ * The owner (admin) user. Rows that predate per-user separation were
+ * backfilled to it (migration 0016), and the single library account's sync,
+ * renewal, Telegram alerts and calendar feed act on its data only.
+ */
+export const OWNER_USER_ID = 1;
+
 export const KST_OFFSET_MINUTES = 9 * 60; // UTC+9
 export const DAY_MS = 24 * 60 * 60 * 1000;
 

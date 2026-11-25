@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { createBookRepository } from '../services/book-repository';
 import { createDueDateCalendar } from '../services/due-date-calendar';
 import type { Env } from '../types';
-import { MAX_RENEWALS_PER_LOAN } from '../utils/constants';
+import { MAX_RENEWALS_PER_LOAN, OWNER_USER_ID } from '../utils/constants';
 import { jsonResponse } from '../utils/response';
 
 const tokenParams = z.tuple([z.string().min(1)]);
@@ -33,7 +33,9 @@ export async function handleGetCalendarFeed(
   }
 
   try {
+    // The feed token is single-account: it serves the owner's loans only.
     const loans = await createBookRepository(env.DB).findLoansDueForReturn(
+      OWNER_USER_ID,
       MAX_RENEWALS_PER_LOAN,
     );
     return new Response(
