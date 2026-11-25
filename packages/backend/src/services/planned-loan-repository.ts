@@ -136,7 +136,7 @@ export class PlannedLoanRepository {
       return 0;
     }
 
-    const BATCH_SIZE = 998; // D1 parameter limit is 1000; one is user_id
+    const BATCH_SIZE = 99; // D1 allows 100 bound parameters per query; one is user_id
     const statements: D1PreparedStatement[] = [];
 
     for (let i = 0; i < libraryBiblioIds.length; i += BATCH_SIZE) {

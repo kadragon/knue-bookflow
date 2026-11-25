@@ -18,7 +18,6 @@ export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion';
 
 const CLOCK_SKEW_SECONDS = 60;
 const SIGNING_KEYS_TTL_MS = 60 * 60 * 1000;
-// An unknown kid triggers a refetch (key rotation), at most once per minute.
 const SIGNING_KEYS_MIN_REFRESH_MS = 60 * 1000;
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 
@@ -337,7 +336,6 @@ export async function authenticateRequest(
     const userRepository = deps.userRepository ?? createUserRepository(env.DB);
     const id = await userRepository.findOrCreateByEmail(email, sub);
     if (id === OWNER_USER_ID) {
-      // The owner row belongs to ADMIN_EMAIL only.
       return { ok: false, status: 403, error: 'Forbidden' };
     }
     return { ok: true, user: { id, email, isAdmin: false } };

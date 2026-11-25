@@ -34,7 +34,6 @@ export class UserRepository {
     }
 
     const now = new Date().toISOString();
-    // ON CONFLICT covers a concurrent first sign-in of the same email.
     const created = await this.db
       .prepare(
         `INSERT INTO users (email, access_sub, created_at, updated_at)

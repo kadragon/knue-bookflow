@@ -40,7 +40,6 @@ export async function handleGetNotes(
   const noteRepository = createNoteRepository(env.DB);
   const bookRepository = createBookRepository(env.DB);
 
-  // Check the user owns the book (another user's book is "not found")
   const book = await bookRepository.findById(userId, bookId);
 
   if (!book) {
@@ -105,7 +104,6 @@ export async function handleCreateNote(
   const noteRepository = createNoteRepository(env.DB);
   const bookRepository = createBookRepository(env.DB);
 
-  // Check the user owns the book (another user's book is "not found")
   const book = await bookRepository.findById(userId, bookId);
 
   if (!book) {
@@ -181,7 +179,6 @@ export async function handleUpdateNote(
 
   const noteRepository = createNoteRepository(env.DB);
 
-  // Check the user owns the note (another user's note is "not found")
   const existing = await noteRepository.findById(userId, noteId);
   if (!existing) {
     return new Response(JSON.stringify({ error: 'Note not found' }), {
@@ -223,7 +220,6 @@ export async function handleDeleteNote(
 ): Promise<Response> {
   const noteRepository = createNoteRepository(env.DB);
 
-  // Check the user owns the note (another user's note is "not found")
   const existing = await noteRepository.findById(userId, noteId);
   if (!existing) {
     return new Response(JSON.stringify({ error: 'Note not found' }), {

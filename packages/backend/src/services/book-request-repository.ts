@@ -65,9 +65,9 @@ export class BookRequestRepository {
         )
         .first<BookRequestRecord>();
     } catch (error) {
-      // A concurrent insert of the same (user_id, isbn13) loses the UNIQUE
-      // race here (the findByIsbn13 pre-check passed for both). Tag it so the
-      // handler returns 409 instead of a generic 500.
+      // A concurrent insert of the same isbn13 loses the UNIQUE race here
+      // (the findByIsbn13 pre-check passed for both). Tag it so the handler
+      // returns 409 instead of a generic 500.
       if (error instanceof Error && /UNIQUE constraint/i.test(error.message)) {
         throw Object.assign(new Error('Book request already exists'), {
           code: 'DUPLICATE_BOOK_REQUEST',

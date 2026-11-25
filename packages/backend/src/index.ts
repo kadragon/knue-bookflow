@@ -63,7 +63,6 @@ import {
   jsonResponse,
 } from './utils';
 
-// Routes reachable only by the admin, who owns the library account.
 const ADMIN_ONLY_PATHS = new Set([
   '/trigger',
   '/api/books/sync',
@@ -213,10 +212,6 @@ export default {
   },
 };
 
-/**
- * Routes for a request whose Access identity has been verified.
- * Returns null when no API route matches, so the caller falls back to assets.
- */
 async function routeAuthenticatedRequest(
   request: Request,
   env: Env,
@@ -292,7 +287,7 @@ async function routeAuthenticatedRequest(
     return handleDeleteBookRequest(env, userId, requestId);
   }
 
-  // Library-DB sync endpoint (admin only, enforced before routing)
+  // Library-DB sync endpoint
   if (url.pathname === '/api/books/sync' && request.method === 'POST') {
     return handleSyncBooks(env);
   }
@@ -352,7 +347,7 @@ async function routeAuthenticatedRequest(
     return handlePracticeDraw(env, userId, request);
   }
 
-  // Manual trigger endpoint (admin only, enforced before routing)
+  // Manual trigger endpoint
   // POST only - triggering task has side effects, violates REST if GET allowed
   if (url.pathname === '/trigger' && request.method === 'POST') {
     const repo = createCronRunRepository(env.DB as D1Database);

@@ -265,28 +265,27 @@ describe('PlannedLoanRepository', () => {
       expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement]);
     });
 
-    it('should chunk ids into batches of 998 (plus user_id) under the D1 parameter limit', async () => {
-      const ids = Array.from({ length: 1500 }, (_, i) => i + 1);
+    it('should chunk ids into batches of 99 (plus user_id) under the D1 parameter limit', async () => {
+      const ids = Array.from({ length: 150 }, (_, i) => i + 1);
       const fakeStatement = {} as D1PreparedStatement;
       const mockBind = vi.fn().mockReturnValue(fakeStatement);
       (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
         bind: mockBind,
       });
       (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { meta: { changes: 998 } },
-        { meta: { changes: 502 } },
+        { meta: { changes: 99 } },
+        { meta: { changes: 51 } },
       ]);
 
       const result = await repository.deleteByLibraryBiblioIds(USER_ID, ids);
 
-      expect(result).toBe(1500);
+      expect(result).toBe(150);
       expect(mockDb.prepare).toHaveBeenCalledTimes(2);
-      expect(mockBind).toHaveBeenNthCalledWith(
-        1,
-        USER_ID,
-        ...ids.slice(0, 998),
+      expect(mockBind).toHaveBeenNthCalledWith(1, USER_ID, ...ids.slice(0, 99));
+      expect(mockBind).toHaveBeenNthCalledWith(2, USER_ID, ...ids.slice(99));
+      expect(mockBind.mock.calls.every((args) => args.length <= 100)).toBe(
+        true,
       );
-      expect(mockBind).toHaveBeenNthCalledWith(2, USER_ID, ...ids.slice(998));
       expect(mockDb.batch).toHaveBeenCalledWith([fakeStatement, fakeStatement]);
     });
   });

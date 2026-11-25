@@ -112,7 +112,6 @@ export async function broadcastDueSoonBooks(
     const futureDate = formatDate(
       new Date(Date.now() + kstOffsetMs + DUE_SOON_BROADCAST_DAYS * DAY_MS),
     );
-    // Telegram alerts cover the owner's library loans only.
     const dueSoonBooks = await bookRepository.findDueSoonBooks(
       OWNER_USER_ID,
       today,

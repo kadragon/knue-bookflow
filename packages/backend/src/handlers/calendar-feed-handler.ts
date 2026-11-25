@@ -33,7 +33,6 @@ export async function handleGetCalendarFeed(
   }
 
   try {
-    // The feed token is single-account: it serves the owner's loans only.
     const loans = await createBookRepository(env.DB).findLoansDueForReturn(
       OWNER_USER_ID,
       MAX_RENEWALS_PER_LOAN,

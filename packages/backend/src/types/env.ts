@@ -26,8 +26,6 @@ export interface Env {
   ACCESS_AUD?: string;
   ADMIN_EMAIL?: string;
 
-  // Local-dev identity; honored only when ENVIRONMENT is "development" and
-  // the request host is localhost.
   DEV_AUTH_EMAIL?: string;
 
   // Non-secret environment variables
