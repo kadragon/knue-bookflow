@@ -31,7 +31,6 @@ export interface BookRecord {
   renew_count: number;
   is_renewable?: 0 | 1 | null;
   is_read?: number;
-  /** Defaults to 'library' in D1; 'manual' rows have no library due date */
   source?: BookSource;
   created_at?: string;
   updated_at?: string;

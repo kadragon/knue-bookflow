@@ -21,6 +21,33 @@ import {
 } from '../utils/date';
 import { fromReadStatus } from '../utils/read-status';
 
+/** Thrown when a write would leave two on-loan manual books with one ISBN */
+export class DuplicateManualBookError extends Error {
+  readonly code = 'DUPLICATE_MANUAL_BOOK';
+
+  constructor() {
+    super('An on-loan manual book with this ISBN already exists');
+    this.name = 'DuplicateManualBookError';
+  }
+}
+
+const ON_LOAN_MANUAL_ISBN_CONFLICT =
+  /UNIQUE constraint failed: books\.user_id, books\.isbn/;
+
+async function rejectManualIsbnConflict<T>(write: Promise<T>): Promise<T> {
+  try {
+    return await write;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ON_LOAN_MANUAL_ISBN_CONFLICT.test(error.message)
+    ) {
+      throw new DuplicateManualBookError();
+    }
+    throw error;
+  }
+}
+
 export class BookRepository {
   constructor(private db: D1Database) {}
 
@@ -77,7 +104,7 @@ export class BookRepository {
       console.log(`[BookRepository] Updated book: ${record.title}`);
     } else {
       // Insert new record
-      await this.db
+      const insert = this.db
         .prepare(
           `INSERT INTO books (
             user_id, charge_id, isbn, isbn13, title, author, publisher,
@@ -108,6 +135,7 @@ export class BookRepository {
           now,
         )
         .run();
+      await rejectManualIsbnConflict(insert);
 
       console.log(`[BookRepository] Saved new book: ${record.title}`);
     }
@@ -132,7 +160,7 @@ export class BookRepository {
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const value = fromReadStatus(readStatus);
-    const result = await this.db
+    const update = this.db
       .prepare(
         `UPDATE books SET
           is_read = ?,
@@ -146,6 +174,7 @@ export class BookRepository {
       )
       .bind(value, value, manualDischargeDate, now, id, userId)
       .run();
+    const result = await rejectManualIsbnConflict(update);
 
     const updated = result.meta.changes > 0;
     if (updated) {

@@ -6,7 +6,10 @@
  */
 
 import { z } from 'zod';
-import { createBookRepository } from '../services/book-repository';
+import {
+  createBookRepository,
+  DuplicateManualBookError,
+} from '../services/book-repository';
 import {
   buildBookShelfView,
   deriveBookViewModel,
@@ -40,7 +43,7 @@ export async function handleBooksApi(
   return new Response(JSON.stringify({ items: view }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'private, max-age=30',
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -75,6 +78,9 @@ export async function handleUpdateReadStatus(
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    if (error instanceof DuplicateManualBookError) {
+      return duplicateManualBookResponse();
+    }
     console.error(`[BooksHandler] Failed to update read status: ${error}`);
     return new Response('Internal Server Error', { status: 500 });
   }
@@ -143,6 +149,13 @@ export async function handleGetBook(
   }
 }
 
+function duplicateManualBookResponse(): Response {
+  return jsonResponse(
+    { code: 'DUPLICATE_MANUAL_BOOK', message: '이미 등록한 도서입니다.' },
+    { status: 409, headers: { 'Cache-Control': 'no-store' } },
+  );
+}
+
 type ManualBookRepo = Pick<
   ReturnType<typeof createBookRepository>,
   'findOnLoanManualBookByIsbn' | 'saveBook' | 'findByChargeId'
@@ -200,10 +213,7 @@ export async function handleCreateManualBook(
 
   try {
     if (isbn && (await bookRepo.findOnLoanManualBookByIsbn(userId, isbn))) {
-      return jsonResponse(
-        { code: 'DUPLICATE_MANUAL_BOOK', message: '이미 등록한 도서입니다.' },
-        { status: 409, headers: { 'Cache-Control': 'no-store' } },
-      );
+      return duplicateManualBookResponse();
     }
 
     const record: BookRecord = {
@@ -236,6 +246,9 @@ export async function handleCreateManualBook(
       { status: 201, headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
+    if (error instanceof DuplicateManualBookError) {
+      return duplicateManualBookResponse();
+    }
     console.error('[BooksHandler] Failed to register manual book', error);
     return jsonResponse(
       { error: 'Internal Server Error' },

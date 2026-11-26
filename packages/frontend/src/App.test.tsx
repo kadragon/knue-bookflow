@@ -122,7 +122,6 @@ describe('App Component', () => {
     renderApp();
 
     expect(await screen.findByText('등록 2025-02-01')).toBeDefined();
-    // The header register button plus the card's status chip.
     expect(screen.getAllByText('직접 등록')).toHaveLength(2);
     expect(screen.queryByText(/^반납 /)).toBeNull();
     expect(screen.queryByText('D-0')).toBeNull();

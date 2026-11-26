@@ -12,10 +12,6 @@ import type {
   ReadStatus,
 } from './api';
 
-/**
- * Apply a read-status change to one book. A manual book mirrors the server:
- * finishing or abandoning it takes it off loan, marking it unread puts it back.
- */
 function withReadStatus(book: BookItem, readStatus: ReadStatus): BookItem {
   if (book.source !== 'manual') {
     return { ...book, readStatus };

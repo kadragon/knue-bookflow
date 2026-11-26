@@ -35,6 +35,9 @@ function normalizeText(value: string | null | undefined): string {
 }
 
 function bookGroupingKey(record: BookRecord): string {
+  if (record.source === 'manual') {
+    return `manual:${record.charge_id}`;
+  }
   const isbn = normalizeIsbn(record.isbn);
   if (isbn) {
     return `isbn:${isbn}`;
@@ -96,7 +99,6 @@ export function deriveBookViewModel(
 ): BookViewModel {
   const source = record.source ?? 'library';
   const isReturned = Boolean(record.discharge_date);
-  // A manual book's due_date is only its registration date: no countdown.
   const hasDueDate = !isReturned && source === 'library';
   const daysLeft = hasDueDate
     ? computeDaysLeft(record.due_date, now, offsetMinutes)

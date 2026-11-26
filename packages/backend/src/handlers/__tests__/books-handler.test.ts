@@ -192,7 +192,7 @@ describe('handleBooksApi', () => {
       fakeBookRepo,
       fakeNoteRepo,
     );
-    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };
@@ -240,7 +240,7 @@ describe('handleBooksApi', () => {
       fakeBookRepo,
       fakeNoteRepo,
     );
-    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
     const body = (await response.json()) as {
       items: Record<string, unknown>[];
     };

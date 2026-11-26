@@ -226,7 +226,6 @@ async function routeAuthenticatedRequest(
     return handleBooksApi(env, userId);
   }
 
-  // Register a book by hand from an Aladin search result
   if (url.pathname === '/api/books/manual' && request.method === 'POST') {
     return handleCreateManualBook(env, userId, request);
   }

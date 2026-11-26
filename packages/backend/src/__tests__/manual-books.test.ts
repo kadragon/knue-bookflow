@@ -17,8 +17,13 @@ import {
   it,
   vi,
 } from 'vitest';
+import { handleCreateManualBook } from '../handlers/books-handler';
 import worker from '../index';
-import { BookRepository, clearAccessSigningKeyCache } from '../services';
+import {
+  BookRepository,
+  clearAccessSigningKeyCache,
+  DuplicateManualBookError,
+} from '../services';
 import type { BookViewModel, Env } from '../types';
 import {
   certsFetch,
@@ -34,7 +39,6 @@ const ADMIN = 'admin@example.com';
 const MEMBER = 'member@example.com';
 const OWNER_ID = 1;
 const MEMBER_ID = 2;
-// 16:00 UTC is already the next day in KST.
 const NOW = new Date('2026-11-26T16:00:00Z');
 const TODAY_KST = '2026-11-27';
 const ctx = {
@@ -246,11 +250,60 @@ describe('POST /api/books/manual', () => {
       code: 'DUPLICATE_MANUAL_BOOK',
     });
 
-    // Another user may register the same book.
     expect((await register(aladinBook, ADMIN)).status).toBe(201);
 
     expect((await setReadStatus(first.item.dbId, 'finished')).status).toBe(200);
     expect((await register()).status).toBe(201);
+  });
+
+  it('answers 409 when a concurrent registration wins the insert race', async () => {
+    expect((await register()).status).toBe(201);
+    const repo = new BookRepository(env.DB);
+    const raced = {
+      findOnLoanManualBookByIsbn: async () => null,
+      saveBook: repo.saveBook.bind(repo),
+      findByChargeId: repo.findByChargeId.bind(repo),
+    };
+
+    const response = await handleCreateManualBook(
+      env,
+      MEMBER_ID,
+      new Request('https://book.example.com/api/books/manual', {
+        method: 'POST',
+        body: JSON.stringify(aladinBook),
+      }),
+      raced,
+      TODAY_KST,
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: 'DUPLICATE_MANUAL_BOOK',
+    });
+    expect(bookRows()).toHaveLength(1);
+  });
+
+  it('keeps a manual copy beside a library loan of the same ISBN on the shelf', async () => {
+    db.exec(
+      `INSERT INTO books (id, user_id, charge_id, isbn, title, author, charge_date, due_date)
+       VALUES (1, 2, 'c-1', '9788966262472', '클린 코드', 'A', '2026-11-20', '2026-11-28')`,
+    );
+    expect((await register()).status).toBe(201);
+
+    const response = await call('/api/books', { as: MEMBER });
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    const { items } = (await response.json()) as { items: BookViewModel[] };
+
+    expect(
+      items.map(({ source, dueStatus, loanOrdinal }) => ({
+        source,
+        dueStatus,
+        loanOrdinal,
+      })),
+    ).toEqual([
+      { source: 'manual', dueStatus: 'ok', loanOrdinal: 1 },
+      { source: 'library', dueStatus: 'due_soon', loanOrdinal: 1 },
+    ]);
   });
 });
 
@@ -282,6 +335,54 @@ describe('read status of a manual book', () => {
     expect(dischargeDate(item.dbId)).toBe('2026-11-28');
   });
 
+  it('refuses to reopen a copy while another copy of its ISBN is on loan', async () => {
+    const first = (await (await register()).json()) as { item: BookViewModel };
+    await setReadStatus(first.item.dbId, 'finished');
+    expect((await register()).status).toBe(201);
+
+    const reopen = await setReadStatus(first.item.dbId, 'unread');
+
+    expect(reopen.status).toBe(409);
+    expect(await reopen.json()).toMatchObject({
+      code: 'DUPLICATE_MANUAL_BOOK',
+    });
+    expect(
+      db
+        .prepare('SELECT is_read, discharge_date FROM books WHERE id = ?')
+        .get(first.item.dbId),
+    ).toEqual({ is_read: 1, discharge_date: TODAY_KST });
+  });
+
+  it('rejects a second on-loan manual ISBN in the database itself', async () => {
+    const repo = new BookRepository(env.DB);
+    const manual = (chargeId: string) => ({
+      charge_id: chargeId,
+      source: 'manual' as const,
+      isbn: '111',
+      isbn13: '111',
+      title: 'T',
+      author: 'A',
+      publisher: null,
+      cover_url: null,
+      description: null,
+      pub_date: null,
+      charge_date: TODAY_KST,
+      due_date: TODAY_KST,
+      renew_count: 0,
+    });
+    await repo.saveBook(MEMBER_ID, manual('manual:a'), null);
+
+    await expect(
+      repo.saveBook(MEMBER_ID, manual('manual:b'), null),
+    ).rejects.toBeInstanceOf(DuplicateManualBookError);
+    await expect(
+      repo.saveBook(MEMBER_ID, { ...manual('manual:c'), isbn: '' }, null),
+    ).resolves.toBeUndefined();
+    await expect(
+      repo.saveBook(MEMBER_ID, { ...manual('manual:d'), isbn: '' }, null),
+    ).resolves.toBeUndefined();
+  });
+
   it('leaves a library book discharge date to the library sync', async () => {
     db.exec(
       `INSERT INTO books (id, user_id, charge_id, isbn, title, author, charge_date, due_date, discharge_date)
@@ -302,7 +403,6 @@ describe('due-date consumers skip manual books', () => {
 
   beforeEach(() => {
     repo = new BookRepository(env.DB);
-    // Same ISBN, charge date and due date: only source tells them apart.
     db.exec(
       `INSERT INTO books (id, user_id, charge_id, isbn, title, author, charge_date, due_date, renew_count, is_renewable, source)
        VALUES (1, 1, 'c-1', '111', 'Library', 'A', '2026-11-20', '2026-11-28', 0, 0, 'library'),

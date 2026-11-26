@@ -20,7 +20,6 @@ export function getLoanStatusChip(
   dueStatus: DueStatus,
   source: BookSource = 'library',
 ): { label: string; color: LoanStatusChipColor } {
-  // A manually registered book has no library loan: no due or return state.
   if (source === 'manual') {
     return {
       label: '직접 등록',

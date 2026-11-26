@@ -919,7 +919,6 @@ function BookshelfPage() {
         title="Bookshelf"
         actions={
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            {/* Phone widths cannot fit the title and two labelled buttons. */}
             <IconButton
               onClick={() => setIsRegisterOpen(true)}
               color="primary"
