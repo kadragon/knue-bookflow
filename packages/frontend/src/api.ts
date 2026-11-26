@@ -7,9 +7,12 @@ import type {
   BookItem,
   BookRequestsResponse,
   BookRequestViewModel,
+  BookSource,
   BranchVolume,
   CatalogBookItem,
   CreateBookRequestPayload,
+  CreateManualBookPayload,
+  CreateManualBookResponse,
   DueStatus,
   ExternalSearchResponse,
   ExternalSearchResultItem,
@@ -47,9 +50,12 @@ export type {
   BookItem,
   BookRequestsResponse,
   BookRequestViewModel,
+  BookSource,
   BranchVolume,
   CatalogBookItem,
   CreateBookRequestPayload,
+  CreateManualBookPayload,
+  CreateManualBookResponse,
   DueStatus,
   ExternalSearchResponse,
   ExternalSearchResultItem,
@@ -346,6 +352,23 @@ export const createBookRequest = async (
   });
 
   await handleApiError(res, 'Failed to save book request');
+
+  return res.json();
+};
+
+export const createManualBook = async (
+  payload: CreateManualBookPayload,
+): Promise<CreateManualBookResponse> => {
+  const res = await fetch('/api/books/manual', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  await handleApiError(res, 'Failed to register book');
 
   return res.json();
 };

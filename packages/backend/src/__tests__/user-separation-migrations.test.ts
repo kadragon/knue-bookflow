@@ -12,7 +12,7 @@ import { applyMigrations, listMigrations } from './helpers/sqlite-d1';
 
 const all = listMigrations();
 const before = all.filter((name) => name < '0016');
-const after = all.filter((name) => name >= '0016');
+const after = all.filter((name) => name >= '0016' && name < '0021');
 
 type Row = Record<string, unknown>;
 

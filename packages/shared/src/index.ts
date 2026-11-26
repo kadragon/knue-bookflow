@@ -19,6 +19,12 @@ export type DueStatus = 'overdue' | 'due_soon' | 'ok';
 export type LoanState = 'on_loan' | 'returned';
 
 /**
+ * Where a book row came from: synced from the library account, or registered
+ * by hand from an Aladin search (no library due date).
+ */
+export type BookSource = 'library' | 'manual';
+
+/**
  * Book reading status
  */
 export type ReadStatus = 'unread' | 'finished' | 'abandoned';
@@ -51,6 +57,7 @@ export interface BookViewModel {
   noteCount: number;
   noteState: NoteState;
   readStatus: ReadStatus;
+  source: BookSource;
   loanOrdinal?: number;
 }
 
@@ -393,6 +400,24 @@ export interface CreateBookRequestRequest {
 /** Alias for compatibility with frontend payload naming */
 export type CreateBookRequestPayload = CreateBookRequestRequest;
 
+/** Register a book by hand from an Aladin search result. */
+export interface CreateManualBookRequest {
+  isbn13?: string | null;
+  isbn?: string | null;
+  title: string;
+  author?: string | null;
+  publisher?: string | null;
+  pubDate?: string | null;
+  coverUrl?: string | null;
+  description?: string | null;
+}
+
+export type CreateManualBookPayload = CreateManualBookRequest;
+
+export interface CreateManualBookResponse {
+  item: BookViewModel;
+}
+
 // =============================================================================
 // API Error Contract
 // =============================================================================
@@ -400,6 +425,7 @@ export type CreateBookRequestPayload = CreateBookRequestRequest;
 export type ApiErrorCode =
   | 'DUPLICATE_PLANNED_LOAN'
   | 'DUPLICATE_BOOK_REQUEST'
+  | 'DUPLICATE_MANUAL_BOOK'
   | 'INVALID_REQUEST'
   | 'UPSTREAM_ERROR';
 

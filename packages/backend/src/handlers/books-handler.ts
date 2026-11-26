@@ -5,15 +5,21 @@
  * Trace: spec_id: SPEC-frontend-001, SPEC-notes-002, SPEC-backend-refactor-001, task_id: TASK-019, TASK-023, TASK-079
  */
 
-import { createBookRepository } from '../services/book-repository';
+import { z } from 'zod';
+import {
+  createBookRepository,
+  DuplicateManualBookError,
+} from '../services/book-repository';
 import {
   buildBookShelfView,
   deriveBookViewModel,
   sortBooks,
 } from '../services/book-shelf';
 import { createNoteRepository } from '../services/note-repository';
-import type { BookViewModel, DueStatus, Env } from '../types';
+import type { BookRecord, BookViewModel, DueStatus, Env } from '../types';
+import { getTodayString } from '../utils/date';
 import { isReadStatus } from '../utils/read-status';
+import { jsonResponse } from '../utils/response';
 
 export type { BookViewModel, DueStatus };
 
@@ -37,7 +43,7 @@ export async function handleBooksApi(
   return new Response(JSON.stringify({ items: view }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'private, max-age=30',
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -72,6 +78,9 @@ export async function handleUpdateReadStatus(
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    if (error instanceof DuplicateManualBookError) {
+      return duplicateManualBookResponse();
+    }
     console.error(`[BooksHandler] Failed to update read status: ${error}`);
     return new Response('Internal Server Error', { status: 500 });
   }
@@ -137,5 +146,113 @@ export async function handleGetBook(
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+}
+
+function duplicateManualBookResponse(): Response {
+  return jsonResponse(
+    { code: 'DUPLICATE_MANUAL_BOOK', message: '이미 등록한 도서입니다.' },
+    { status: 409, headers: { 'Cache-Control': 'no-store' } },
+  );
+}
+
+type ManualBookRepo = Pick<
+  ReturnType<typeof createBookRepository>,
+  'findOnLoanManualBookByIsbn' | 'saveBook' | 'findByChargeId'
+>;
+
+const optionalText = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((value) => value || null);
+
+const createManualBookSchema = z.object({
+  isbn13: optionalText,
+  isbn: optionalText,
+  title: z.string().trim().min(1, 'title is required'),
+  author: optionalText,
+  publisher: optionalText,
+  pubDate: optionalText,
+  coverUrl: optionalText,
+  description: optionalText,
+});
+
+/**
+ * Register a book by hand from an Aladin search result. It starts on loan
+ * (unread, no discharge date) with charge_date = due_date = registration date,
+ * and leaves the on-loan list once it is finished or abandoned.
+ */
+export async function handleCreateManualBook(
+  env: Env,
+  userId: number,
+  request: Request,
+  bookRepo: ManualBookRepo = createBookRepository(env.DB),
+  today: string = getTodayString(),
+): Promise<Response> {
+  const parsed = createManualBookSchema.safeParse(
+    await request.json().catch(() => null),
+  );
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const path = issue?.path.join('.') ?? '';
+    const message = issue
+      ? path
+        ? `${path}: ${issue.message}`
+        : issue.message
+      : 'Invalid request body';
+    return jsonResponse(
+      { code: 'INVALID_REQUEST', message },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
+  const payload = parsed.data;
+  const isbn = payload.isbn13 ?? payload.isbn ?? '';
+
+  try {
+    if (isbn && (await bookRepo.findOnLoanManualBookByIsbn(userId, isbn))) {
+      return duplicateManualBookResponse();
+    }
+
+    const record: BookRecord = {
+      charge_id: `manual:${crypto.randomUUID()}`,
+      source: 'manual',
+      isbn,
+      isbn13: payload.isbn13,
+      title: payload.title,
+      author: payload.author ?? '',
+      publisher: payload.publisher,
+      cover_url: payload.coverUrl,
+      description: payload.description,
+      pub_date: payload.pubDate,
+      charge_date: today,
+      due_date: today,
+      discharge_date: null,
+      renew_count: 0,
+      is_renewable: null,
+      is_read: 0,
+    };
+    await bookRepo.saveBook(userId, record, null);
+
+    const saved = await bookRepo.findByChargeId(userId, record.charge_id);
+    if (!saved) {
+      throw new Error(`manual book ${record.charge_id} missing after insert`);
+    }
+
+    return jsonResponse(
+      { item: deriveBookViewModel(saved) },
+      { status: 201, headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch (error) {
+    if (error instanceof DuplicateManualBookError) {
+      return duplicateManualBookResponse();
+    }
+    console.error('[BooksHandler] Failed to register manual book', error);
+    return jsonResponse(
+      { error: 'Internal Server Error' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }

@@ -93,7 +93,8 @@ Migrations live in `packages/backend/migrations/NNNN_description.sql`. Applied l
 2. **External client factory** — `createLibraryClient(env)`, `createAladinClient(env)`; both encapsulate auth, retries, and parsing.
 3. **`ctx.waitUntil` pipeline** — Scheduled work returns fast; durable work runs after response. Renewal and broadcast both use this.
 4. **`ReadStatus` tri-state** — `0` unread, `1` finished, `2` abandoned. Shared between backend and frontend through `@knue-bookflow/shared`.
-5. **Zod schemas at handler boundary** — Input parsing and validation happens before any service call. Schemas colocated with handlers.
+5. **Book source** — `books.source` is `library` (synced from the library account) or `manual` (registered from an Aladin search via `POST /api/books/manual`, `charge_id = manual:<uuid>`). Manual books have no library due date: due-date consumers (Telegram due-soon, calendar feed, return-sync ISBN + charge date fallback) read `library` rows only, finishing or abandoning a manual book sets its `discharge_date`, and a partial unique index (migration 0022) allows one on-loan manual copy per user and ISBN.
+6. **Zod schemas at handler boundary** — Input parsing and validation happens before any service call. Schemas colocated with handlers.
 
 ## Observability
 

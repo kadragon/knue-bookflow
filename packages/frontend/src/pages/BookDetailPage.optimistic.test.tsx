@@ -27,6 +27,7 @@ const makeBook = (overrides: Partial<BookItem> = {}): BookItem => ({
   noteCount: 0,
   noteState: 'not_started',
   readStatus: 'unread',
+  source: 'library',
   loanOrdinal: 1,
   ...overrides,
 });
@@ -91,6 +92,28 @@ describe('BookDetailPage optimistic read-status', () => {
       },
     );
   }
+
+  it('shows a manual book registration date without a due date', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) =>
+      /\/api\/books\/1$/.test(urlOf(input))
+        ? new Response(
+            JSON.stringify({
+              book: makeBook({ source: 'manual', daysLeft: 0 }),
+              notes: [],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          )
+        : new Response('{}', { status: 404 }),
+    );
+
+    renderDetail();
+
+    expect(await screen.findByText('등록일')).toBeDefined();
+    expect(screen.getByText('직접 등록')).toBeDefined();
+    expect(screen.queryByText('대출일')).toBeNull();
+    expect(screen.queryByText('반납 예정일')).toBeNull();
+    expect(screen.queryByText('D-0')).toBeNull();
+  });
 
   it('flips optimistically and keeps the value on success', async () => {
     let resolvePatch: (value: Response) => void = () => {};

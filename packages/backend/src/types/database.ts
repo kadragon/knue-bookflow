@@ -3,6 +3,8 @@
  * Trace: spec_id: SPEC-storage-001, task_id: TASK-008
  */
 
+import type { BookSource } from '@knue-bookflow/shared';
+
 export interface UserRecord {
   id: number;
   email: string | null;
@@ -29,6 +31,7 @@ export interface BookRecord {
   renew_count: number;
   is_renewable?: 0 | 1 | null;
   is_read?: number;
+  source?: BookSource;
   created_at?: string;
   updated_at?: string;
 }

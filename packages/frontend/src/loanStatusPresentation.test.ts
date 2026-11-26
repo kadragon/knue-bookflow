@@ -41,6 +41,22 @@ describe('loanStatusPresentation', () => {
     expect(shouldShowDdayChip('returned')).toBe(false);
   });
 
+  it('labels a manual book without due or return state', () => {
+    expect(getLoanStatusChip('on_loan', 'overdue', 'manual')).toEqual({
+      label: '직접 등록',
+      color: 'info',
+    });
+    expect(getLoanStatusChip('returned', 'ok', 'manual')).toEqual({
+      label: '직접 등록',
+      color: 'default',
+    });
+  });
+
+  it('never shows a D-day chip for a manual book', () => {
+    expect(shouldShowDdayChip('on_loan', 'manual')).toBe(false);
+    expect(shouldShowDdayChip('on_loan', 'library')).toBe(true);
+  });
+
   it.each([
     [3, 'D-3'],
     [0, 'D-0'],

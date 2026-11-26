@@ -14,8 +14,39 @@ import type {
   ReadStatus,
   RenewalLog,
 } from '../types';
-import { normalizeDateString, normalizeKstDate } from '../utils/date';
+import {
+  getTodayString,
+  normalizeDateString,
+  normalizeKstDate,
+} from '../utils/date';
 import { fromReadStatus } from '../utils/read-status';
+
+/** Thrown when a write would leave two on-loan manual books with one ISBN */
+export class DuplicateManualBookError extends Error {
+  readonly code = 'DUPLICATE_MANUAL_BOOK';
+
+  constructor() {
+    super('An on-loan manual book with this ISBN already exists');
+    this.name = 'DuplicateManualBookError';
+  }
+}
+
+const ON_LOAN_MANUAL_ISBN_CONFLICT =
+  /UNIQUE constraint failed: books\.user_id, books\.isbn/;
+
+async function rejectManualIsbnConflict<T>(write: Promise<T>): Promise<T> {
+  try {
+    return await write;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ON_LOAN_MANUAL_ISBN_CONFLICT.test(error.message)
+    ) {
+      throw new DuplicateManualBookError();
+    }
+    throw error;
+  }
+}
 
 export class BookRepository {
   constructor(private db: D1Database) {}
@@ -73,13 +104,14 @@ export class BookRepository {
       console.log(`[BookRepository] Updated book: ${record.title}`);
     } else {
       // Insert new record
-      await this.db
+      const insert = this.db
         .prepare(
           `INSERT INTO books (
             user_id, charge_id, isbn, isbn13, title, author, publisher,
             cover_url, description, pub_date, charge_date, due_date,
-            discharge_date, renew_count, is_renewable, is_read, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            discharge_date, renew_count, is_renewable, is_read, source,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           userId,
@@ -98,38 +130,51 @@ export class BookRepository {
           record.renew_count,
           record.is_renewable ?? null,
           record.is_read ?? 0,
+          record.source ?? 'library',
           now,
           now,
         )
         .run();
+      await rejectManualIsbnConflict(insert);
 
       console.log(`[BookRepository] Saved new book: ${record.title}`);
     }
   }
 
   /**
-   * Update the read status of a book
+   * Update the read status of a book. A manual book has no library return, so
+   * finishing or abandoning it discharges it (keeping an earlier discharge
+   * date) and marking it unread puts it back on loan. Library books keep the
+   * discharge_date the library sync wrote.
    * @param userId - Owner of the book
    * @param id - Database ID of the book
    * @param readStatus - New read status
+   * @param manualDischargeDate - Discharge date (YYYY-MM-DD) for a manual book
    * @returns false when the user has no book with this id
    */
   async updateReadStatus(
     userId: number,
     id: number,
     readStatus: ReadStatus,
+    manualDischargeDate: string = getTodayString(),
   ): Promise<boolean> {
     const now = new Date().toISOString();
     const value = fromReadStatus(readStatus);
-    const result = await this.db
+    const update = this.db
       .prepare(
         `UPDATE books SET
           is_read = ?,
+          discharge_date = CASE
+            WHEN source <> 'manual' THEN discharge_date
+            WHEN ? = 0 THEN NULL
+            ELSE COALESCE(discharge_date, ?)
+          END,
           updated_at = ?
         WHERE id = ? AND user_id = ?`,
       )
-      .bind(value, now, id, userId)
+      .bind(value, value, manualDischargeDate, now, id, userId)
       .run();
+    const result = await rejectManualIsbnConflict(update);
 
     const updated = result.meta.changes > 0;
     if (updated) {
@@ -177,7 +222,26 @@ export class BookRepository {
   }
 
   /**
-   * Find a book record by ISBN and charge date
+   * Find an on-loan manual book by ISBN, to refuse a duplicate registration
+   * @param isbn - ISBN the manual book was registered with
+   */
+  async findOnLoanManualBookByIsbn(
+    userId: number,
+    isbn: string,
+  ): Promise<BookRecord | null> {
+    const result = await this.db
+      .prepare(
+        "SELECT * FROM books WHERE user_id = ? AND source = 'manual' AND discharge_date IS NULL AND isbn = ? LIMIT 1",
+      )
+      .bind(userId, isbn)
+      .first<BookRecord>();
+
+    return result ?? null;
+  }
+
+  /**
+   * Find a library book record by ISBN and charge date. Manual books are
+   * excluded so library return history never matches them.
    * @param isbn - ISBN to search for
    * @param chargeDate - Charge date to match
    */
@@ -188,7 +252,7 @@ export class BookRepository {
   ): Promise<BookRecord | null> {
     const result = await this.db
       .prepare(
-        'SELECT * FROM books WHERE user_id = ? AND isbn = ? AND charge_date = ? LIMIT 1',
+        "SELECT * FROM books WHERE user_id = ? AND source = 'library' AND isbn = ? AND charge_date = ? LIMIT 1",
       )
       .bind(userId, isbn, chargeDate)
       .first<BookRecord>();
@@ -197,7 +261,8 @@ export class BookRepository {
   }
 
   /**
-   * Find books currently on loan that are due within the given date range (inclusive)
+   * Find library books currently on loan that are due within the given date
+   * range (inclusive). Manual books have no library due date.
    * @param fromDate - Start date in YYYY-MM-DD format (usually today)
    * @param toDate - End date in YYYY-MM-DD format
    */
@@ -208,7 +273,7 @@ export class BookRepository {
   ): Promise<BookRecord[]> {
     const result = await this.db
       .prepare(
-        'SELECT * FROM books WHERE user_id = ? AND discharge_date IS NULL AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC',
+        "SELECT * FROM books WHERE user_id = ? AND source = 'library' AND discharge_date IS NULL AND due_date >= ? AND due_date <= ? ORDER BY due_date ASC",
       )
       .bind(userId, fromDate, toDate)
       .all<BookRecord>();
@@ -225,6 +290,7 @@ export class BookRepository {
         `SELECT due_date, title
          FROM books
          WHERE user_id = ?
+           AND source = 'library'
            AND discharge_date IS NULL
            AND typeof(due_date) = 'text'
            AND (is_renewable = 0 OR renew_count >= ?)

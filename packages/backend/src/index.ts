@@ -13,6 +13,7 @@ import {
 } from './handlers/book-request-handler';
 import {
   handleBooksApi,
+  handleCreateManualBook,
   handleGetBook,
   handleUpdateReadStatus,
 } from './handlers/books-handler';
@@ -223,6 +224,10 @@ async function routeAuthenticatedRequest(
 
   if (url.pathname === '/api/books' && request.method === 'GET') {
     return handleBooksApi(env, userId);
+  }
+
+  if (url.pathname === '/api/books/manual' && request.method === 'POST') {
+    return handleCreateManualBook(env, userId, request);
   }
 
   if (url.pathname === '/api/cron-runs/latest' && request.method === 'GET') {

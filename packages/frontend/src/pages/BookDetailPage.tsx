@@ -112,7 +112,12 @@ function BookInfoPanel({
   onReadStatusChange: (readStatus: ReadStatus) => void;
   isUpdating: boolean;
 }) {
-  const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
+  const statusChip = getLoanStatusChip(
+    book.loanState,
+    book.dueStatus,
+    book.source,
+  );
+  const isManual = book.source === 'manual';
 
   return (
     <Paper variant="outlined" sx={{ p: 3, height: '100%' }}>
@@ -200,7 +205,7 @@ function BookInfoPanel({
                   variant="outlined"
                 />
               )}
-              {shouldShowDdayChip(book.loanState) && (
+              {shouldShowDdayChip(book.loanState, book.source) && (
                 <Chip
                   label={formatDdayLabel(book.daysLeft)}
                   size="small"
@@ -212,19 +217,23 @@ function BookInfoPanel({
 
           <Box>
             <Typography variant="caption" color="text.secondary">
-              대출일
+              {isManual ? '등록일' : '대출일'}
             </Typography>
             <Typography variant="body2">
               {formatDate(book.chargeDate)}
             </Typography>
           </Box>
 
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              반납 예정일
-            </Typography>
-            <Typography variant="body2">{formatDate(book.dueDate)}</Typography>
-          </Box>
+          {!isManual && (
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                반납 예정일
+              </Typography>
+              <Typography variant="body2">
+                {formatDate(book.dueDate)}
+              </Typography>
+            </Box>
+          )}
         </Stack>
 
         <Divider />

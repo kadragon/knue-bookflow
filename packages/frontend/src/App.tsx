@@ -2,6 +2,7 @@ import {
   Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  LibraryAdd as LibraryAddIcon,
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
 } from '@mui/icons-material';
@@ -46,6 +47,7 @@ import {
 } from './api';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Header } from './components/Header';
+import { ManualBookRegisterDialog } from './components/ManualBookRegisterDialog';
 import { ReadStatusButtonGroup } from './components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from './constants';
 import {
@@ -142,7 +144,12 @@ function BookCard({
   onBookClick: (book: BookItem) => void;
   isUpdating: boolean;
 }) {
-  const statusChip = getLoanStatusChip(book.loanState, book.dueStatus);
+  const statusChip = getLoanStatusChip(
+    book.loanState,
+    book.dueStatus,
+    book.source,
+  );
+  const isManual = book.source === 'manual';
 
   return (
     <Card
@@ -265,7 +272,7 @@ function BookCard({
               variant="outlined"
             />
           )}
-          {shouldShowDdayChip(book.loanState) && (
+          {shouldShowDdayChip(book.loanState, book.source) && (
             <Chip
               label={formatDdayLabel(book.daysLeft)}
               size="small"
@@ -280,15 +287,17 @@ function BookCard({
             color="text.secondary"
             sx={{ display: 'block' }}
           >
-            대출 {formatDate(book.chargeDate)}
+            {isManual ? '등록' : '대출'} {formatDate(book.chargeDate)}
           </Typography>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block' }}
-          >
-            반납 {formatDate(book.dueDate)}
-          </Typography>
+          {!isManual && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block' }}
+            >
+              반납 {formatDate(book.dueDate)}
+            </Typography>
+          )}
         </Stack>
 
         <Box
@@ -802,6 +811,7 @@ function BookshelfPage() {
     message: string;
   } | null>(null);
   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   const handleNoteClick = (book: BookItem) => {
     setSelectedBook(book);
@@ -908,7 +918,24 @@ function BookshelfPage() {
       <Header
         title="Bookshelf"
         actions={
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <IconButton
+              onClick={() => setIsRegisterOpen(true)}
+              color="primary"
+              aria-label="직접 등록"
+              sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+            >
+              <LibraryAddIcon />
+            </IconButton>
+            <Button
+              variant="outlined"
+              startIcon={<LibraryAddIcon />}
+              onClick={() => setIsRegisterOpen(true)}
+              color="primary"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
+              직접 등록
+            </Button>
             <Button
               variant="contained"
               startIcon={<PlayArrowIcon />}
@@ -997,6 +1024,18 @@ function BookshelfPage() {
           onNotesChanged={handleNotesChanged}
         />
       )}
+
+      <ManualBookRegisterDialog
+        open={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onRegistered={(book) => {
+          setIsRegisterOpen(false);
+          setNotification({
+            type: 'success',
+            message: `'${book.title}'을(를) 책장에 등록했습니다.`,
+          });
+        }}
+      />
     </Box>
   );
 }

@@ -35,6 +35,9 @@ function normalizeText(value: string | null | undefined): string {
 }
 
 function bookGroupingKey(record: BookRecord): string {
+  if (record.source === 'manual') {
+    return `manual:${record.charge_id}`;
+  }
   const isbn = normalizeIsbn(record.isbn);
   if (isbn) {
     return `isbn:${isbn}`;
@@ -94,13 +97,15 @@ export function deriveBookViewModel(
   now = new Date(),
   offsetMinutes = KST_OFFSET_MINUTES,
 ): BookViewModel {
+  const source = record.source ?? 'library';
   const isReturned = Boolean(record.discharge_date);
-  const daysLeft = isReturned
-    ? 0
-    : computeDaysLeft(record.due_date, now, offsetMinutes);
+  const hasDueDate = !isReturned && source === 'library';
+  const daysLeft = hasDueDate
+    ? computeDaysLeft(record.due_date, now, offsetMinutes)
+    : 0;
 
   let dueStatus: DueStatus = 'ok';
-  if (!isReturned) {
+  if (hasDueDate) {
     if (daysLeft < 0) {
       dueStatus = 'overdue';
     } else if (daysLeft <= DUE_SOON_DAYS) {
@@ -133,6 +138,7 @@ export function deriveBookViewModel(
     noteCount,
     noteState,
     readStatus: toReadStatus(record.is_read ?? 0),
+    source,
     loanOrdinal: 1,
   };
 }

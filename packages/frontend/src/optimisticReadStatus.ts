@@ -5,7 +5,23 @@
  * Instead of refetching the whole list after every change, we patch the cached
  * react-query data in place so the UI reflects the change instantly.
  */
-import type { ApiResponse, BookDetailResponse, ReadStatus } from './api';
+import type {
+  ApiResponse,
+  BookDetailResponse,
+  BookItem,
+  ReadStatus,
+} from './api';
+
+function withReadStatus(book: BookItem, readStatus: ReadStatus): BookItem {
+  if (book.source !== 'manual') {
+    return { ...book, readStatus };
+  }
+  return {
+    ...book,
+    readStatus,
+    loanState: readStatus === 'unread' ? 'on_loan' : 'returned',
+  };
+}
 
 export function patchBooksReadStatus(
   data: ApiResponse | undefined,
@@ -16,7 +32,7 @@ export function patchBooksReadStatus(
   return {
     ...data,
     items: data.items.map((item) =>
-      item.dbId === dbId ? { ...item, readStatus } : item,
+      item.dbId === dbId ? withReadStatus(item, readStatus) : item,
     ),
   };
 }
@@ -26,5 +42,5 @@ export function patchBookDetailReadStatus(
   readStatus: ReadStatus,
 ): BookDetailResponse | undefined {
   if (!data) return data;
-  return { ...data, book: { ...data.book, readStatus } };
+  return { ...data, book: withReadStatus(data.book, readStatus) };
 }

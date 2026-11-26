@@ -1,7 +1,7 @@
-import type { DueStatus, LoanState } from './api';
+import type { BookSource, DueStatus, LoanState } from './api';
 
 type ActiveLoanChipColor = 'error' | 'warning' | 'success';
-export type LoanStatusChipColor = 'default' | ActiveLoanChipColor;
+export type LoanStatusChipColor = 'default' | 'info' | ActiveLoanChipColor;
 
 const ACTIVE_LOAN_STATUS_LABEL: Record<DueStatus, string> = {
   overdue: '연체',
@@ -18,7 +18,15 @@ const ACTIVE_LOAN_STATUS_COLOR: Record<DueStatus, ActiveLoanChipColor> = {
 export function getLoanStatusChip(
   loanState: LoanState,
   dueStatus: DueStatus,
+  source: BookSource = 'library',
 ): { label: string; color: LoanStatusChipColor } {
+  if (source === 'manual') {
+    return {
+      label: '직접 등록',
+      color: loanState === 'on_loan' ? 'info' : 'default',
+    };
+  }
+
   if (loanState === 'returned') {
     return { label: '반납 완료', color: 'default' };
   }
@@ -29,8 +37,11 @@ export function getLoanStatusChip(
   };
 }
 
-export function shouldShowDdayChip(loanState: LoanState): boolean {
-  return loanState === 'on_loan';
+export function shouldShowDdayChip(
+  loanState: LoanState,
+  source: BookSource = 'library',
+): boolean {
+  return loanState === 'on_loan' && source === 'library';
 }
 
 export function formatDdayLabel(daysLeft: number): string {

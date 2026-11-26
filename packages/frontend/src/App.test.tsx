@@ -36,6 +36,7 @@ const createBook = (overrides: Partial<BookItem> = {}): BookItem => ({
   noteCount: 0,
   noteState: 'not_started',
   readStatus: 'unread',
+  source: 'library',
   loanOrdinal: 1,
   ...overrides,
 });
@@ -107,6 +108,23 @@ describe('App Component', () => {
     renderApp();
 
     expect(await screen.findByText('3번째 대여')).toBeDefined();
+  });
+
+  it('shows a manual book with its registration date and no due countdown', async () => {
+    mockBooks([
+      createBook({
+        source: 'manual',
+        chargeDate: '2025-02-01',
+        dueDate: '2025-02-01',
+        daysLeft: 0,
+      }),
+    ]);
+    renderApp();
+
+    expect(await screen.findByText('등록 2025-02-01')).toBeDefined();
+    expect(screen.getAllByText('직접 등록')).toHaveLength(2);
+    expect(screen.queryByText(/^반납 /)).toBeNull();
+    expect(screen.queryByText('D-0')).toBeNull();
   });
 
   it('does not render N번째 대여 when loanOrdinal is 1', async () => {
