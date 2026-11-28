@@ -37,6 +37,7 @@ import {
   createNote,
   deleteNote,
   getBooks,
+  getMe,
   getNotes,
   type NoteItem,
   type ReadStatus,
@@ -805,6 +806,7 @@ function BookshelfPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useBooks();
+  const me = useQuery({ queryKey: ['me'], queryFn: getMe });
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
@@ -920,15 +922,17 @@ function BookshelfPage() {
         actions={
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <ManualBookRegisterButton onClick={() => setIsRegisterOpen(true)} />
-            <Button
-              variant="contained"
-              startIcon={<PlayArrowIcon />}
-              onClick={() => triggerMutation.mutate()}
-              disabled={triggerMutation.isPending}
-              color="primary"
-            >
-              갱신
-            </Button>
+            {me.isSuccess && me.data.isAdmin === true && (
+              <Button
+                variant="contained"
+                startIcon={<PlayArrowIcon />}
+                onClick={() => triggerMutation.mutate()}
+                disabled={triggerMutation.isPending}
+                color="primary"
+              >
+                갱신
+              </Button>
+            )}
           </Stack>
         }
       />

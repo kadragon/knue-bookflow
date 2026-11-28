@@ -52,11 +52,15 @@ const renderApp = () => {
       </ThemeProvider>
     </QueryClientProvider>,
   );
+  return queryClient;
 };
 
 let fetchMock: ReturnType<typeof vi.spyOn>;
 
-function mockBooks(items: BookItem[]) {
+function mockBooks(
+  items: BookItem[],
+  identity: Response | Promise<Response> = Response.json({ isAdmin: false }),
+) {
   fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
     const url =
       typeof input === 'string'
@@ -70,6 +74,14 @@ function mockBooks(items: BookItem[]) {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    if (url === '/api/me') {
+      return identity;
+    }
+
+    if (url === '/trigger') {
+      return Response.json({ message: 'Workflow started' });
     }
 
     return new Response(JSON.stringify({ error: 'Not found' }), {
@@ -96,12 +108,49 @@ describe('App Component', () => {
     expect(screen.getByText('Bookshelf')).toBeDefined();
   });
 
-  it('shows a single manual refresh control', () => {
+  it('shows a single manual refresh control once admin status is confirmed', async () => {
+    let resolveIdentity: (response: Response) => void = () => {};
+    const identity = new Promise<Response>((resolve) => {
+      resolveIdentity = resolve;
+    });
+    mockBooks([createBook()], identity);
     renderApp();
 
-    expect(screen.getByRole('button', { name: '갱신' })).toBeDefined();
+    await screen.findByText('테스트책');
+    expect(screen.queryByRole('button', { name: '갱신' })).toBeNull();
+
+    resolveIdentity(Response.json({ isAdmin: true }));
+    const button = await screen.findByRole('button', { name: '갱신' });
     expect(screen.queryByTestId('RefreshIcon')).toBeNull();
+
+    fireEvent.click(button);
+    await screen.findByText(
+      '워크플로우가 시작되었습니다. 완료 후 새로고침하세요.',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/trigger',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
+
+  it.each([
+    ['a member', { isAdmin: false }, 200, 'success'],
+    ['an identity error', { error: 'Unauthorized' }, 401, 'error'],
+  ])(
+    'hides manual refresh for %s and keeps manual registration',
+    async (_name, body, status, queryStatus) => {
+      mockBooks([createBook()], Response.json(body, { status }));
+      const queryClient = renderApp();
+
+      await waitFor(() =>
+        expect(queryClient.getQueryState(['me'])?.status).toBe(queryStatus),
+      );
+      expect(screen.queryByRole('button', { name: '갱신' })).toBeNull();
+      expect(
+        screen.getAllByRole('button', { name: '직접 등록' }).length,
+      ).toBeGreaterThan(0);
+    },
+  );
 
   it('renders N번째 대여 when loanOrdinal is greater than 1', async () => {
     mockBooks([createBook({ loanOrdinal: 3 })]);

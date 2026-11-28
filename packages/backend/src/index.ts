@@ -222,6 +222,13 @@ async function routeAuthenticatedRequest(
 ): Promise<Response | null> {
   const userId = user.id;
 
+  if (url.pathname === '/api/me' && request.method === 'GET') {
+    return jsonResponse(
+      { isAdmin: user.isAdmin },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+
   if (url.pathname === '/api/books' && request.method === 'GET') {
     return handleBooksApi(env, userId);
   }
