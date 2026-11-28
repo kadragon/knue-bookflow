@@ -2,7 +2,6 @@ import {
   Close as CloseIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  LibraryAdd as LibraryAddIcon,
   Note as NoteIcon,
   PlayArrow as PlayArrowIcon,
 } from '@mui/icons-material';
@@ -47,6 +46,7 @@ import {
 } from './api';
 import { BottomNavigation } from './components/BottomNavigation';
 import { Header } from './components/Header';
+import { ManualBookRegisterButton } from './components/ManualBookRegisterButton';
 import { ManualBookRegisterDialog } from './components/ManualBookRegisterDialog';
 import { ReadStatusButtonGroup } from './components/ReadStatusButtonGroup';
 import { PAGE_CONTAINER_PADDING_BOTTOM } from './constants';
@@ -919,23 +919,7 @@ function BookshelfPage() {
         title="Bookshelf"
         actions={
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <IconButton
-              onClick={() => setIsRegisterOpen(true)}
-              color="primary"
-              aria-label="직접 등록"
-              sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
-            >
-              <LibraryAddIcon />
-            </IconButton>
-            <Button
-              variant="outlined"
-              startIcon={<LibraryAddIcon />}
-              onClick={() => setIsRegisterOpen(true)}
-              color="primary"
-              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-            >
-              직접 등록
-            </Button>
+            <ManualBookRegisterButton onClick={() => setIsRegisterOpen(true)} />
             <Button
               variant="contained"
               startIcon={<PlayArrowIcon />}
