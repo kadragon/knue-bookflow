@@ -74,16 +74,19 @@ Before each implementation cycle, the generator (or orchestrator) writes the con
 ### Sprint Contract: {Feature}
 
 **Generator proposes:**
+
 - I will build: {specific scope}
 - Success looks like: {concrete, testable bullets}
 - Out of scope: {explicit exclusions}
 
 **Evaluator reviews and confirms:**
+
 - These criteria are testable: yes / no
 - Missing acceptance criteria: {list}
 - Ambiguous items: {list}
 
 **Agreed contract:**
+
 - [ ] Criterion 1 (testable)
 - [ ] Criterion 2
 - [ ] Criterion 3
