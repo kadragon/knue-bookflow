@@ -36,6 +36,7 @@ interface ManualBookRegisterDialogProps {
 }
 
 const SEARCH_PAGE_SIZE = 10;
+const ALADIN_SEARCH_RESULT_LIMIT = 200;
 
 function registerErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.code === 'DUPLICATE_MANUAL_BOOK') {
@@ -65,8 +66,12 @@ export function ManualBookRegisterDialog({
     queryFn: () => searchExternalBooks(query, SEARCH_PAGE_SIZE, offset),
     enabled: open && query.length > 0,
   });
+  const totalResults = Math.min(
+    data?.meta.totalResults ?? 0,
+    ALADIN_SEARCH_RESULT_LIMIT,
+  );
   const canGoBack = offset > 0;
-  const canGoNext = offset + SEARCH_PAGE_SIZE < (data?.meta.totalResults ?? 0);
+  const canGoNext = offset + SEARCH_PAGE_SIZE < totalResults;
 
   const registerMutation = useMutation({
     mutationFn: createManualBook,

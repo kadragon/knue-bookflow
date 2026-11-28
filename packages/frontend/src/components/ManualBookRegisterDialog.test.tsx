@@ -142,6 +142,31 @@ describe('ManualBookRegisterDialog', () => {
     ]);
   });
 
+  it('stops at the Aladin search limit when there are more matches', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const params = new URL(urlOf(input), 'http://x').searchParams;
+      const offset = Number(params.get('offset'));
+      return json({
+        items: [{ ...aladinItem, title: `Result at ${offset}` }],
+        meta: { count: 1, totalResults: 208, offset, max: 10 },
+      });
+    });
+
+    renderDialog();
+    submitSearch('코드');
+    for (let offset = 0; offset < 190; offset += 10) {
+      await screen.findByText(`Result at ${offset}`);
+      fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
+    }
+
+    await screen.findByText('Result at 190');
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: '다음 페이지' })
+        .disabled,
+    ).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(20);
+  });
+
   it('searches Aladin and registers the selected book', async () => {
     const posted: unknown[] = [];
     fetchMock.mockImplementation(
