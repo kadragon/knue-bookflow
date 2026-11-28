@@ -284,7 +284,7 @@ describe('handleBooksApi', () => {
       fakeNoteRepo,
     );
     expect(response.status).toBe(200);
-    expect(response.headers.get('Cache-Control')).toBe('private, max-age=30');
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
 
   it('deduplicates repeated loans by ISBN and returns loanOrdinal', async () => {
@@ -595,6 +595,7 @@ describe('book routes are scoped per user', () => {
     );
 
     expect(response.status).toBe(404);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(findById).toHaveBeenCalledWith(USER_ID, 42);
     expect(findByBookId).not.toHaveBeenCalled();
   });

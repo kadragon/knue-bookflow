@@ -45,7 +45,10 @@ export async function handleGetNotes(
   if (!book) {
     return new Response(JSON.stringify({ error: 'Book not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 
@@ -55,7 +58,7 @@ export async function handleGetNotes(
   return new Response(JSON.stringify({ notes: viewModels }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'private, max-age=15',
+      'Cache-Control': 'no-store',
     },
   });
 }
