@@ -19,6 +19,7 @@ The primary cycle. Delegation checkpoints are **named steps**, not optional refe
 **Step 0 — Branch.** Ensure you are not on `main`. If you are, `git checkout -b <type>/<slug>` first (`feat/`, `fix/`, `chore/`, `harness/`, `deps/`).
 
 **Step 1 — Scope check (delegation gate).** Apply triggers from `docs/delegation.md`:
+
 - First edit of session in `packages/backend/src/`? → Explore agent.
 - Touches ≥3 directories or ≥5 files? → Explore + Plan.
 - Modifies `migrations/`, `wrangler.toml`, or `.github/workflows/`? → Plan agent (impact review).
@@ -27,6 +28,7 @@ The primary cycle. Delegation checkpoints are **named steps**, not optional refe
 **Step 2 — Sprint contract.** Write the "done-when" criteria for this cycle as concrete bullets in `tasks.md` (or in the conversation if no sprint file). Each criterion must be testable. See `docs/eval-criteria.md` → "Sprint Contract".
 
 **Step 3 — Implement.**
+
 - ≤2 files: orchestrator implements directly.
 - Larger: delegate to an Implementation agent with the spec, `docs/conventions.md`, and reference files.
 - TDD where a test framework already covers the area (most of the backend; frontend logic modules). Otherwise: reference implementation → code → lint/typecheck/test → manual smoke.
