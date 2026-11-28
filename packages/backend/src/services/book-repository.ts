@@ -1,7 +1,7 @@
 /**
  * Book Repository
  * Data access layer for D1 database operations. Every books query is scoped
- * by user_id; renewal_logs rows are read through the user's books.
+ * by user_id; renewal_logs rows are read through the owner's books only.
  *
  * Trace: spec_id: SPEC-storage-001, SPEC-return-001, task_id: TASK-006, TASK-034, TASK-082
  */
@@ -14,6 +14,7 @@ import type {
   ReadStatus,
   RenewalLog,
 } from '../types';
+import { OWNER_USER_ID } from '../utils/constants';
 import {
   getTodayString,
   normalizeDateString,
@@ -355,13 +356,17 @@ export class BookRepository {
   }
 
   /**
-   * Get renewal logs for a charge
+   * Get renewal logs for a charge belonging to the owner.
    * @param chargeId - Charge ID to get logs for
    */
   async getRenewalLogs(
     userId: number,
     chargeId: string,
   ): Promise<RenewalLog[]> {
+    if (userId !== OWNER_USER_ID) {
+      return [];
+    }
+
     const result = await this.db
       .prepare(
         `SELECT r.* FROM renewal_logs r

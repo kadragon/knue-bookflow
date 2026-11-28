@@ -354,7 +354,7 @@ describe('repositories scope every query by user', () => {
     expect(await repo.findLoansDueForReturn(OWNER_ID, 1)).toEqual([
       { dueDate: '2026-11-30', title: 'Owner Book' },
     ]);
-    expect(await repo.getRenewalLogs(3, 'c-1')).toEqual([]);
+    expect(await repo.getRenewalLogs(MEMBER_ID, 'c-1')).toEqual([]);
     expect(await repo.getRenewalLogs(OWNER_ID, 'c-1')).toHaveLength(1);
   });
 

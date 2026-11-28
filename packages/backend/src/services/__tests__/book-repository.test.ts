@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookInfo, BookRecord, Charge, RenewalLog } from '../../types';
+import { OWNER_USER_ID } from '../../utils/constants';
 import {
   BookRepository,
   createBookRecord,
@@ -578,7 +579,7 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.getRenewalLogs(USER_ID, '123');
+      const result = await repository.getRenewalLogs(OWNER_USER_ID, '123');
 
       expect(result).toHaveLength(2);
       expect(mockDb.prepare).toHaveBeenCalledWith(
@@ -586,7 +587,7 @@ describe('BookRepository', () => {
           /FROM renewal_logs r\s+WHERE r\.charge_id = \?.*b\.user_id = \? AND b\.charge_id = r\.charge_id/s,
         ),
       );
-      expect(mockBind).toHaveBeenCalledWith('123', USER_ID);
+      expect(mockBind).toHaveBeenCalledWith('123', OWNER_USER_ID);
     });
 
     it('should return empty array when no logs', async () => {
@@ -597,7 +598,10 @@ describe('BookRepository', () => {
         bind: mockBind,
       });
 
-      const result = await repository.getRenewalLogs(USER_ID, 'nonexistent');
+      const result = await repository.getRenewalLogs(
+        OWNER_USER_ID,
+        'nonexistent',
+      );
 
       expect(result).toHaveLength(0);
     });
