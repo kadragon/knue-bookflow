@@ -18,7 +18,7 @@ export const ACCESS_JWT_HEADER = 'Cf-Access-Jwt-Assertion';
 
 const CLOCK_SKEW_SECONDS = 60;
 const SIGNING_KEYS_TTL_MS = 60 * 60 * 1000;
-const SIGNING_KEYS_MIN_REFRESH_MS = 60 * 1000;
+const UNKNOWN_KID_REFETCH_COOLDOWN_MS = 60 * 1000;
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 export interface AccessIdentity {
@@ -104,11 +104,12 @@ export function toTeamOrigin(teamDomain: string): string {
 }
 
 function base64UrlToBytes(value: string): Uint8Array {
-  if (!/^[A-Za-z0-9_-]*$/.test(value)) {
+  const remainder = value.length % 4;
+  if (remainder === 1 || !/^[A-Za-z0-9_-]*$/.test(value)) {
     throw new AccessTokenError('Malformed token');
   }
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
+  const binary = atob(base64 + '='.repeat((4 - remainder) % 4));
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
@@ -175,7 +176,7 @@ async function getSigningKey(
     if (key && age < SIGNING_KEYS_TTL_MS) {
       return key;
     }
-    if (!key && age < SIGNING_KEYS_MIN_REFRESH_MS) {
+    if (!key && age < UNKNOWN_KID_REFETCH_COOLDOWN_MS) {
       return null;
     }
   }
@@ -211,6 +212,7 @@ export async function verifyAccessJwt(
   if (!header.success) {
     throw new AccessTokenError('Unsupported token header');
   }
+  const signature = base64UrlToBytes(encodedSignature);
 
   const key = await getSigningKey(
     config.teamOrigin,
@@ -225,7 +227,7 @@ export async function verifyAccessJwt(
   const signatureValid = await crypto.subtle.verify(
     'RSASSA-PKCS1-v1_5',
     key,
-    base64UrlToBytes(encodedSignature),
+    signature,
     new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`),
   );
   if (!signatureValid) {
@@ -313,6 +315,10 @@ async function resolveIdentity(
   }
 }
 
+function isReservedOwnerRow(userId: number): boolean {
+  return userId === OWNER_USER_ID;
+}
+
 /**
  * Authenticate a request and resolve the app user. ADMIN_EMAIL maps to the
  * owner user (id 1); every other identity gets its own user row.
@@ -335,7 +341,7 @@ export async function authenticateRequest(
   try {
     const userRepository = deps.userRepository ?? createUserRepository(env.DB);
     const id = await userRepository.findOrCreateByEmail(email, sub);
-    if (id === OWNER_USER_ID) {
+    if (isReservedOwnerRow(id)) {
       return { ok: false, status: 403, error: 'Forbidden' };
     }
     return { ok: true, user: { id, email, isAdmin: false } };

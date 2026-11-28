@@ -271,6 +271,28 @@ describe('authenticateRequest', () => {
     expect(result).toEqual({ ok: false, status: 401, error: 'Unauthorized' });
   });
 
+  it('returns 401 for a signature with an invalid Base64URL length', async () => {
+    const [header, payload] = (
+      await signToken(signingKey, validClaims())
+    ).split('.');
+    const d = deps();
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      const result = await authenticateRequest(
+        request({ [ACCESS_JWT_HEADER]: `${header}.${payload}.A` }),
+        baseEnv,
+        d,
+      );
+
+      expect(result).toEqual({ ok: false, status: 401, error: 'Unauthorized' });
+      expect(d.fetchFn).not.toHaveBeenCalled();
+      expect(errorLog).not.toHaveBeenCalled();
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
   it('ignores Cf-Access-Authenticated-User-Email without a valid JWT', async () => {
     const d = deps();
     const result = await authenticateRequest(

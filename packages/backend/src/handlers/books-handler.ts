@@ -112,7 +112,10 @@ export async function handleGetBook(
     if (!record) {
       return new Response(JSON.stringify({ error: 'Book not found' }), {
         status: 404,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        },
       });
     }
 
@@ -136,7 +139,7 @@ export async function handleGetBook(
       {
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'private, max-age=30',
+          'Cache-Control': 'no-store',
         },
       },
     );
