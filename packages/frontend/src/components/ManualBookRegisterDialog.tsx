@@ -35,6 +35,9 @@ interface ManualBookRegisterDialogProps {
   onRegistered: (book: BookItem) => void;
 }
 
+const SEARCH_PAGE_SIZE = 10;
+const ALADIN_SEARCH_RESULT_LIMIT = 200;
+
 function registerErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.code === 'DUPLICATE_MANUAL_BOOK') {
     return '이미 책장에 등록한 도서입니다.';
@@ -54,14 +57,21 @@ export function ManualBookRegisterDialog({
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
+  const [offset, setOffset] = useState(0);
   const [pendingIsbn, setPendingIsbn] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['externalSearch', query],
-    queryFn: () => searchExternalBooks(query, 10, 0),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['externalSearch', query, offset],
+    queryFn: () => searchExternalBooks(query, SEARCH_PAGE_SIZE, offset),
     enabled: open && query.length > 0,
   });
+  const totalResults = Math.min(
+    data?.meta.totalResults ?? 0,
+    ALADIN_SEARCH_RESULT_LIMIT,
+  );
+  const canGoBack = offset > 0;
+  const canGoNext = offset + SEARCH_PAGE_SIZE < totalResults;
 
   const registerMutation = useMutation({
     mutationFn: createManualBook,
@@ -75,10 +85,20 @@ export function ManualBookRegisterDialog({
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
-    if (trimmed) {
-      setRegisterError(null);
-      setQuery(trimmed);
+    if (!trimmed) return;
+
+    setRegisterError(null);
+    if (trimmed === query) {
+      void refetch();
+      return;
     }
+    setQuery(trimmed);
+    setOffset(0);
+  };
+
+  const handlePageChange = (nextOffset: number) => {
+    setRegisterError(null);
+    setOffset(nextOffset);
   };
 
   const handleRegister = (item: ExternalSearchResultItem) => {
@@ -170,7 +190,9 @@ export function ManualBookRegisterDialog({
             color="text.secondary"
             sx={{ textAlign: 'center', py: 4 }}
           >
-            알라딘에서 결과를 찾지 못했어요.
+            {canGoBack || canGoNext
+              ? '이 페이지에 표시할 도서가 없어요.'
+              : '알라딘에서 결과를 찾지 못했어요.'}
           </Typography>
         )}
 
@@ -188,6 +210,27 @@ export function ManualBookRegisterDialog({
                 }
               />
             ))}
+          </Stack>
+        )}
+
+        {(canGoBack || canGoNext) && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ justifyContent: 'center', mt: 2 }}
+          >
+            <Button
+              disabled={!canGoBack}
+              onClick={() => handlePageChange(offset - SEARCH_PAGE_SIZE)}
+            >
+              이전 페이지
+            </Button>
+            <Button
+              disabled={!canGoNext}
+              onClick={() => handlePageChange(offset + SEARCH_PAGE_SIZE)}
+            >
+              다음 페이지
+            </Button>
           </Stack>
         )}
       </DialogContent>

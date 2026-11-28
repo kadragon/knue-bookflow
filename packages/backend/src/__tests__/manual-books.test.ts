@@ -39,7 +39,7 @@ const ADMIN = 'admin@example.com';
 const MEMBER = 'member@example.com';
 const OWNER_ID = 1;
 const MEMBER_ID = 2;
-const NOW = new Date('2026-11-26T16:00:00Z');
+const NEXT_DAY_IN_KST = new Date('2026-11-26T16:00:00Z');
 const TODAY_KST = '2026-11-27';
 const ctx = {
   waitUntil: vi.fn(),
@@ -67,7 +67,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
-  vi.setSystemTime(NOW);
+  vi.setSystemTime(NEXT_DAY_IN_KST);
   clearAccessSigningKeyCache();
   vi.stubGlobal('fetch', certsFetch(TEAM_ORIGIN, signingKey));
   vi.spyOn(console, 'log').mockImplementation(() => {});

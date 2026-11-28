@@ -53,11 +53,15 @@ function renderDialog(onRegistered = vi.fn()) {
   return { onRegistered, invalidate };
 }
 
-async function searchAndRegister() {
+function submitSearch(query: string) {
   fireEvent.change(screen.getByLabelText('알라딘 검색'), {
-    target: { value: '클린 코드' },
+    target: { value: query },
   });
   fireEvent.click(screen.getByRole('button', { name: '검색' }));
+}
+
+async function searchAndRegister() {
+  submitSearch('클린 코드');
   await screen.findByText('클린 코드');
   fireEvent.click(screen.getByRole('button', { name: '등록' }));
 }
@@ -68,6 +72,99 @@ describe('ManualBookRegisterDialog', () => {
   });
   afterEach(() => {
     fetchMock.mockRestore();
+  });
+
+  it('retries a failed search when the same trimmed query is submitted', async () => {
+    fetchMock.mockResolvedValueOnce(json({ message: 'Unavailable' }, 502));
+    fetchMock.mockResolvedValueOnce(
+      json({
+        items: [aladinItem],
+        meta: { count: 1, totalResults: 1, offset: 0, max: 10 },
+      }),
+    );
+
+    renderDialog();
+    submitSearch('클린 코드');
+    await screen.findByText(/알라딘 검색에 실패했어요/);
+    submitSearch(' 클린 코드 ');
+
+    await screen.findByText('클린 코드');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0]).toBe(fetchMock.mock.calls[0][0]);
+  });
+
+  it('uses total results to page through sparse results and resets for a new query', async () => {
+    const searches: [string | null, string | null][] = [];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const params = new URL(urlOf(input), 'http://x').searchParams;
+      const query = params.get('query');
+      const offset = Number(params.get('offset'));
+      searches.push([query, params.get('offset')]);
+      const items =
+        offset === 10
+          ? []
+          : [{ ...aladinItem, title: `${query} 결과 ${offset}` }];
+      return json({
+        items,
+        meta: {
+          count: items.length,
+          totalResults: query === '코드' ? 21 : 1,
+          offset,
+          max: 10,
+          query,
+        },
+      });
+    });
+
+    const getPageButton = (name: string) =>
+      screen.getByRole<HTMLButtonElement>('button', { name });
+
+    renderDialog();
+    submitSearch('코드');
+    await screen.findByText('코드 결과 0');
+    expect(getPageButton('이전 페이지').disabled).toBe(true);
+    fireEvent.click(getPageButton('다음 페이지'));
+    await screen.findByText('이 페이지에 표시할 도서가 없어요.');
+    fireEvent.click(getPageButton('다음 페이지'));
+    await screen.findByText('코드 결과 20');
+    expect(getPageButton('다음 페이지').disabled).toBe(true);
+    fireEvent.click(getPageButton('이전 페이지'));
+    await screen.findByText('이 페이지에 표시할 도서가 없어요.');
+    submitSearch('새 검색');
+    await screen.findByText('새 검색 결과 0');
+    expect(screen.queryByRole('button', { name: '다음 페이지' })).toBeNull();
+    expect(searches).toEqual([
+      ['코드', '0'],
+      ['코드', '10'],
+      ['코드', '20'],
+      ['코드', '10'],
+      ['새 검색', '0'],
+    ]);
+  });
+
+  it('stops at the Aladin search limit when there are more matches', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const params = new URL(urlOf(input), 'http://x').searchParams;
+      const offset = Number(params.get('offset'));
+      return json({
+        items: [{ ...aladinItem, title: `Result at ${offset}` }],
+        meta: { count: 1, totalResults: 208, offset, max: 10 },
+      });
+    });
+
+    renderDialog();
+    submitSearch('코드');
+    for (let offset = 0; offset < 190; offset += 10) {
+      await screen.findByText(`Result at ${offset}`);
+      fireEvent.click(screen.getByRole('button', { name: '다음 페이지' }));
+    }
+
+    await screen.findByText('Result at 190');
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: '다음 페이지' })
+        .disabled,
+    ).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(20);
   });
 
   it('searches Aladin and registers the selected book', async () => {
