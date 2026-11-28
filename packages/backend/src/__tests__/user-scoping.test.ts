@@ -154,6 +154,7 @@ function scalar(sql: string): unknown {
 describe('Access authentication at the Worker boundary', () => {
   it.each([
     ['GET', '/api/books'],
+    ['GET', '/api/me'],
     ['PUT', '/api/notes/1'],
     ['GET', '/api/search?query=x'],
     ['GET', '/api/new-books'],
@@ -166,11 +167,25 @@ describe('Access authentication at the Worker boundary', () => {
     expect(response.status).toBe(401);
   });
 
-  it('ignores the unsigned Cf-Access-Authenticated-User-Email header', async () => {
-    const response = await call('/api/books', {
-      headers: { 'Cf-Access-Authenticated-User-Email': ADMIN },
-    });
-    expect(response.status).toBe(401);
+  it.each(['/api/books', '/api/me'])(
+    'ignores the unsigned Cf-Access-Authenticated-User-Email header on %s',
+    async (path) => {
+      const response = await call(path, {
+        headers: { 'Cf-Access-Authenticated-User-Email': ADMIN },
+      });
+      expect(response.status).toBe(401);
+    },
+  );
+
+  it.each([
+    [ADMIN, true],
+    [MEMBER, false],
+  ])('returns the verified admin status for %s', async (email, isAdmin) => {
+    const response = await call('/api/me', { as: email });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(await response.json()).toEqual({ isAdmin });
   });
 
   it('serves the calendar feed without an Access JWT', async () => {

@@ -74,6 +74,16 @@ export type {
   SyncResponse,
 };
 
+export const getMe = async (): Promise<{ isAdmin: boolean }> => {
+  const res = await fetch('/api/me', {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    throw new Error('Failed to load current user');
+  }
+  return res.json();
+};
+
 export const getBooks = async (): Promise<ApiResponse> => {
   const res = await fetch('/api/books', {
     headers: { Accept: 'application/json' },
